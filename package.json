@@ -18,6 +18,9 @@
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
+  "bin": {
+    "image-assets": "dist/esm/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",

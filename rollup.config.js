@@ -21,11 +21,10 @@ const typescriptPlugin = () =>
     outDir: undefined,
   });
 
-const input = 'src/index.ts';
-
 export default [
   {
-    input,
+    // the command is ESM only: `bin` runs dist/esm/cli.js
+    input: ['src/index.ts', 'src/cli.ts'],
     external,
     plugins: [typescriptPlugin()],
     output: {
@@ -35,10 +34,12 @@ export default [
       preserveModules: true,
       preserveModulesRoot: 'src',
       sourcemap: true,
+      banner: (chunk) =>
+        chunk.isEntry && chunk.name === 'cli' ? '#!/usr/bin/env node' : '',
     },
   },
   {
-    input,
+    input: 'src/index.ts',
     external,
     plugins: [typescriptPlugin()],
     output: {

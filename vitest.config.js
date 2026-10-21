@@ -8,7 +8,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/test-utils/**', 'src/types/**'],
+      // src/cli.ts is the process entry, checked on the build
+      exclude: [
+        'src/**/*.spec.ts',
+        'src/test-utils/**',
+        'src/types/**',
+        'src/cli.ts',
+      ],
       reporter: ['text', 'html'],
       thresholds: { statements: 90, branches: 80, functions: 90, lines: 90 },
     },
