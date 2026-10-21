@@ -1,64 +1,34 @@
-import {
-  ResultBatch,
-  ResultFormat,
-  ResultSetting,
-  ResultSource,
-} from '../types/output';
+import type { ResultBatch, ResultSource } from '../types/output.js';
 
-export class DimensionMissingError extends Error {
-  override name = 'DimensionMissingError';
-}
-export class MetadataMissingError extends Error {
-  override name = 'MetadataMissingError';
-}
+/**
+ * Thrown by `imageResize` with `abortScope: 'batch'` when the source fails.
+ * Carries the result up to the failure.
+ */
+export class ResultSourceError extends Error {
+  override name = 'ResultSourceError';
+  readonly resultSource: ResultSource;
 
-export class ErrorBase extends Error {
-  public cause: any;
-  constructor(message: string, options?: { cause?: unknown }) {
-    super(message);
-    this.name = this.constructor.name;
-    if (Error.captureStackTrace)
-      Error.captureStackTrace(this, this.constructor);
-    if (options && 'cause' in options) (this as any).cause = options.cause;
+  constructor(
+    message: string,
+    resultSource: ResultSource,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.resultSource = resultSource;
   }
 }
 
-export class ResultFormatsError extends ErrorBase {
-  constructor(
-    message: string,
-    public resultFormats: ResultFormat[],
-    options?: { cause?: unknown }
-  ) {
-    super(message, options);
-  }
-}
+/**
+ * Thrown by `batchImageResize` with `abortScope: 'batch'` when a source
+ * fails. Carries the result of every source: the failed one, those stopped
+ * (`'aborted'`) and those finished before.
+ */
+export class ResultBatchError extends Error {
+  override name = 'ResultBatchError';
+  readonly resultBatch: ResultBatch;
 
-export class ResultSettingsError extends ErrorBase {
-  constructor(
-    message: string,
-    public resultSettings: ResultSetting[],
-    options?: { cause?: unknown }
-  ) {
+  constructor(message: string, resultBatch: ResultBatch, options?: ErrorOptions) {
     super(message, options);
-  }
-}
-
-export class ResultSourceError extends ErrorBase {
-  constructor(
-    message: string,
-    public resultSource: ResultSource,
-    options?: { cause?: unknown }
-  ) {
-    super(message, options);
-  }
-}
-
-export class ResultBatchError extends ErrorBase {
-  constructor(
-    message: string,
-    public resultBatch: ResultBatch,
-    options?: { cause?: unknown }
-  ) {
-    super(message, options);
+    this.resultBatch = resultBatch;
   }
 }

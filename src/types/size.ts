@@ -1,4 +1,4 @@
-/** Image resolution multiplier. */
+/** Image resolution multiplier: `'x1'`, `'x2'`, `'x1.5'`. */
 export type SizeMultiplier = `x${number}`;
 
 /** Fixed pixels or size multiplier. */
@@ -16,4 +16,4 @@ export type ResizeStrategyHint =
   | 'downsample'
   | 'upsample'
   | SizeMultiplier
-  | { width: number; height: number };
+  | { readonly width: number; readonly height: number };

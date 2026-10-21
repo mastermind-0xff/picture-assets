@@ -1,0 +1,267 @@
+import { assertLogLevel, type LogLevel } from '@mmutils/logger';
+import sharp from 'sharp';
+
+import {
+  canWriteFormat,
+  isOutputFormat,
+  OUTPUT_FORMATS,
+  resolveFormatOptions,
+  toSharpFormat,
+} from '../image/formats.js';
+import { isSizeMultiplier } from '../image/size-multiplier.js';
+import type { ImageAssetsLogger } from '../log/logger.js';
+import type {
+  AbortScope,
+  Concurrency,
+  ImageResizeOptions,
+} from '../types/options.js';
+import type {
+  OutputFormat,
+  OutputFormatsOptions,
+  OutputSetting,
+} from '../types/output.js';
+import type { ResizeStrategyHint } from '../types/size.js';
+
+/** Format options as given by the caller: any formats, any options. */
+export type FormatOptionsInput = NonNullable<
+  ImageResizeOptions['formatOptions']
+>;
+
+/** Output format with its complete sharp options. */
+export interface Encoder {
+  readonly format: OutputFormat;
+  readonly options: OutputFormatsOptions[OutputFormat];
+}
+
+/** Abort scopes, from the most forgiving. */
+export const ABORT_SCOPES = ['none', 'source', 'batch'] as const;
+
+const LOGGER_METHODS = ['error', 'warning', 'info', 'debug', 'verbose'];
+
+/** `JSON.stringify` gives undefined for undefined, functions and symbols. */
+const toJson = (value: unknown): string | undefined => JSON.stringify(value);
+
+/** Short description of a value for error messages. */
+export const describe = (value: unknown): string => {
+  if (typeof value === 'string') return `'${value}'`;
+  try {
+    return toJson(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
+
+export const isPlainObject = (
+  value: unknown
+): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isPositiveNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+const isNonNegativeInteger = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && (value as number) >= 0;
+
+const isResolution = (value: unknown) =>
+  isPositiveNumber(value) || isSizeMultiplier(value);
+
+/** @throws RangeError for anything but an abort scope. */
+export const parseAbortScope = (value: unknown): AbortScope => {
+  if ((ABORT_SCOPES as readonly unknown[]).includes(value))
+    return value as AbortScope;
+  throw new RangeError(
+    `Unknown abort scope ${describe(value)}: expected ${ABORT_SCOPES.map(describe).join(', ')}.`
+  );
+};
+
+/** @throws TypeError for anything but a resize strategy hint. */
+export const parseResizeStrategyHint = (value: unknown): ResizeStrategyHint => {
+  if (value === 'downsample' || value === 'upsample' || isSizeMultiplier(value))
+    return value;
+  if (
+    isPlainObject(value) &&
+    isPositiveNumber(value.width) &&
+    isPositiveNumber(value.height)
+  )
+    return { width: value.width, height: value.height };
+  throw new TypeError(
+    `Invalid resize strategy hint ${describe(value)}: expected 'downsample', 'upsample', a multiplier like 'x2', or the size of 'x1' as { width, height } in pixels.`
+  );
+};
+
+/** @throws TypeError or RangeError for anything but format options. */
+export const parseFormatOptions = (value: unknown): FormatOptionsInput => {
+  if (!isPlainObject(value))
+    throw new TypeError(
+      `Format options must be an object with formats as keys, got ${describe(value)}.`
+    );
+  for (const [format, options] of Object.entries(value)) {
+    if (!isOutputFormat(format))
+      throw new RangeError(
+        `Unknown output format ${describe(format)}: expected one of ${OUTPUT_FORMATS.join(', ')}.`
+      );
+    if (!isPlainObject(options))
+      throw new TypeError(
+        `Options of format '${format}' must be an object, got ${describe(options)}.`
+      );
+  }
+  return value;
+};
+
+/** @throws TypeError for anything but a string. */
+export const parseSuffixOption = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  throw new TypeError(`Suffix must be a string, got ${describe(value)}.`);
+};
+
+/** @throws TypeError or RangeError for anything but a concurrency. */
+export const parseConcurrency = (value: unknown): Concurrency => {
+  if (value === 'auto' || value === 'max') return value;
+  if (Number.isSafeInteger(value) && (value as number) >= 1)
+    return value as number;
+  throw new RangeError(
+    `Invalid concurrency ${describe(value)}: expected 'auto', 'max' or a whole number from 1.`
+  );
+};
+
+/**
+ * Checks a log level, or an object with the logger methods.
+ *
+ * @throws RangeError for unknown levels, TypeError for other values.
+ */
+export const parseLogger = (value: unknown): LogLevel | ImageAssetsLogger => {
+  if (typeof value === 'string') {
+    assertLogLevel(value);
+    return value;
+  }
+  if (isPlainObject(value)) {
+    const missing = LOGGER_METHODS.filter(
+      (method) => typeof value[method] !== 'function'
+    );
+    if (missing.length === 0) return value as unknown as ImageAssetsLogger;
+    throw new TypeError(
+      `Logger is missing the methods ${missing.join(', ')}.`
+    );
+  }
+  throw new TypeError(
+    `Logger must be a log level or a logger object, got ${describe(value)}.`
+  );
+};
+
+/**
+ * Checks the output settings: a non-empty list of objects with a width or a
+ * height each, in pixels or as a multiplier.
+ *
+ * @throws TypeError naming the first invalid setting and why.
+ */
+export function assertSettings(
+  settings: unknown
+): asserts settings is readonly OutputSetting[] {
+  if (!Array.isArray(settings) || settings.length === 0)
+    throw new TypeError(
+      `Settings must be a non-empty list of sizes like { width: 1024 }, got ${describe(settings)}.`
+    );
+  settings.forEach((setting: unknown, index) => {
+    const fail = (reason: string): never => {
+      throw new TypeError(`Setting ${index} ${describe(setting)}: ${reason}`);
+    };
+    if (!isPlainObject(setting)) return fail('must be an object.');
+    const { width, height, resizeOptions, extractRegion, suffix } = setting;
+    if (width === undefined && height === undefined)
+      fail('needs a width or a height.');
+    for (const [name, value] of [
+      ['width', width],
+      ['height', height],
+    ] as const)
+      if (value !== undefined && !isResolution(value))
+        fail(
+          `${name} must be a positive number of pixels or a multiplier like 'x2', got ${describe(value)}.`
+        );
+    if (resizeOptions !== undefined && !isPlainObject(resizeOptions))
+      fail('resizeOptions must be an object.');
+    if (extractRegion !== undefined) {
+      const region = isPlainObject(extractRegion) ? extractRegion : {};
+      const { left, top, width: regionWidth, height: regionHeight } = region;
+      if (
+        !isNonNegativeInteger(left) ||
+        !isNonNegativeInteger(top) ||
+        !isNonNegativeInteger(regionWidth) ||
+        !isNonNegativeInteger(regionHeight) ||
+        regionWidth === 0 ||
+        regionHeight === 0
+      )
+        fail(
+          'extractRegion must have whole numbers left, top, width and height, the size above 0.'
+        );
+    }
+    if (suffix !== undefined && typeof suffix !== 'string')
+      fail('suffix must be a string.');
+    for (const flag of ['generateFromSource', 'useAsNextResizeIteration'])
+      if (setting[flag] !== undefined && typeof setting[flag] !== 'boolean')
+        fail(`${flag} must be a boolean.`);
+  });
+}
+
+/**
+ * Reads the `formats` argument: a list of formats or an object of formats
+ * and their options. Duplicates are kept once.
+ *
+ * @returns Formats with the options given with them, in the given order;
+ * empty when `formats` is undefined or empty.
+ * @throws TypeError or RangeError for unknown formats and invalid options.
+ */
+export const parseFormats = (
+  formats: unknown
+): Map<OutputFormat, object | undefined> => {
+  const parsed = new Map<OutputFormat, object | undefined>();
+  if (formats === undefined) return parsed;
+  if (!Array.isArray(formats) && !isPlainObject(formats))
+    throw new TypeError(
+      `Formats must be a list like ['avif', 'webp'] or an object like { webp: { quality: 70 } }, got ${describe(formats)}.`
+    );
+  const entries: [unknown, unknown][] =
+    Array.isArray(formats) ?
+      formats.map((format: unknown) => [format, undefined])
+    : Object.entries(formats);
+  for (const [format, options] of entries) {
+    if (!isOutputFormat(format))
+      throw new RangeError(
+        `Unknown output format ${describe(format)}: expected one of ${OUTPUT_FORMATS.join(', ')}.`
+      );
+    if (options !== undefined && !isPlainObject(options))
+      throw new TypeError(
+        `Options of format '${format}' must be an object, got ${describe(options)}.`
+      );
+    if (!parsed.has(format)) parsed.set(format, options);
+  }
+  return parsed;
+};
+
+/**
+ * Resolves the complete options of each format and checks them with sharp,
+ * so invalid options fail before any image is processed.
+ *
+ * @throws RangeError for formats the installed sharp can't write, TypeError
+ * for options sharp rejects.
+ */
+export const createEncoders = (
+  formats: ReadonlyMap<OutputFormat, object | undefined>,
+  formatOptions: FormatOptionsInput
+): Encoder[] =>
+  [...formats].map(([format, callOptions]) => {
+    if (!canWriteFormat(format))
+      throw new RangeError(
+        `The installed sharp can't write ${format} files: its prebuilt binaries don't include an encoder for them.`
+      );
+    const options = resolveFormatOptions(format, formatOptions, callOptions);
+    try {
+      // sharp validates format options when they are set, before any input
+      sharp().toFormat(toSharpFormat(format), options);
+    } catch (error) {
+      throw new TypeError(
+        `Invalid ${format} options ${describe(options)}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
+    return { format, options };
+  });

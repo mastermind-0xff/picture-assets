@@ -1,241 +1,273 @@
-import path from 'path';
-import os from 'os';
+import os from 'node:os';
+import path from 'node:path';
 
-import { glob } from 'glob';
-import { sec } from 'style-escape-codes';
+import sharp from 'sharp';
 
-import { AtLeastOneOutputFormat, ResultBatch } from '../types/output';
-import { OutputSetting } from '../types/output';
-import { ResultSource } from '../types/output';
-
-import { imageResize } from './image-resize';
-import { createLogger } from '../log/logger';
-import { ExecutionContext } from '../types/execution';
-import { ImageResizeConfig } from '../config/main';
+import { resolveConcurrency, resolveOptions } from '../config/options.js';
 import {
-  ResultBatchError,
-  ResultSourceError,
-} from '../errors/image-resize-errors';
+  assertSettings,
+  createEncoders,
+  parseFormats,
+} from '../config/validate.js';
+import { ResultBatchError } from '../errors/image-resize-errors.js';
+import type { RunContext } from '../image/output.js';
+import { isLogging, type ImageAssetsLogger } from '../log/logger.js';
+import type { BatchImageResizeOptions, Concurrency } from '../types/options.js';
+import type {
+  OutputFormats,
+  OutputSetting,
+  ResultBatch,
+  ResultSource,
+} from '../types/output.js';
 import {
   allResultsSucceeded,
-  formatMsTime,
-  isAbortLevel,
+  formatBytes,
+  formatDuration,
   sampleCPUUsage,
-  shouldAbort,
-} from '../utils/helpers';
-import { plotValues } from '../log/logger';
-import { isNumber } from '@mmutils/assert';
-import { clear } from 'console';
+} from '../utils/helpers.js';
+import {
+  assertPath,
+  processSource,
+  resolveTarget,
+  sourceResult,
+  type SourceTarget,
+} from './image-resize.js';
+import { assertBatchSource, findSources, type BatchSource } from './sources.js';
+
+/** Milliseconds between the performance probes of a batch. */
+const PROBE_INTERVAL = 100;
+
+/** File systems that don't tell `A.jpg` from `a.jpg` by default. */
+const CASE_INSENSITIVE_FS =
+  process.platform === 'win32' || process.platform === 'darwin';
 
 /**
- * Convert multiple files to multiple output resolutions and formats. Glob
- * selection allowed.
- * output.
- * ---
+ * Number of sources to process at the same time, see
+ * `BatchImageResizeOptions.concurrency`.
+ *
+ * @param concurrency The option.
+ * @param sources Number of sources: never more workers than sources.
+ * @param env Read for `UV_THREADPOOL_SIZE`. Default: `process.env`.
+ */
+export const computeConcurrency = (
+  concurrency: Concurrency,
+  sources: number,
+  env: NodeJS.ProcessEnv = process.env
+): number => {
+  const uvThreads = Number(env.UV_THREADPOOL_SIZE);
+  const poolSize = Number.isSafeInteger(uvThreads) && uvThreads > 0 ? uvThreads : 4;
+  const parallelism = os.availableParallelism();
+  const wanted =
+    concurrency === 'auto' ? Math.min(poolSize, parallelism)
+    : concurrency === 'max' ? parallelism
+    : concurrency;
+  return Math.max(1, Math.min(wanted, sources));
+};
+
+/**
+ * Samples CPU, memory and progress during a batch and draws them when it
+ * ends, if the logger draws graphs at debug level.
+ */
+const startProbes = (
+  logger: ImageAssetsLogger,
+  totalSources: number,
+  getProcessed: () => number
+) => {
+  if (!logger.debugGraph || !isLogging(logger, 'debug')) return undefined;
+  const cpu: number[] = [];
+  const memory: number[] = [];
+  const processed: number[] = [];
+  const start = performance.now();
+  let sample = sampleCPUUsage();
+  const timer = setInterval(() => {
+    cpu.push(sampleCPUUsage(sample));
+    sample = sampleCPUUsage();
+    memory.push(process.memoryUsage.rss() / 1024 / 1024);
+    processed.push(getProcessed());
+  }, PROBE_INTERVAL);
+  timer.unref();
+
+  return () => {
+    clearInterval(timer);
+    if (cpu.length === 0) return;
+    const end = Math.round(performance.now() - start);
+    const axis = { start: 0, end, unit: 'ms', capTo: 'ms' } as const;
+    logger.debugGraph?.(cpu, { title: 'CPU usage', unit: '%', max: 100, axis });
+    logger.debugGraph?.(memory, { title: 'Memory (RSS)', unit: 'MB', axis });
+    logger.debugGraph?.(processed, {
+      title: 'Sources processed',
+      max: totalSources,
+      precision: 0,
+      axis,
+    });
+  };
+};
+
+/**
+ * Convert multiple files to multiple output resolutions and formats: a
+ * directory tree, a glob or a single file. The tree below the source root is
+ * mirrored in the destination, so files with the same name in different
+ * directories never overwrite each other.
+ *
+ * Sources are processed `concurrency` at a time, each with `imageResize`'s
+ * pipeline; the results are in path order. Outputs inside the source tree
+ * (a destination inside the root) are never picked up as sources.
+ *
  * **example**:
- * ```js  `
- * //123
+ * ```js
+ * // photos/a.jpg, photos/trips/b.jpg → public/img/a@1024w.webp, …,
+ * // public/img/trips/b@1024w.webp, …
+ * await batchImageResize(
+ *   'photos/**\/*.jpg',
+ *   'public/img/',
+ *   [{ width: 2048 }, { width: 1024 }],
+ *   ['avif', 'webp', 'jpg']
+ * );
  * ```
  *
- * @param srcPath String with path to source file or object containing 'root'
- * dir (to be matched against destination dir and used as prefix for the output)
- * and 'resource' to target a specific file in that root.
+ * @param srcPath A file, a directory, a glob, or `{ root, pattern }`, see
+ * `BatchSource`.
  * @param destRoot Directory to output all converted files.
- * @param settings Object containing width and/or height and additional "options"
- * params. Omit width or height to calc the other automatically.
- * @param formats List of output formats strings.
- * @param numberOfWorkers How many jobs to run at the same time. Defaults to half
- * of the logical cores available.
- * Sharp utilize all available cores, but that might not saturate the CPU enough.
- * Adding more jobs at the same time can yield better performance. Adding too
- * much or too low might have the opposite effect.
- * @param executionContext
+ * @param settings Output sizes, see `imageResize`.
+ * @param formats Output formats, see `imageResize`. Without formats, each
+ * source is written in its own format.
+ * @param options Options of `imageResize`, plus `concurrency`. With
+ * `abortScope: 'batch'`, the first failure stops the batch: sources in
+ * progress finish their current size, the others are `'aborted'`.
+ * @returns The result of every source found, in path order. `'failed'` when
+ * no source was found or any source didn't succeed.
+ * @throws `TypeError | RangeError` for invalid arguments or options, before
+ * any processing.
+ * @throws `ResultBatchError` with `abortScope: 'batch'` when a source fails,
+ * carrying the batch result.
  */
 export const batchImageResize = async (
-  srcPath: string | { root: string; resource: string },
+  srcPath: BatchSource,
   destRoot: string,
-  settings: OutputSetting[],
-  formats?: AtLeastOneOutputFormat,
-  numberOfWorkers: number | 'auto' | 'max_threads' = 'auto',
-  executionContext: ExecutionContext = {
-    logger: createLogger(ImageResizeConfig.logLevel),
-    resizeStrategyHint: ImageResizeConfig.resizeStrategyHint,
-    executionScope: 'batch',
-    abortScope: ImageResizeConfig.abortScope,
-  }
+  settings: readonly OutputSetting[],
+  formats?: OutputFormats,
+  options: BatchImageResizeOptions = {}
 ): Promise<ResultBatch> => {
-  const { logger } = executionContext;
   const timeStart = performance.now();
-  const srcPathCombined =
-    typeof srcPath === 'object' ?
-      path.join(srcPath.root, srcPath.resource)
-    : path.join(srcPath);
-  const srcFiles = await glob(srcPathCombined.replace(/\\/g, '/'));
-  const UV_THREADPOOL_SIZE = parseInt(process.env.UV_THREADPOOL_SIZE ?? '4');
-  const uvMaxThreads = isNumber(UV_THREADPOOL_SIZE) ? UV_THREADPOOL_SIZE : 4;
-  const availableThreads = os.availableParallelism();
-  srcFiles.length = 5;
+  const cpuStart = sampleCPUUsage();
+  const input = assertBatchSource(srcPath);
+  assertPath('Destination root', destRoot);
+  assertSettings(settings);
+  const { concurrency: concurrencyOption, ...sourceOptions } = options;
+  const concurrencySetting = resolveConcurrency(concurrencyOption);
+  const resolvedOptions = resolveOptions(sourceOptions);
+  const { logger } = resolvedOptions;
+  const formatsMap = parseFormats(formats);
+  // invalid format options fail before any source is searched
+  createEncoders(formatsMap, resolvedOptions.formatOptions);
 
-  logger.info(
-    `Started batch: ${sec.fgBlue(srcPathCombined)} (${srcFiles.length} file(s)).`,
-    'batchImageResize'
-  );
-  logger.debug(
-    { srcPath, destRoot, settings, formats, numOfWorkers: numberOfWorkers },
-    'Arguments'
-  );
-  logger.verbose(srcFiles, 'Source files');
-
-  if (!srcFiles.length) {
-    logger.warning(`No source files found in '${srcPathCombined}'.`);
-    return { status: 'failed', sources: [] };
+  const { sources } = await findSources(input, destRoot);
+  const inputName =
+    typeof input === 'string' ? input : path.join(input.root, input.pattern);
+  if (sources.length === 0) {
+    logger.warning(`No source images found in ${inputName}.`);
+    return {
+      status: 'failed',
+      sources: [],
+      duration: Math.round(performance.now() - timeStart),
+    };
   }
-  if (numberOfWorkers === 'auto')
-    numberOfWorkers = Math.min(uvMaxThreads, availableThreads, srcFiles.length);
-  else if (numberOfWorkers === 'max_threads')
-    numberOfWorkers = availableThreads;
 
+  const concurrency = computeConcurrency(concurrencySetting, sources.length);
   logger.info(
-    {
-      'process.env.UV_THREADPOOL_SIZE': `${process.env.UV_THREADPOOL_SIZE} \
-(default 4)`,
-      availableThreads,
-      uvMaxThreads,
-      numberOfWorkers,
-      sourceFiles: srcFiles.length,
+    `Found ${sources.length} source image(s) in ${inputName}, processing ${concurrency} at a time.`
+  );
+  logger.debug({
+    UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE ?? '4 (default)',
+    availableParallelism: os.availableParallelism(),
+    sharpConcurrency: sharp.concurrency(),
+    concurrency,
+  });
+
+  const controller = new AbortController();
+  const context: RunContext = {
+    ...resolvedOptions,
+    signal: controller.signal,
+    abort: (reason) => {
+      controller.abort(reason);
     },
-    'Performance configuration'
-  );
+  };
 
-  if (
-    srcFiles.length - numberOfWorkers > 0 &&
-    numberOfWorkers < uvMaxThreads &&
-    availableThreads - numberOfWorkers > 0
-  )
-    logger.warning(
-      `Using only ${sec.b.bgRed(` ${numberOfWorkers} `)} of available \
-${sec.b.bgGreen(` ${availableThreads} `)} threads when \
-${sec.b.bgBlue(` ${Math.min(srcFiles.length, availableThreads)} `)} can be \
-allocated for this run. Set UV_THREADPOOL_SIZE and numberOfWorkers accordingly.`,
-      'Performance will not be maximized'
-    );
-
-  if (srcFiles.length < numberOfWorkers) {
-    const workersNeeded = Math.min(
-      srcFiles.length,
-      numberOfWorkers,
-      uvMaxThreads,
-      availableThreads
-    );
-    const styledN = sec.b.bgRed(` ${workersNeeded} `);
-    logger.warning(
-      `Only ${styledN} file${srcFiles.length === 1 ? '' : 's'} found. ` +
-        `Cutting workers to ${styledN}.`
-    );
-    numberOfWorkers = workersNeeded;
-  }
-
-  const sources: ResultSource[] = [];
-  const memoryUsage: number[] = [];
-  const cpuUsage: number[] = [];
-  const sourcesProcessed: number[] = [];
-
-  let startCPUSample = sampleCPUUsage();
-  const totalSources = srcFiles.length;
-  const probeUsageId = setInterval(() => {
-    cpuUsage.push(sampleCPUUsage(startCPUSample));
-    startCPUSample = sampleCPUUsage();
-    memoryUsage.push(process.memoryUsage.rss() / 1024 / 1024);
-    sourcesProcessed.push(totalSources - srcFiles.length);
-  }, 100);
-
-  const spawnImageResize = async (n: number) => {
-    logger.info(`Worker ${n} created.`);
-    while (srcFiles.length) {
-      const srcFile = srcFiles.shift();
-      if (!srcFile) {
-        logger.info(`Worker ${n} terminated. No more files.`);
-        return;
-      }
-      const srcFileParentFolder = path.dirname(srcFile);
-      // if src root directory is provided, apply same tree structure to dest
-      const destPath =
-        typeof srcPath === 'object' ?
-          path.join(
-            destRoot,
-            path.relative(srcPath.root, srcFileParentFolder)
-          ) + path.sep
-        : destRoot;
-
-      try {
-        sources.push(
-          await imageResize(
-            srcFile,
-            destPath,
-            settings,
-            formats,
-            executionContext
-          )
+  // plan every source first: invalid targets and name collisions fail
+  // before any file is written
+  const results: (ResultSource | undefined)[] = [];
+  const targets: (SourceTarget | undefined)[] = [];
+  const owners = new Map<string, string>();
+  sources.forEach((source, index) => {
+    try {
+      const target = resolveTarget(
+        source.path,
+        path.join(destRoot, source.relativeDir) + path.sep,
+        formatsMap,
+        resolvedOptions.formatOptions
+      );
+      const key =
+        CASE_INSENSITIVE_FS ? target.outputPath.toLowerCase() : target.outputPath;
+      const owner = owners.get(key);
+      if (owner !== undefined)
+        throw new Error(
+          `${source.path} and ${owner} would write the same files (${target.outputPath}*): rename one of them.`
         );
-      } catch (error: unknown) {
-        if (error instanceof ResultSourceError) {
-          const resultSource = error.resultSource;
-          sources.push(resultSource);
-        }
+      owners.set(key, source.path);
+      targets[index] = target;
+    } catch (error: unknown) {
+      logger.error({ source: source.path, error });
+      results[index] = sourceResult(source.path, 'failed', performance.now(), error);
+      if (resolvedOptions.abortScope === 'batch') context.abort(error);
+    }
+  });
 
-        if (shouldAbort(executionContext)) {
-          if (isAbortLevel(executionContext))
-            logger.error({ srcFile, error }, 'Source failed');
-
-          throw new ResultBatchError(
-            `Batch aborted.`,
-            { status: 'aborted', sources: sources },
-            { cause: error }
-          );
-        }
-
-        logger.warning({ error }, 'Batch failed');
-      }
+  let next = 0;
+  let processed = results.filter(Boolean).length;
+  const stopProbes = startProbes(logger, sources.length, () => processed);
+  const worker = async () => {
+    while (next < sources.length) {
+      const index = next++;
+      const source = sources[index];
+      const target = targets[index];
+      if (source === undefined || target === undefined) continue;
+      results[index] = await processSource(source.path, target, settings, context);
+      processed++;
     }
   };
+  try {
+    await Promise.all(Array.from({ length: concurrency }, worker));
+  } finally {
+    stopProbes?.();
+  }
 
-  const workers = [...Array(numberOfWorkers)].map((_, i) =>
-    spawnImageResize(i + 1)
+  const resultSources = results.map(
+    (result, index) =>
+      result ?? sourceResult(sources[index]?.path ?? '', 'aborted', performance.now())
   );
-  // let upper logic take care if loop fails
-  await Promise.all(workers);
-
-  clearInterval(probeUsageId);
-
-  const totalTime = Math.round(performance.now() - timeStart);
-  logger.info(
-    `Completed batch: ${sec.fgBlue(srcPathCombined)}. \
-Time: ${formatMsTime(totalTime)}. CPU usage: \
-${sampleCPUUsage(startCPUSample)}%.`,
-    'batchImageResize'
-  );
-
-  logger.plot(cpuUsage, {
-    size: { cols: 30, rows: 4 },
-    maxValue: 100,
-    title: 'CPU usage',
-    valueSymbol: '%',
-    totalTime,
-  });
-  logger.plot(memoryUsage, {
-    size: { cols: 30, rows: 4 },
-    title: 'Memory usage',
-    valueSymbol: 'MB',
-    totalTime,
-  });
-  logger.plot(sourcesProcessed, {
-    size: { cols: 30, rows: 4 },
-    title: 'Sources processed',
-    totalTime,
-  });
-
-  return {
-    status: allResultsSucceeded(sources) ? 'succeed' : 'failed',
-    sources,
+  const batch: ResultBatch = {
+    status: allResultsSucceeded(resultSources) ? 'succeed' : 'failed',
+    sources: resultSources,
+    duration: Math.round(performance.now() - timeStart),
   };
+
+  const written = resultSources.flatMap(({ outputsBySetting }) =>
+    outputsBySetting.flatMap(({ files }) =>
+      files.flatMap((file) =>
+        file.status === 'succeed' ? [file.fileData.size] : []
+      )
+    )
+  );
+  const bytes = written.reduce((sum, size) => sum + size, 0);
+  const succeeded = resultSources.filter(({ status }) => status === 'succeed');
+  const summary = `Batch done: ${succeeded.length} of ${resultSources.length} sources, ${written.length} files, ${formatBytes(bytes)} in ${formatDuration(batch.duration)}, CPU ${sampleCPUUsage(cpuStart)}%.`;
+  if (batch.status === 'succeed') logger.info(summary);
+  else logger.warning(summary);
+
+  if (resolvedOptions.abortScope === 'batch' && batch.status === 'failed')
+    throw new ResultBatchError(`Batch ${inputName} aborted.`, batch, {
+      cause: controller.signal.reason,
+    });
+
+  return batch;
 };

@@ -1,369 +1,245 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
-import sharp, { Sharp } from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 
-import { AtLeastOneProperty, ObjectEntries } from '@mmtypes/common';
-
-import { ParseDimensionsData, resolveOutputSettings } from './resolve-settings';
-import {
-  OutputFormat,
-  OutputFormatsOptions,
+import type { ResolvedOptions } from '../config/options.js';
+import type { Encoder } from '../config/validate.js';
+import type { ImageAssetsLogger } from '../log/logger.js';
+import type {
   OutputSetting,
   ResultFormat,
   ResultSetting,
-} from '../types/output';
-import { ExecutionContext } from '../types/execution';
-import { ImageResizeConfig } from '../config/main';
-import { isSharpFormatEnum } from '../utils/type-guards';
-import {
-  allResultsSucceeded,
-  isAbortLevel,
-  shouldAbort,
-} from '../utils/helpers';
-import {
-  ResultFormatsError,
-  ResultSettingsError,
-} from '../errors/image-resize-errors';
+} from '../types/output.js';
+import { allResultsSucceeded, formatBytes } from '../utils/helpers.js';
+import { supportsAlpha, toSharpFormat } from './formats.js';
+import { resolveOutputSettings } from './resolve-settings.js';
+import { parseSuffix } from './suffix.js';
 
-/**
- * Checks for a user-supplied suffix or use the config default. Replaces
- * supported wildcards in the suffix with values from `dimensionsData`; missing
- * values are replaced with blanks. All path separators are removed from the
- * result. Trimmed.
- *
- * **example:**
- * ```typescript
- * //returns '_@x2_2048w'
- * parseSuffix('_@x{sm}_{w}w', { sizeMultiplier: 2, width: 2048 });
- * ```
- * ---
- * @param suffix String to be attached to every output filename.
- * - *default:* `ImageResizeConfig.suffix`.
- * - *wildcards:*\
- * `'{w}'` - width in pixels;\
- * `'{h}'` - height in pixels;\
- * `'{sm}'` - size multiplier based on area;\
- * `'{wm}'` - width multiplier;\
- * `'{hm}'` - height multiplier.
- * - *example:*\
- * `_@x{sm}_{w}w` - can produce `'_@x2_2048w'`.
- *
- * @param dimensionsData Object providing replacement data for the wildcards.
- * @returns The new resolved string suffix.
- */
-export const parseSuffix = (
-  suffix: string = ImageResizeConfig.suffix,
-  dimensionsData: ParseDimensionsData = {}
-) => {
-  const { width, height, sizeMultiplier, widthMultiplier, heightMultiplier } =
-    dimensionsData;
-  const propertiesMap = {
-    '{w}': `${width ?? ''}`,
-    '{h}': `${height ?? ''}`,
-    '{sm}': `${sizeMultiplier ?? ''}`,
-    '{wm}': `${widthMultiplier ?? ''}`,
-    '{hm}': `${heightMultiplier ?? ''}`,
-  };
-  return suffix
-    .replace(/{\w+}/g, (match) =>
-      Object.prototype.hasOwnProperty.call(propertiesMap, match) ?
-        `${propertiesMap[match as keyof typeof propertiesMap]}`
-      : match
-    )
-    .replace(/[/\\]+/g, '')
-    .trim();
-};
+/** Options of a run, with the signal stopping it (`abortScope: 'batch'`). */
+export interface RunContext extends ResolvedOptions {
+  readonly signal: AbortSignal;
+  /** Stops the run: sources not started are skipped, settings not started too. */
+  readonly abort: (reason: unknown) => void;
+}
+
+/** Background of transparent images written to formats without alpha. */
+const FLATTEN_BACKGROUND = '#ffffff';
 
 /**
  * Saves the contents of a sharp object to a file of specific format.
  *
- * Can be effectively aborted before sharp starts processing the request. After
- * that, even if abort signal arrives, sharp will continue to work in the
- * background as there is currently no mechanism to abort sharp's execution.
- * This, however, will let execution engine to continue and save time by not
- * waiting for the result, but might still use system resources wile sharp is
- * working in the background.
- *
- * @param sharpWrapper Sharp object containing the buffer data or file location
- * and all of its manipulations.
- * @param outputIdentifier Full file path for the output without the extension.
- * @param format Format of the file. Will be used as file extension.
- * @param formatOptions Additional sharp format options.
- * @param signal Abort signal to cancel prematurely.
+ * @param image Sharp object containing the image data.
+ * @param file Full file path of the output.
+ * @param encoder Format of the file and its complete options.
+ * @param hasAlpha Whether the image is transparent: formats without alpha
+ * (JPEG) get it flattened on white instead of showing the hidden colors of
+ * transparent pixels.
  * @returns Promise that fulfills with an object containing metadata about the
- * output file and format. In case of an error, the error is consumed and saved
- * in the output object.
+ * output file and format. Never rejects: an error is consumed and saved in
+ * the output object.
  */
 export const sharpToFile = async (
-  sharpWrapper: Sharp,
-  outputIdentifier: string,
-  format: OutputFormat,
-  formatOptions: OutputFormatsOptions[OutputFormat],
-  signal: AbortSignal
+  image: Sharp,
+  file: string,
+  { format, options }: Encoder,
+  hasAlpha: boolean
 ): Promise<ResultFormat> => {
-  const file = `${outputIdentifier}.${format}`;
   try {
-    // if root aborted, cancel early
-    if (signal.aborted) {
-      // TODO Add fileState: 'early-abort' (no file), 'aborted' (might exist)?
-      return { status: 'aborted', format, file };
-    }
-
-    const relativeDest = path.dirname(file);
-    await fs.promises.mkdir(relativeDest, { recursive: true });
-
-    const createFilePromise = (async (): Promise<ResultFormat> => {
-      const fileData = await sharpWrapper
-        .toFormat(format, formatOptions)
-        .toFile(file);
-
-      return {
-        status: 'succeed',
-        format,
-        file,
-        fileData,
-      };
-    })();
-
-    const abortPromise = new Promise<ResultFormat>((resolve) =>
-      signal.addEventListener(
-        'abort',
-        () => {
-          // no way to cancel sharp, return with status for clarity
-          resolve({ status: 'aborted', format, file });
-        },
-        { once: true }
-      )
-    );
-
-    return await Promise.race([createFilePromise, abortPromise]);
+    const pipeline =
+      hasAlpha && !supportsAlpha(format) ?
+        image.flatten({ background: FLATTEN_BACKGROUND })
+      : image;
+    const fileData = await pipeline
+      .toFormat(toSharpFormat(format), options)
+      .toFile(file);
+    return { status: 'succeed', format, file, fileData };
   } catch (error: unknown) {
     // consume the error and let upper level make the decisions
-    return {
-      status: 'failed',
-      format,
-      file,
-      error,
-    };
+    return { status: 'failed', format, file, error };
   }
 };
 
 /**
- * Takes sharp source and saves it to a list of formats. Depending on the abort
- * scope, execution might halt and throw, or continue. In both cases the failed
- * format will be added to the resulting list with a failed status.
+ * Takes an image and saves it to a list of formats, all at the same time:
+ * encoding from a decoded image is fast, so running the formats in parallel
+ * helps single source speed when threads are available. Every format is
+ * attempted and awaited, so no file is written after this resolves.
  *
- * @param sharpSource The source image.
- * @param formats Object containing all formats to be exported and their options.
+ * @param image The image, already resized.
+ * @param encoders Formats to write and their options.
  * @param outputIdentifier Full path to the output file without the extension.
- * @param executionContext Current running context.
+ * @param hasAlpha Whether the image is transparent, see `sharpToFile`.
+ * @param logger Receives a debug log per file and an error per failure.
  * @returns Promise that fulfills with a list of objects containing metadata
- * about each format and the output file.
- * @throws `ResultFormatsError | any`
- * If a format fails, and current execution scope is lower or equal to the abort
- * scope, the execution halts and an error is thrown bubbling up. The error
- * contains all completed formats including the one that failed.
+ * about each format and the output file, in the order of the encoders.
  */
 export const settingToFormats = async (
-  sharpSource: Sharp,
-  formats: AtLeastOneProperty<OutputFormatsOptions>,
+  image: Sharp,
+  encoders: readonly Encoder[],
   outputIdentifier: string,
-  executionContext: ExecutionContext
+  hasAlpha: boolean,
+  logger: ImageAssetsLogger
 ): Promise<ResultFormat[]> => {
-  const { logger } = executionContext;
+  const results = await Promise.all(
+    encoders.map((encoder) =>
+      sharpToFile(
+        image.clone(),
+        `${outputIdentifier}.${encoder.format}`,
+        encoder,
+        hasAlpha
+      )
+    )
+  );
 
-  let resultFormats: ResultFormat[] = [];
-  const resultPromisesMap = new Map<OutputFormat, Promise<ResultFormat>>();
-
-  const formatsAbortController = new AbortController();
-  const { signal } = formatsAbortController;
-
-  for (const [format, currentFormatOptions] of Object.entries(
-    formats
-  ) as ObjectEntries<typeof formats>) {
-    // runtime fail-safe for Object.entries
-    if (!isSharpFormatEnum(format)) {
-      logger.warning(
-        `Skipping output format '${format}' for '${outputIdentifier}'.`,
-        `Unsupported format`
+  for (const result of results) {
+    if (result.status === 'succeed') {
+      const { width, height, size } = result.fileData;
+      logger.debug(
+        `Created ${result.file} (${width}x${height}, ${formatBytes(size)})`
       );
-      continue;
-    }
-
-    const formatPromise = sharpToFile(
-      sharpSource.clone(),
-      outputIdentifier,
-      format,
-      currentFormatOptions,
-      signal
-    );
-    // await promise;
-
-    // format export from raw source execute almost instantly for most formats,
-    // running all formats in parallel does not hinder multiple sources
-    // performance, but helps with single source speed, if threads are
-    // available and format export is challenging
-    resultPromisesMap.set(format, formatPromise);
+    } else logger.error({ file: result.file, error: result.error });
   }
 
-  while (resultPromisesMap.size) {
-    // sharpToFile will never reject
-    const currentResult = await Promise.race(resultPromisesMap.values());
-    resultPromisesMap.delete(currentResult.format);
-    // add the result no matter of the status (you get to examine the last file)
-    resultFormats.push(currentResult);
-
-    if (currentResult.status === 'failed') {
-      if (shouldAbort(executionContext)) {
-        if (isAbortLevel(executionContext))
-          logger.error(`${currentResult.file}`, 'File failed');
-        // trigger abort and immediately exit the loop
-        formatsAbortController.abort();
-        throw new ResultFormatsError(
-          `Format ${currentResult.format} aborted.`,
-          resultFormats,
-          { cause: currentResult.error }
-        );
-      }
-      logger.warning(`${currentResult.file}`, 'File failed');
-    } else if (currentResult.status === 'aborted') {
-      // this should not execute as the abort is triggered by previous failure
-      logger.warning(`${currentResult.file}`, 'File aborted');
-    } else if (currentResult.status === 'succeed') {
-      logger.info(`${currentResult.file}`, 'File created');
-    }
-  }
-
-  return resultFormats;
+  return results;
 };
+
+/** Image the next sizes can be resized from, with its size. */
+interface ResizeBase {
+  image: Sharp;
+  width: number;
+  height: number;
+}
 
 /**
  * Takes source image file path and manipulates it based on the settings list.
  * Each setting is baked to a buffer and then send to be saved to one or
- * multiple formats. Depending on the abort scope, execution might halt and
- * throw, or continue. In both cases the failed setting will be added to the
- * resulting list with a failed status.
+ * multiple formats.
  *
  * Settings are ordered by size automatically. By default, if the size is lower
  * than the original source's size and if not overruled in the setting, each
  * iteration's buffer will be used as source for the next iteration. If the
  * flag for generating from source is set, it overrides the current iteration's
  * buffer and source is used instead. If the setting size is bigger than the
- * source's size, then the original source is used, again if not overruled.
+ * source's size, or than the current iteration's buffer, then the original
+ * source is used, so no size is ever upscaled from a smaller copy.
+ *
+ * A failed setting is added to the result with a failed status. With
+ * `abortScope` `'source'` or `'batch'` it stops the source: the settings after
+ * it are not processed.
  *
  * @param srcPath Source's image full path.
  * @param settings Settings list to generate files.
- * @param formats Object containing all formats to be exported and their
- * corresponding options.
+ * @param encoders Formats to write and their options.
  * @param outputPath Full output path without extension. Setting suffix and file
  * format will be added automatically later on.
- * @param executionContext Current running context.
+ * @param context Options of the run and its abort signal.
  * @returns Promise that resolves to a list of objects containing metadata about
- * each setting and its resulting files.
- * @throws `ResultSettingsError | any`
- * If a setting fails, and current execution scope is lower or equal to the
- * abort scope, the execution halts and an error is thrown bubbling up. The
- * error contains all completed settings including the one that failed.
+ * each setting and its resulting files, and whether the source stopped before
+ * its last setting.
+ * @throws When the source can't be read or the output directory can't be
+ * created: nothing was processed.
  */
 export const sourceToSettings = async (
   srcPath: string,
-  settings: OutputSetting[],
-  formats: AtLeastOneProperty<OutputFormatsOptions>,
+  settings: readonly OutputSetting[],
+  encoders: readonly Encoder[],
   outputPath: string,
-  executionContext: ExecutionContext
-): Promise<ResultSetting[]> => {
-  const { logger, resizeStrategyHint } = executionContext;
+  context: RunContext
+): Promise<{ outputsBySetting: ResultSetting[]; stopped: boolean }> => {
+  const { logger, resizeStrategyHint, suffix, abortScope, signal } = context;
 
-  const srcSharp = sharp(srcPath);
-  let workingSharp = srcSharp.clone();
-
-  const resultSettings: ResultSetting[] = [];
+  // EXIF orientation applied: phone photos are often stored sideways
+  const source = sharp(srcPath, { autoOrient: true });
+  const {
+    autoOrient: { width: srcWidth, height: srcHeight },
+    hasAlpha,
+  } = await source.metadata();
 
   const resolvedSettings = resolveOutputSettings(
     settings,
-    await srcSharp.metadata(),
+    { srcWidth, srcHeight },
     resizeStrategyHint,
-    executionContext
+    logger
   );
+  logger.verbose({ source: srcPath, settings: resolvedSettings });
 
-  logger.debug(resolvedSettings, `Resolved settings for ${srcPath}`);
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
-  for (const currentSetting of resolvedSettings) {
-    const {
-      suffix,
-      width: currentWidth,
-      height: currentHeight,
-      resizeOptions,
-      extractRegion,
-      generateFromSource,
-      useAsNextResizeIteration,
-      widthMultiplier,
-      heightMultiplier,
-      sizeMultiplier,
-    } = currentSetting;
+  const outputsBySetting: ResultSetting[] = [];
+  const identifiers = new Set<string>();
+  let base: ResizeBase = { image: source, width: srcWidth, height: srcHeight };
 
-    if (generateFromSource) workingSharp = srcSharp.clone();
+  for (const setting of resolvedSettings) {
+    if (signal.aborted) return { outputsBySetting, stopped: true };
 
-    workingSharp.resize(currentWidth, currentHeight, resizeOptions);
-    if (extractRegion) workingSharp.extract(extractRegion);
+    const { width, height, resizeOptions, extractRegion } = setting;
+    const fromSource =
+      setting.generateFromSource || base.width < width || base.height < height;
 
-    const {
-      data,
-      info: { width, height, channels },
-    } = await workingSharp.raw().toBuffer({ resolveWithObject: true });
-
-    const sharpBaked = sharp(data, {
-      raw: { width, height, channels },
-    });
-
-    if (useAsNextResizeIteration) workingSharp = sharpBaked;
-
-    const settingWidth = extractRegion?.width ?? width;
-    const settingHeight = extractRegion?.height ?? height;
-    const settingSuffix = parseSuffix(suffix, {
-      width: settingWidth,
-      height: settingHeight,
-      widthMultiplier,
-      heightMultiplier,
-      sizeMultiplier,
-    });
-    const outputIdentifier = `${outputPath}${settingSuffix}`;
-    const size = `${settingWidth}x${settingHeight}` as const;
-
+    let result: ResultSetting;
     try {
-      const files = await settingToFormats(
-        sharpBaked,
-        formats,
-        outputIdentifier,
-        { ...executionContext, executionScope: 'format' }
-      );
-      resultSettings.push({
-        status: allResultsSucceeded(files) ? 'succeed' : 'failed',
-        size,
-        files,
+      // a fresh pipeline per setting: operations never leak to the next one
+      const pipeline = (fromSource ? source : base.image)
+        .clone()
+        .resize(width, height, resizeOptions);
+      if (extractRegion) pipeline.extract(extractRegion);
+
+      const { data, info } = await pipeline
+        .raw({ depth: 'uchar' })
+        .toBuffer({ resolveWithObject: true });
+      const baked = sharp(data, {
+        raw: { width: info.width, height: info.height, channels: info.channels },
       });
-    } catch (error: unknown) {
-      const files =
-        error instanceof ResultFormatsError ? error.resultFormats : undefined;
 
-      if (shouldAbort(executionContext)) {
-        if (isAbortLevel(executionContext))
-          logger.error({ size, error }, 'Setting aborted');
-
-        resultSettings.push({ status: 'aborted', size, files });
-
-        throw new ResultSettingsError(
-          `Setting for ${size} aborted.`,
-          resultSettings,
-          { cause: error }
+      const outputIdentifier = `${outputPath}${parseSuffix(
+        setting.suffix ?? suffix,
+        {
+          width: info.width,
+          height: info.height,
+          widthMultiplier: setting.widthMultiplier,
+          heightMultiplier: setting.heightMultiplier,
+          sizeMultiplier: setting.sizeMultiplier,
+        }
+      )}`;
+      if (identifiers.has(outputIdentifier))
+        throw new Error(
+          `Another setting already writes ${outputIdentifier}.*: give the settings different suffixes, e.g. with {w}.`
         );
-      }
+      identifiers.add(outputIdentifier);
 
-      resultSettings.push({ status: 'failed', size, files });
-      logger.warning({ size, error }, 'Setting failed');
+      const files = await settingToFormats(
+        baked,
+        encoders,
+        outputIdentifier,
+        hasAlpha,
+        logger
+      );
+      result = {
+        status: allResultsSucceeded(files) ? 'succeed' : 'failed',
+        size: `${info.width}x${info.height}`,
+        files,
+      };
+
+      if (setting.useAsNextResizeIteration)
+        base = { image: baked, width: info.width, height: info.height };
+    } catch (error: unknown) {
+      result = { status: 'failed', size: `${width}x${height}`, files: [], error };
+      logger.error({ source: srcPath, size: result.size, error });
+    }
+
+    outputsBySetting.push(result);
+
+    if (result.status === 'failed' && abortScope !== 'none') {
+      if (abortScope === 'batch')
+        context.abort(
+          new Error(`Setting ${result.size} of ${srcPath} failed.`, {
+            cause: result.error,
+          })
+        );
+      return { outputsBySetting, stopped: true };
     }
   }
 
-  return resultSettings;
+  return { outputsBySetting, stopped: false };
 };

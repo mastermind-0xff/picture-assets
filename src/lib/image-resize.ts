@@ -1,23 +1,125 @@
-import { ResultSource } from '../types/output';
-import { AtLeastOneOutputFormat, OutputSetting } from '../types/output';
-import { ExecutionContext } from '../types/execution';
+import { resolveOptions } from '../config/options.js';
+import {
+  assertSettings,
+  createEncoders,
+  describe,
+  parseFormats,
+  type Encoder,
+  type FormatOptionsInput,
+} from '../config/validate.js';
+import { ResultSourceError } from '../errors/image-resize-errors.js';
+import { sourceToSettings, type RunContext } from '../image/output.js';
+import {
+  resolvePathsAndFormats,
+  type FormatsMap,
+} from '../image/output-paths.js';
+import type { ImageResizeOptions } from '../types/options.js';
+import type {
+  OutputFormats,
+  OutputSetting,
+  ResultSource,
+  ResultStatus,
+} from '../types/output.js';
+import { formatBytes, formatDuration } from '../utils/helpers.js';
 
-import { ImageResizeConfig } from '../config/main';
-import { createLogger } from '../log/logger';
-import { sourceToSettings } from '../image/output';
-import { resolvePathsAndFormats } from '../image/output-paths';
-import {
-  ResultSettingsError,
-  ResultSourceError,
-} from '../errors/image-resize-errors';
-import {
-  allResultsSucceeded,
-  formatMsTime,
-  isAbortLevel,
-  sampleCPUUsage,
-  shouldAbort,
-} from '../utils/helpers';
-import { sec } from 'style-escape-codes';
+/** Where a source's outputs go and how they are encoded. */
+export interface SourceTarget {
+  /** Output path without suffix and extension. */
+  readonly outputPath: string;
+  readonly encoders: readonly Encoder[];
+}
+
+/**
+ * Resolves the output path and the encoders of a source.
+ *
+ * @throws TypeError or RangeError when no format can be written or the
+ * options of a format are invalid.
+ */
+export const resolveTarget = (
+  srcPath: string,
+  destPath: string,
+  formats: FormatsMap,
+  formatOptions: FormatOptionsInput
+): SourceTarget => {
+  const resolved = resolvePathsAndFormats(srcPath, destPath, formats);
+  return {
+    outputPath: resolved.outputPath,
+    encoders: createEncoders(resolved.formats, formatOptions),
+  };
+};
+
+/** Checks a path argument: a non-empty string. */
+export const assertPath = (name: string, value: unknown): string => {
+  if (typeof value === 'string' && value.trim() !== '') return value;
+  throw new TypeError(`${name} must be a non-empty path, got ${describe(value)}.`);
+};
+
+/** Creates the result of a source that was not processed or failed early. */
+export const sourceResult = (
+  source: string,
+  status: ResultStatus,
+  start: number,
+  error?: unknown
+): ResultSource => ({
+  status,
+  source,
+  outputsBySetting: [],
+  ...(error !== undefined && { error }),
+  duration: Math.round(performance.now() - start),
+});
+
+/**
+ * Processes one source: every setting, every format. Never rejects: failures
+ * are in the result, and with `abortScope: 'batch'` they also abort the run.
+ */
+export const processSource = async (
+  srcPath: string,
+  target: SourceTarget,
+  settings: readonly OutputSetting[],
+  context: RunContext
+): Promise<ResultSource> => {
+  const start = performance.now();
+  const { logger } = context;
+  if (context.signal.aborted) return sourceResult(srcPath, 'aborted', start);
+
+  logger.debug(`Processing ${srcPath}`);
+  try {
+    const { outputsBySetting, stopped } = await sourceToSettings(
+      srcPath,
+      settings,
+      target.encoders,
+      target.outputPath,
+      context
+    );
+    const status: ResultStatus =
+      outputsBySetting.some(({ status }) => status === 'failed') ? 'failed'
+      : stopped ? 'aborted'
+      : 'succeed';
+    const result: ResultSource = {
+      status,
+      source: srcPath,
+      outputsBySetting,
+      duration: Math.round(performance.now() - start),
+    };
+
+    const files = outputsBySetting.flatMap((setting) => setting.files);
+    const written = files.flatMap((file) =>
+      file.status === 'succeed' ? [file.fileData.size] : []
+    );
+    const bytes = written.reduce((sum, size) => sum + size, 0);
+    const summary = `${srcPath}: ${written.length} files, ${formatBytes(bytes)} in ${formatDuration(result.duration)}`;
+    if (status === 'succeed') logger.info(summary);
+    else if (status === 'failed')
+      logger.warning(`${summary}, ${files.length - written.length} failed`);
+    else logger.warning(`${summary}, stopped by an abort`);
+
+    return result;
+  } catch (error: unknown) {
+    logger.error({ source: srcPath, error });
+    if (context.abortScope === 'batch') context.abort(error);
+    return sourceResult(srcPath, 'failed', start, error);
+  }
+};
 
 /**
  * ---
@@ -25,8 +127,8 @@ import { sec } from 'style-escape-codes';
  * resolutions. By default, source is considered the highest resolution image.
  * Formats for a given setting are computed all together, while each setting is
  * awaited to completion and then the final result is returned. Depending on the
- * abort scope, execution might halt and throw, or continue returning result
- * with failed status.
+ * abort scope, a failure stops the source or makes the call reject, see
+ * `options.abortScope`.
  *
  * **examples:**
  * ```typescript
@@ -44,11 +146,11 @@ import { sec } from 'style-escape-codes';
  *
  * @param srcPath Path to a single source file.
  *
- * @param destPath Path to an output file or directory. If extension is present
- * it will be added to the output formats list. If trailing slash is used
- * (destination is a directory) source's file name will be used as a destination
- * file name otherwise the string after the last slash will be used as a prefix
- * for all settings and formats.
+ * @param destPath Path to an output file or directory. If the extension is an
+ * output format, it is added to the output formats list. If trailing slash is
+ * used (destination is a directory) source's file name will be used as a
+ * destination file name otherwise the string after the last slash will be
+ * used as a prefix for all settings and formats.
  *
  * *examples*:
  * ```
@@ -57,10 +159,10 @@ import { sec } from 'style-escape-codes';
  * // dest dir:'path/to/dest/dir/'; prefix:'file'; .webp added to formats
  * 'path/to/dest/dir/file.webp';
  *
- * // dest dir:'path/to/dest/dir/'; prefix:'image'; .png may be added to formats
+ * // dest dir:'path/to/dest/dir/'; prefix:'image'; .png used without formats
  * 'path/to/dest/dir/';
  *
- * // dest dir:'path/to/dest/dir/'; prefix:'file'; .png may be added to formats
+ * // dest dir:'path/to/dest/dir/'; prefix:'file'; .png used without formats
  * 'path/to/dest/dir/file';
  * ```
  *
@@ -74,9 +176,9 @@ import { sec } from 'style-escape-codes';
  * Settings are resolved to width and height pixels and ordered by size from
  * highest resolution to the lowest. Then, after each resize of the same aspect
  * ratio the resize buffer is updated unless overruled in the settings. If some
- * setting resolution is bigger than the source's resolution, it won't use the
- * previously saved buffer, but original source instead, again if not overruled
- * by the settings.
+ * setting resolution is bigger than the source's resolution, or than the
+ * buffer, it won't use the previously saved buffer, but original source
+ * instead, again if not overruled by the settings.
  *
  * **examples:**
  * ```
@@ -90,32 +192,26 @@ import { sec } from 'style-escape-codes';
  *
  * @param formats List of strings containing output file formats or object
  * containing format as key and format options (quality, etc.) as values.
+ * Options are merged over the format's defaults (`DEFAULT_FORMAT_OPTIONS`).
  *
  * **examples:**
  * ```
- * ['jpg', 'webp'];
+ * ['avif', 'webp', 'jpg'];
  * // -or-
  * {jpg: { quality: 80 }, webp: { quality: 70 } }
  * ```
  *
- * @param executionContext Sets the current execution context.
- *
- * **properties:**
- * - `logger` - Execution-scoped logger with convenience methods for each log
- * level. All logging methods accept the same `message` format:\
- * a string; an object (each property printed on a new line); an array (each
- * item printed on a new line).\
- * An optional `title` may be provided to prefix the message with a styled title
- * for clarity.
+ * @param options Options of the call, each falling back to its environment
+ * variable, then to its default:
  *
  * - `resizeStrategyHint` - Helps to determine what multipliers mean in the
  * context of the settings. Tells what source image's multiplier is, or what
  * `'x1'` resolution is. Based on that, all other multipliers in the `settings`
  * can be calculated. Possible values:\
- * `'downsample'` - Source has the highest resolution. If pixel resolution
- * is available the lowest resolution that is lower than the source's is `'x1'`
- * or if multipliers are available the highest multiplier is source's
- * multiplier. Pixel resolutions take precedence over multipliers.\
+ * `'downsample'` (default) - Source has the highest resolution. If pixel
+ * resolution is available the lowest resolution that is lower than the
+ * source's is `'x1'` or if multipliers are available the highest multiplier is
+ * source's multiplier. Pixel resolutions take precedence over multipliers.\
  * `'upsample'` - Source is the lowest resolution - alias of `'x1'`.\
  * `'x${number}'` - Source multiplier is known and hardcoded - `'x1'`, `'x2'`,
  * `'x3.5'` and so on.\
@@ -124,7 +220,7 @@ import { sec } from 'style-escape-codes';
  * **example:**
  * ```typescript
  * // source @ 300x300px
- * console.log(await imageResize(
+ * await imageResize(
  *  'image.jpg',
  *  './dest/',
  *  [
@@ -132,145 +228,81 @@ import { sec } from 'style-escape-codes';
  *    { width: 'x2', suffix: '@2x({w}w)' },
  *    { width: 'x1', suffix: '@1x({w}w)' },
  *  ],
- *  ['webp']))
+ *  ['webp'])
  *
  * // 'downsample' will output
- * {in:'image.jpg',
- *  out:[
- *   './dest/image@3x(300w).webp',
- *   './dest/image@2x(200w).webp',
- *   './dest/image@1x(100w).webp'
- *  ]}
+ * // ./dest/image@3x(300w).webp, ./dest/image@2x(200w).webp,
+ * // ./dest/image@1x(100w).webp
  *
  * // 'upsample' will output
- * {in:'image.jpg',
- *  out:[
- *   './dest/image@3x(900w).webp',
- *   './dest/image@2x(600w).webp',
- *   './dest/image@1x(300w).webp'
- *  ]}
+ * // ./dest/image@3x(900w).webp, ./dest/image@2x(600w).webp,
+ * // ./dest/image@1x(300w).webp
  *
  * // 'x2' will output
- * {in:'image.jpg',
- *  out:[
- *   './dest/image@3x(450w).webp',
- *   './dest/image@2x(300w).webp',
- *   './dest/image@1x(150w).webp'
- *  ]}
+ * // ./dest/image@3x(450w).webp, ./dest/image@2x(300w).webp,
+ * // ./dest/image@1x(150w).webp
  *
  * // {width:50, height:50} will output
- * {in:'image.jpg',
- *  out:[
- *   './dest/image@3x(150w).webp',
- *   './dest/image@2x(100w).webp',
- *   './dest/image@1x(50w).webp'
- *  ]}
+ * // ./dest/image@3x(150w).webp, ./dest/image@2x(100w).webp,
+ * // ./dest/image@1x(50w).webp
  * ```
  *
- * - `executionScope` - The current level of execution. This function makes
- * manipulations based on the source image, thus the scope should be `'source'`.
- * Then the execution is transferred to a function that loops all settings -
- * the `'setting`' level and finally it loops all formats for the current
- * setting - `'format'` level:\
- * **levels of execution:** batch -> source -> setting -> format.
+ * - `suffix` - Suffix of settings without their own. Default `'@{w}w'`.
  *
- * - `abortScope` - At what level of execution should the program halt and exit
- * in case of an error.\
- * **example:** If current execution level is `'format'`, but the abort level is
- * `'setting'`, all formats will be processed even if some fails - best effort
- * strategy. As not all files are successfully created for the particular
- * setting, that setting will fail. Because the abort level is `'setting'`,
- * the moment this failed setting return, the execution will halt and no more
- * settings will be executed, then the source level will exit with fail status
- * and settings outputs the source will be available only to the failed setting
- * (failed setting is included).
+ * - `formatOptions` - Options per format, for every call that writes it.
+ *
+ * - `abortScope` - What a failure stops: `'none'` (default) attempts every
+ * output and reports failures in the result; `'source'` stops at the first
+ * failed setting and resolves with a failed result; `'batch'` stops as well
+ * and rejects with a `ResultSourceError` carrying the result.
+ *
+ * - `logger` - A log level for the default logger (`'info'`), or a logger.
  *
  * @returns Resolves to an object containing source file path and list of
  * objects containing each setting that contains a list of each format. Each
  * branch of the formed three contains a field with its completion status.
- * @throws `ResultSourceError | any`
- * If a source fails, and current execution scope is lower or equal to the
- * abort scope, the execution halts and an error is thrown bubbling up. The
- * error contains the source result.
+ * @throws `TypeError | RangeError` for invalid arguments or options, before
+ * any processing.
+ * @throws `ResultSourceError` with `abortScope: 'batch'` when the source
+ * fails. The error contains the source result.
  */
 export const imageResize = async (
   srcPath: string,
   destPath: string,
-  settings: OutputSetting[],
-  formats?: AtLeastOneOutputFormat,
-  executionContext: ExecutionContext = {
-    logger: createLogger(ImageResizeConfig.logLevel),
-    resizeStrategyHint: ImageResizeConfig.resizeStrategyHint,
-    executionScope: 'source',
-    abortScope: ImageResizeConfig.abortScope,
-  }
+  settings: readonly OutputSetting[],
+  formats?: OutputFormats,
+  options?: ImageResizeOptions
 ): Promise<ResultSource> => {
-  const startCPUSample = sampleCPUUsage();
-  const start = performance.now();
-
-  const { logger } = executionContext;
-  logger.info(`Started for ${sec.fgBlue(srcPath)}.`, 'imageResize');
-  logger.debug(
-    { srcPath, destPath, settings, formats, executionContext },
-    'Arguments'
-  );
-
-  const { outputPath, combinedFormats } = resolvePathsAndFormats(
+  assertPath('Source path', srcPath);
+  assertPath('Destination path', destPath);
+  assertSettings(settings);
+  const resolvedOptions = resolveOptions(options);
+  const target = resolveTarget(
     srcPath,
     destPath,
-    formats
+    parseFormats(formats),
+    resolvedOptions.formatOptions
   );
-  logger.debug(
-    { outputPath, combinedFormats },
-    'Resolved output path and formats'
-  );
+  resolvedOptions.logger.verbose({
+    srcPath,
+    destPath,
+    outputPath: target.outputPath,
+    encoders: target.encoders,
+  });
 
-  let resultSource: ResultSource;
-  try {
-    const resultSettings = await sourceToSettings(
-      srcPath,
-      settings,
-      combinedFormats,
-      outputPath,
-      { ...executionContext, executionScope: 'setting' }
-    );
-    resultSource = {
-      status: allResultsSucceeded(resultSettings) ? 'succeed' : 'failed',
-      source: srcPath,
-      outputsBySetting: resultSettings,
-    };
-  } catch (error: unknown) {
-    const outputsBySetting =
-      error instanceof ResultSettingsError ? error.resultSettings : undefined;
+  const controller = new AbortController();
+  const result = await processSource(srcPath, target, settings, {
+    ...resolvedOptions,
+    signal: controller.signal,
+    abort: (reason) => {
+      controller.abort(reason);
+    },
+  });
 
-    if (shouldAbort(executionContext)) {
-      if (isAbortLevel(executionContext))
-        logger.error({ source: srcPath, error }, 'Source aborted');
+  if (resolvedOptions.abortScope === 'batch' && result.status !== 'succeed')
+    throw new ResultSourceError(`Source ${srcPath} failed.`, result, {
+      cause: controller.signal.reason,
+    });
 
-      resultSource = {
-        status: 'aborted',
-        source: srcPath,
-        outputsBySetting,
-      };
-      throw new ResultSourceError(`Source ${srcPath} aborted.`, resultSource, {
-        cause: error,
-      });
-    }
-
-    resultSource = {
-      status: 'failed',
-      source: srcPath,
-      outputsBySetting,
-    };
-    logger.warning({ source: srcPath, error }, 'Source failed');
-  }
-
-  logger.info(
-    `Completed source: ${sec.fgBlue(srcPath)}. \
-Time: ${formatMsTime(Math.round(performance.now() - start))}. CPU usage: \
-${sampleCPUUsage(startCPUSample)}%.`,
-    'imageResize'
-  );
-
-  return resultSource;
+  return result;
 };

@@ -1,65 +1,62 @@
-import path from 'path';
+import path from 'node:path';
 
-import { AtLeastOneProperty } from '@mmtypes/common';
 import { parsePath } from '@mmutils/common';
 
-import { AtLeastOneOutputFormat, OutputFormatsOptions } from '../types/output';
-import { arrayValuesToKeys } from '../utils/helpers';
-import { isSharpFormatEnum } from '../utils/type-guards';
+import type { OutputFormat } from '../types/output.js';
+import { canWriteFormat, isOutputFormat } from './formats.js';
+
+/** Formats of an output, with the options given with each. */
+export type FormatsMap = ReadonlyMap<OutputFormat, object | undefined>;
 
 /**
- * Converts uncertain destination and formats to a reliable data. If a string
- * list of formats is provided it's converted to empty settings formats object.
- * If formats are missing - output's file format is used, if it's also missing -
- * source's file format is used.
+ * Converts uncertain destination and formats to a reliable data.
+ *
+ * - Destination directory (trailing slash): outputs are named after the
+ *   source, `dir/` + `house` + suffix.
+ * - Destination file with a format extension (`dir/hero.webp`): outputs are
+ *   named `dir/hero` + suffix, and the format is added to the formats.
+ * - Anything else is an identifier used as the name as is: `dir/hero`, or
+ *   `dir/hero.v2` (an extension that isn't a format is part of the name).
+ *
+ * Without formats, the source's format is used when sharp can write it.
  *
  * @param srcPath Source file path.
- * @param destPath Destination file, directory or identifier.
- * @param formats List of output format strings or format-format options
- * key-value pairs. Can be omitted.
- * @returns Object containing output path and at least one format with or
- * without options.
+ * @param destPath Destination directory, file or identifier.
+ * @param formats Formats from the `formats` argument. Not modified.
+ * @returns Output path without suffix and extension, and at least one
+ * format.
+ * @throws TypeError when no output format can be found.
  */
 export const resolvePathsAndFormats = (
   srcPath: string,
   destPath: string,
-  formats?: AtLeastOneOutputFormat
-) => {
-  const { baseName: srcBaseName, extension: srcExtension } = parsePath(srcPath);
-  const {
-    basePath: destBasePath,
-    baseName: destBaseName,
-    extension: destExtension,
-    type: destType,
-  } = parsePath(destPath);
+  formats: FormatsMap
+): { outputPath: string; formats: FormatsMap } => {
+  const src = parsePath(srcPath);
+  const dest = parsePath(destPath);
+  const destExtension = dest.extension.toLowerCase();
+  const destFormat =
+    dest.type === 'file' && isOutputFormat(destExtension) ?
+      destExtension
+    : undefined;
 
-  const combinedFormats: Partial<OutputFormatsOptions> =
-    (Array.isArray(formats) ? arrayValuesToKeys(formats, {}) : formats) || {};
+  const outputPath =
+    dest.type === 'dir' ? path.join(dest.basePath, dest.baseName, src.baseName)
+    : destFormat ? path.join(dest.basePath, dest.baseName)
+    : path.join(dest.basePath, dest.name);
 
-  let outputPath = path.join(destBasePath, destBaseName);
+  const combined = new Map(formats);
+  if (destFormat && !combined.has(destFormat))
+    combined.set(destFormat, undefined);
 
-  if (destType === 'file') {
-    if (isSharpFormatEnum(destExtension)) {
-      combinedFormats[destExtension] ??= {};
-    }
-  } else {
-    outputPath = path.join(
-      destBasePath,
-      destBaseName,
-      destType === 'dir' ? srcBaseName : ''
-    );
-
-    if (
-      srcExtension &&
-      !Object.keys(combinedFormats).length &&
-      isSharpFormatEnum(srcExtension)
-    ) {
-      combinedFormats[srcExtension] ??= {};
-    }
+  if (combined.size === 0) {
+    const srcFormat = src.extension.toLowerCase();
+    if (!isOutputFormat(srcFormat) || !canWriteFormat(srcFormat))
+      throw new TypeError(
+        `No output format for ${srcPath}: pass formats, or a destination with a format extension. The source's own format (${src.extension === '' ? 'no extension' : `'${src.extension}'`}) can't be written.`
+      );
+    combined.set(srcFormat, undefined);
   }
-  return {
-    outputPath,
-    combinedFormats:
-      combinedFormats as AtLeastOneProperty<OutputFormatsOptions>,
-  };
+
+  return { outputPath, formats: combined };
 };

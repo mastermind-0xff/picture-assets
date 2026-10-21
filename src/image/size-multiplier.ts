@@ -1,24 +1,24 @@
-import { SizeMultiplier } from '../types/size';
+import type { SizeMultiplier } from '../types/size.js';
+
+/** `x` and a decimal number: `x1`, `x2.5`, `x.5`. */
+const SIZE_MULTIPLIER = /^x(?:\d+(?:\.\d*)?|\.\d+)$/;
 
 /**
  * Check if value is size multiplier in the form of x1, x2, x3.5, x[n>0.0].
+ * Only plain decimals: `'x 2'`, `'x0x10'` or `'x1e2'` are not multipliers.
  * @param value
  * @returns Boolean
  */
-export const isSizeMultiplier = (value: unknown): value is SizeMultiplier => {
-  if (typeof value !== 'string') return false;
-  if (!value.startsWith('x')) return false;
-
-  const num = Number(value.slice(1));
-  return Number.isFinite(num) && num > 0;
-};
+export const isSizeMultiplier = (value: unknown): value is SizeMultiplier =>
+  typeof value === 'string' &&
+  SIZE_MULTIPLIER.test(value) &&
+  Number(value.slice(1)) > 0;
 
 /**
- * Extract a multiplier from a value if it has the format of 'x1', 'x2', 'x3.5'
+ * Extract the multiplier from a value in the format of 'x1', 'x2', 'x3.5'
  * and so on.
- * @param value Value to try to extract multiplier from.
- * @returns Number containing extracted multiplier or undefined if not found.
+ * @param value Size multiplier.
+ * @returns The multiplier as a number.
  */
-export const extractSizeMultiplier = (value: SizeMultiplier): number => {
-  return Number(value.slice(1));
-};
+export const extractSizeMultiplier = (value: SizeMultiplier): number =>
+  Number(value.slice(1));
