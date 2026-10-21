@@ -1,80 +1,73 @@
 {
-  "name": "image-resize",
+  "name": "image-assets-generator",
   "version": "0.0.1",
-  "description": "Basic react elements",
-  "scripts": {
-    "/** [ Cleanup commands ]==================================== */": "exit 0",
-    "clean:dist": "rimraf --glob dist/*",
-    "clean:docs": "rimraf --glob docs/*",
-    "clean:bundle": "npm run clean:dist && npm run clean:docs",
-    "clean:tests": "rimraf --glob __tests__/e2e/assets/optimized-images/*",
-    "/** [ Build commands ]====================================== */": "exit 0",
-    "lint": "eslint . && prettier . --check",
-    "lint:debug:commit-ok": "git status | grep -q 'nothing to commit",
-    "lint:debug:diff-stash-drop": "git diff && git stash && git stash drop",
-    "lint:debug:prettier": "prettier . --write && npm run lint:debug:diff-stash-drop",
-    "lint:debug": "npm run lint:debug:commit-ok && (npm run lint:debug:prettier || echo 'Debug filed') || echo 'Please commit before debug'",
-    "format": "eslint . --fix && prettier . --write",
-    "build:docs": "typedoc",
-    "build:types": "tsc  --declaration --emitDeclarationOnly --declarationDir dist/types",
-    "build:rollup": "rollup -c",
-    "build:bundle": "npm run build:rollup && npm run build:types && npm run build:docs",
-    "build:clean-bundle": "npm run clean:bundle && npm run build:bundle",
-    "build:complete": "npm run format && npm run build:clean-bundle",
-    "/** [ Test commands ]======================================= */": "exit 0",
-    "test": "npm run clean:tests && jest",
-    "test:coverage": "npm run clean:tests && jest --coverage",
-    "test:e2e": "npm run clean:tests && jest __tests__",
-    "test:specs": "npm run clean:tests && jest src"
-  },
-  "keywords": [],
+  "description": "Turns source images into web-ready assets: every resolution (pixels or x2-style multipliers) and format you need, from a single image or a whole directory tree, with high quality, low weight defaults.",
+  "keywords": [
+    "image",
+    "resize",
+    "responsive",
+    "srcset",
+    "avif",
+    "webp",
+    "sharp",
+    "assets"
+  ],
   "author": "Tihomir Trifonov aka Mastermind",
   "license": "ISC",
-  "devDependencies": {
-    "@mmtypes/common": "^0.0.1",
-    "@rollup/plugin-commonjs": "^25.0.8",
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^15.3.1",
-    "@rollup/plugin-typescript": "^11.1.6",
-    "@types/jest": "^29.5.14",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "color-convert": "^2.0.1",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.2",
-    "eslint-config-standard": "^17.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-n": "^16.6.2",
-    "eslint-plugin-prettier": "^5.5.4",
-    "eslint-plugin-promise": "^6.6.0",
-    "glob": "^11.0.3",
-    "jest": "^29.7.0",
-    "prettier": "^3.6.2",
-    "rimraf": "^5.0.10",
-    "rollup": "^4.52.0",
-    "rollup-plugin-dts": "^6.2.3",
-    "ts-jest": "^29.4.4",
-    "typedoc": "^0.25.13",
-    "typedoc-plugin-markdown": "^3.17.1",
-    "typescript": "^5.4.5"
-  },
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "files": [
-    "./dist"
-  ],
   "type": "module",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
   "exports": {
-    "import": "./dist/esm/index.js",
-    "require": "./dist/cjs/index.js",
-    "default": "./dist/cjs/index.js",
-    "types": "./dist/types/index.d.ts"
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.17"
+  },
+  "scripts": {
+    "build": "npm run clean && rollup -c && tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "prepublishOnly": "npm run check && npm run build",
+    "examples": "npm run build && node examples/run-all.js",
+    "bench": "npm run build && node bench/pipeline.js"
   },
   "dependencies": {
-    "@mmutils/assert": "^0.0.6",
-    "@mmutils/common": "^0.0.1",
-    "help": "^3.0.2",
-    "sharp": "^0.34.4",
-    "style-escape-codes": "^1.1.0"
+    "@mmutils/common": "^0.0.2",
+    "@mmutils/logger": "^0.1.1",
+    "@mmutils/time": "^0.0.3",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@mmutils/bench": "^0.1.0",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^5.0.5",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "rollup": "^4.64.12",
+    "tslib": "^2.8.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
   }
 }

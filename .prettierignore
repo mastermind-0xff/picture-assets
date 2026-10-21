@@ -1,2 +1,7 @@
 dist
-docs
+node_modules
+coverage
+package-lock.json
+.claude
+.idea
+.vscode

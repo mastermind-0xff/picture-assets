@@ -1,33 +1,21 @@
 {
   "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "allowJs": true,
-    "noImplicitOverride": true,
-    "noUncheckedIndexedAccess": true,
-
-    // "declarationDir": "./dist/types",
-    "sourceMap": true,
-    "rootDir": "./src",
-    // "outDir": "./dist/types/",
-    // "declaration": true,
-    // "declarationMap": false,
-    // "emitDeclarationOnly": true,
-
-    "target": "es2019",
+    "target": "ES2024",
+    "lib": ["ES2024"],
     "module": "ESNext",
-    "moduleResolution": "Node",
-    // "resolvePackageJsonExports": true,
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
-
-    // "noEmit": true,
-    // "allowImportingTsExtensions": true
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "rootDir": "./src"
   },
-  "include": ["./src/"],
-  "ts-node": {
-    "esm": true
-  }
+  "include": ["src"]
 }
