@@ -1,0 +1,88 @@
+# Changelog
+
+## Unreleased
+
+A revamp of the unreleased 0.0.1: the same pipeline (sizes resolved from
+pixels or multipliers, each size resized from the previous one, formats
+encoded in parallel, batches processed by a pool of workers) on a modern
+toolchain, with its bugs fixed, every argument validated and logging with
+`@mmutils/logger`.
+
+### Changed
+
+- **Options object.** `imageResize(src, dest, settings, formats?, options?)`
+  and `batchImageResize(src, destRoot, settings, formats?, options?)` take
+  `resizeStrategyHint`, `suffix`, `formatOptions`, `abortScope`, `logger`
+  and (batch) `concurrency`, instead of an `ExecutionContext` with a
+  logger and an execution scope to build by hand. `numberOfWorkers` is now
+  `concurrency` (`'max_threads'` is `'max'`).
+- **Options resolved per call**: the call, then the environment variable,
+  then the default. They were read once, when the module was imported.
+  Invalid values throw, naming the option or the variable, instead of
+  falling back to defaults with a warning.
+- **`abortScope`** is `'none'` (default, best effort), `'source'` or
+  `'batch'` (fail fast: rejects with the partial result). The scopes
+  `'format'`, `'setting'`, `'source'` and `'batch'` did the opposite of
+  their documentation.
+- **Statuses**: `'failed'` means an error in the unit or below; `'aborted'`
+  only units stopped by another source's failure. A batch lists every
+  source found, in path order (it was completion order), and results have
+  a `duration`. `outputsBySetting` is always a list; sources and settings
+  that failed have an `error`.
+- **Batch sources**: a file, a directory, a glob or `{ root, pattern }`
+  (was `{ root, resource }`). The tree below the root is mirrored in the
+  destination, also for globs; files sharp can't read are skipped.
+- **Default format options** are applied (they never were): progressive
+  JPEG q80, WebP q80, AVIF q60, lossless PNG at zlib 9, chosen with
+  bench/weight.js. `png: { quality: 100 }` turned on a lossy palette.
+- `formats` accepts any list (`OutputFormat[]`), validated at runtime,
+  instead of a non-empty tuple type.
+- Exports: `batchImageResize` (was `batchImageResizeAsync`), the types,
+  `DEFAULT_FORMAT_OPTIONS`, `DEFAULT_OPTIONS`, `ENV_VARIABLES`,
+  `resolveOptions`, `readEnvOptions`, `computeConcurrency`, `parseSuffix`,
+  `createLogger`, `OUTPUT_FORMATS`, `INPUT_EXTENSIONS`, `canWriteFormat`.
+
+### Fixed
+
+- `src/log/logger.ts` didn't compile. Errors were logged as `{}`.
+- The batch processed at most 5 files.
+- After a crop, the next size kept the crop.
+- A reused size smaller than the next one was upscaled.
+- Chained sizes drifted: each was resized with `fit: 'cover'`, cropping
+  the fraction of a pixel by which its rounded size missed the aspect
+  ratio, and the crops added up (SSIM down to 0.905 against one resize
+  from the source). Sizes with the source's aspect ratio are scaled to
+  fill.
+- EXIF orientation was ignored: phone photos came out sideways.
+- Transparent images written as JPEG showed the hidden colors of
+  transparent pixels; they are flattened on white.
+- The caller's `formats` object was modified: a batch's first source
+  format leaked into the next sources.
+- `dest/hero.v2` dropped `.v2`, and without formats wrote nothing while
+  reporting success.
+- Input-only formats (`svg`, `pdf`) and junk aliases (`pg`, `if`, …) passed
+  as output formats.
+- `isSizeMultiplier` accepted `'x 2'` and `'x0x10'`.
+- Multiplier sizes could be a pixel off: the source multiplier was rounded
+  to 2 decimals (a 640x480 `x1` gave 1919 pixels for `x3`).
+- Files with the same name in different directories, or two settings with
+  the same suffix, overwrote each other; they fail instead.
+- Outputs inside the source tree were processed again by the next batch.
+- A failing batch kept its probe interval, and the process, running.
+- libvips kept sources open after a run: Windows couldn't change or delete
+  them. Sources are read once.
+- The CommonJS build was `.js` in a `"type": "module"` package, so
+  `require` loaded it as ESM; `types` came last in `exports`.
+
+### Added
+
+- Vitest specs next to the sources, end to end with generated images.
+- `bench/`: the pipeline against plain sharp, chained sizes, batch
+  concurrency, encoders, and quality per byte, with `@mmutils/bench`.
+- `examples/`, README, and `docs/cli-proposal.md`.
+
+### Removed
+
+- Dependencies: `glob` (Node's `fs.glob`), `help`, `color-convert`,
+  `@mmutils/assert`, `@mmtypes/common`; jest, ts-jest, typedoc, rimraf and
+  9 ESLint packages from the development ones.
