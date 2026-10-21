@@ -4,8 +4,8 @@ import {
   createEncoders,
   describe,
   parseFormats,
-  type Encoder,
   type FormatOptionsInput,
+  type TargetEncoder,
 } from '../config/validate.js';
 import { ResultSourceError } from '../errors/image-resize-errors.js';
 import { sourceToSettings, type RunContext } from '../image/output.js';
@@ -26,7 +26,7 @@ import { formatBytes, formatDuration } from '../utils/helpers.js';
 export interface SourceTarget {
   /** Output path without suffix and extension. */
   readonly outputPath: string;
-  readonly encoders: readonly Encoder[];
+  readonly encoders: readonly TargetEncoder[];
 }
 
 /**
@@ -86,7 +86,7 @@ export const processSource = async (
 
   logger.debug(`Processing ${srcPath}`);
   try {
-    const { outputsBySetting, stopped } = await sourceToSettings(
+    const { outputsBySetting, stopped, width, height } = await sourceToSettings(
       srcPath,
       settings,
       target.encoders,
@@ -100,6 +100,8 @@ export const processSource = async (
     const result: ResultSource = {
       status,
       source: srcPath,
+      width,
+      height,
       outputsBySetting,
       duration: Math.round(performance.now() - start),
     };
@@ -252,6 +254,10 @@ export const processSource = async (
  * - `suffix` - Suffix of settings without their own. Default `'@{w}w'`.
  *
  * - `formatOptions` - Options per format, for every call that writes it.
+ *
+ * - `upscale` - Whether sizes larger than the source are made (default
+ * `true`). With `false` they are `'skipped'`, and the largest of them is made
+ * at the source's size instead, unless a size already is.
  *
  * - `abortScope` - What a failure stops: `'none'` (default) attempts every
  * output and reports failures in the result; `'source'` stops at the first

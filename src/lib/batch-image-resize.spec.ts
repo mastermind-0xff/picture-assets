@@ -275,6 +275,31 @@ describe('batchImageResize', () => {
     expect(debugGraph).not.toHaveBeenCalled();
   });
 
+  test('a signal stops the batch: the sources not started are aborted', async () => {
+    const controller = new AbortController();
+    const { logger } = createRecordingLogger('info');
+    const info = logger.info;
+    // stop when the first source is done
+    logger.info = (data) => {
+      info(data);
+      if (typeof data === 'string' && data.includes('a.jpg: '))
+        controller.abort();
+    };
+    const batch = await batchImageResize(
+      file('tree'),
+      outDir(),
+      [{ width: 50 }],
+      ['png'],
+      { logger, concurrency: 1, signal: controller.signal }
+    );
+    expect(batch.status).toBe('aborted');
+    expect(sourceStatuses(batch)).toEqual([
+      ['tree/a.jpg', 'succeed'],
+      ['tree/sub/b.png', 'aborted'],
+      ['tree/sub/deeper/c.webp', 'aborted'],
+    ]);
+  });
+
   test('invalid arguments throw before any work', async () => {
     await expect(
       batchImageResize(file('tree'), outDir(), [{ width: 1 }], ['webp'], {

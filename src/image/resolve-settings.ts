@@ -18,6 +18,8 @@ export type ResolvedOutputSettings = Required<
     heightMultiplier: number;
     aspectRatio: number;
     isMatchingSourceAspectRatio: boolean;
+    /** Not made: larger than the source, with `upscale: false`. */
+    skipped?: boolean;
   };
 
 export interface SourceDimensions {
@@ -230,4 +232,55 @@ export const resolveOutputSettings = (
       };
     })
     .sort((a, b) => b.sizeMultiplier - a.sizeMultiplier);
+};
+
+const round3 = (value: number) => Math.round(value * 1000) / 1000;
+
+/**
+ * Keeps the sizes from being larger than the source, for `upscale: false`:
+ * those larger in width or height are skipped, except the largest of them,
+ * made at the largest size with its aspect ratio that fits in the source
+ * (the source's own size for the same aspect ratio), unless another setting
+ * already has that size. So the largest output keeps every pixel of the
+ * source. Crops larger than the source are skipped: their region is
+ * relative to their size.
+ *
+ * @param settings Resolved settings, from the largest.
+ * @param sourceDimensions Size of the source, as shown.
+ */
+export const limitToSource = (
+  settings: readonly ResolvedOutputSettings[],
+  { srcWidth, srcHeight }: SourceDimensions
+): ResolvedOutputSettings[] => {
+  const fits = ({ width, height }: ResolvedOutputSettings) =>
+    width <= srcWidth && height <= srcHeight;
+  const fitting = settings.filter(fits);
+  let replaced = false;
+
+  return settings.map((setting) => {
+    if (fits(setting)) return setting;
+    if (replaced || setting.extractRegion) return { ...setting, skipped: true };
+    replaced = true;
+    const factor = Math.min(
+      srcWidth / setting.width,
+      srcHeight / setting.height
+    );
+    const width = Math.max(1, Math.round(setting.width * factor));
+    const height = Math.max(1, Math.round(setting.height * factor));
+    if (
+      fitting.some((other) => other.width === width && other.height === height)
+    )
+      return { ...setting, skipped: true };
+    return {
+      ...setting,
+      width,
+      height,
+      widthMultiplier: round3(setting.widthMultiplier * factor),
+      heightMultiplier: round3(setting.heightMultiplier * factor),
+      sizeMultiplier: round3(setting.sizeMultiplier * factor),
+      generateFromSource: true,
+      // the most detailed size: the best base for the next ones
+      useAsNextResizeIteration: setting.isMatchingSourceAspectRatio,
+    };
+  });
 };

@@ -48,6 +48,17 @@ export interface ImageResizeOptions {
   };
 
   /**
+   * Whether sizes larger than the source are made. With `false`, they are
+   * skipped (`'skipped'` in the result), except the largest of them, made at
+   * the source's size instead, unless a size already is: so the largest
+   * output keeps every pixel of the source and nothing is enlarged. Crops
+   * larger than the source are skipped.
+   *
+   * Default: `true`.
+   */
+  readonly upscale?: boolean;
+
+  /**
    * What a failure stops, see `AbortScope`.
    *
    * Default: `'none'` (`IMAGE_RESIZE_ABORT_SCOPE`).
@@ -78,4 +89,10 @@ export interface BatchImageResizeOptions extends ImageResizeOptions {
    * Never more than the number of sources. Default: `'auto'`.
    */
   readonly concurrency?: Concurrency;
+
+  /**
+   * Stops the batch when aborted: sources in progress finish their current
+   * size, the others are `'aborted'`, and so is the batch.
+   */
+  readonly signal?: AbortSignal;
 }

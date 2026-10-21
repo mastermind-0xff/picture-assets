@@ -19,10 +19,11 @@ export const isMatchingAspectRatio = (
   srcHeight: number
 ): boolean => Math.abs(width / height - srcWidth / srcHeight) < 0.001;
 
-/** Checks if every entry in a list of results is successful. */
+/** Checks if every entry in a list of results succeeded or was skipped. */
 export const allResultsSucceeded = (
   results: readonly { status: string }[]
-): boolean => results.every((result) => result.status === 'succeed');
+): boolean =>
+  results.every(({ status }) => status === 'succeed' || status === 'skipped');
 
 /**
  * Formats milliseconds as readable time: `'0ms'`, `'1s 235ms'`,

@@ -16,6 +16,7 @@ import type {
   ImageResizeOptions,
 } from '../types/options.js';
 import type {
+  FormatSelector,
   OutputFormat,
   OutputFormatsOptions,
   OutputSetting,
@@ -32,6 +33,16 @@ export interface Encoder {
   readonly format: OutputFormat;
   readonly options: OutputFormatsOptions[OutputFormat];
 }
+
+/** `'fallback'`'s encoders, one chosen per source. */
+export interface FallbackEncoder {
+  readonly format: 'fallback';
+  readonly opaque: Encoder;
+  readonly transparent: Encoder;
+}
+
+/** Encoders of a target, before the source tells if it is transparent. */
+export type TargetEncoder = Encoder | FallbackEncoder;
 
 /** Abort scopes, from the most forgiving. */
 export const ABORT_SCOPES = ['none', 'source', 'batch'] as const;
@@ -106,6 +117,12 @@ export const parseFormatOptions = (value: unknown): FormatOptionsInput => {
       );
   }
   return value;
+};
+
+/** @throws TypeError for anything but a boolean. */
+export const parseBoolean = (name: string, value: unknown): boolean => {
+  if (typeof value === 'boolean') return value;
+  throw new TypeError(`${name} must be true or false, got ${describe(value)}.`);
 };
 
 /** @throws TypeError for anything but a string. */
@@ -202,7 +219,8 @@ export function assertSettings(
 
 /**
  * Reads the `formats` argument: a list of formats or an object of formats
- * and their options. Duplicates are kept once.
+ * and their options. Duplicates are kept once. `'fallback'` is allowed in
+ * lists: its options are those of `jpg` and `png`.
  *
  * @returns Formats with the options given with them, in the given order;
  * empty when `formats` is undefined or empty.
@@ -210,8 +228,8 @@ export function assertSettings(
  */
 export const parseFormats = (
   formats: unknown
-): Map<OutputFormat, object | undefined> => {
-  const parsed = new Map<OutputFormat, object | undefined>();
+): Map<FormatSelector, object | undefined> => {
+  const parsed = new Map<FormatSelector, object | undefined>();
   if (formats === undefined) return parsed;
   if (!Array.isArray(formats) && !isPlainObject(formats))
     throw new TypeError(
@@ -222,9 +240,15 @@ export const parseFormats = (
       formats.map((format: unknown) => [format, undefined])
     : Object.entries(formats);
   for (const [format, options] of entries) {
+    if (format === 'fallback' && Array.isArray(formats)) {
+      parsed.set('fallback', undefined);
+      continue;
+    }
     if (!isOutputFormat(format))
       throw new RangeError(
-        `Unknown output format ${describe(format)}: expected one of ${OUTPUT_FORMATS.join(', ')}.`
+        format === 'fallback' ?
+          "'fallback' takes no options: put it in a list, and set the options of jpg and png."
+        : `Unknown output format ${describe(format)}: expected one of ${OUTPUT_FORMATS.join(', ')}, or 'fallback'.`
       );
     if (options !== undefined && !isPlainObject(options))
       throw new TypeError(
@@ -235,31 +259,65 @@ export const parseFormats = (
   return parsed;
 };
 
+const createEncoder = (
+  format: OutputFormat,
+  formatOptions: FormatOptionsInput,
+  callOptions?: object
+): Encoder => {
+  if (!canWriteFormat(format))
+    throw new RangeError(
+      `The installed sharp can't write ${format} files: its prebuilt binaries don't include an encoder for them.`
+    );
+  const options = resolveFormatOptions(format, formatOptions, callOptions);
+  try {
+    // sharp validates format options when they are set, before any input
+    sharp().toFormat(toSharpFormat(format), options);
+  } catch (error) {
+    throw new TypeError(
+      `Invalid ${format} options ${describe(options)}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    );
+  }
+  return { format, options };
+};
+
 /**
  * Resolves the complete options of each format and checks them with sharp,
- * so invalid options fail before any image is processed.
+ * so invalid options fail before any image is processed. `'fallback'` gets
+ * both of its encoders, chosen per source by `selectEncoders`.
  *
  * @throws RangeError for formats the installed sharp can't write, TypeError
  * for options sharp rejects.
  */
 export const createEncoders = (
-  formats: ReadonlyMap<OutputFormat, object | undefined>,
+  formats: ReadonlyMap<FormatSelector, object | undefined>,
   formatOptions: FormatOptionsInput
-): Encoder[] =>
-  [...formats].map(([format, callOptions]) => {
-    if (!canWriteFormat(format))
-      throw new RangeError(
-        `The installed sharp can't write ${format} files: its prebuilt binaries don't include an encoder for them.`
-      );
-    const options = resolveFormatOptions(format, formatOptions, callOptions);
-    try {
-      // sharp validates format options when they are set, before any input
-      sharp().toFormat(toSharpFormat(format), options);
-    } catch (error) {
-      throw new TypeError(
-        `Invalid ${format} options ${describe(options)}: ${error instanceof Error ? error.message : String(error)}`,
-        { cause: error }
-      );
-    }
-    return { format, options };
-  });
+): TargetEncoder[] =>
+  [...formats].map(([format, callOptions]) =>
+    format === 'fallback' ?
+      {
+        format,
+        opaque: createEncoder('jpg', formatOptions),
+        transparent: createEncoder('png', formatOptions),
+      }
+    : createEncoder(format, formatOptions, callOptions)
+  );
+
+/**
+ * The encoders of a source: `'fallback'` becomes JPEG, or PNG for a
+ * transparent source. A format listed twice is written once.
+ */
+export const selectEncoders = (
+  encoders: readonly TargetEncoder[],
+  hasAlpha: boolean
+): Encoder[] => {
+  const selected = new Map<OutputFormat, Encoder>();
+  for (const encoder of encoders) {
+    const concrete =
+      encoder.format !== 'fallback' ? encoder
+      : hasAlpha ? encoder.transparent
+      : encoder.opaque;
+    if (!selected.has(concrete.format)) selected.set(concrete.format, concrete);
+  }
+  return [...selected.values()];
+};

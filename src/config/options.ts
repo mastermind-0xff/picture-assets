@@ -10,6 +10,7 @@ import {
   describe,
   isPlainObject,
   parseAbortScope,
+  parseBoolean,
   parseConcurrency,
   parseFormatOptions,
   parseLogger,
@@ -24,6 +25,7 @@ export const DEFAULT_OPTIONS = {
   suffix: '@{w}w',
   abortScope: 'none',
   logger: 'info',
+  upscale: true,
   concurrency: 'auto',
 } as const satisfies Required<
   Omit<ImageResizeOptions, 'formatOptions'> & { concurrency: Concurrency }
@@ -36,6 +38,7 @@ export interface ResolvedOptions {
   readonly suffix: string;
   readonly formatOptions: FormatOptionsInput;
   readonly abortScope: AbortScope;
+  readonly upscale: boolean;
 }
 
 /** Merges format options per format, so each layer can set single fields. */
@@ -84,6 +87,10 @@ export const resolveOptions = (
     ),
     abortScope: parseAbortScope(
       options.abortScope ?? fromEnv.abortScope ?? DEFAULT_OPTIONS.abortScope
+    ),
+    upscale: parseBoolean(
+      'upscale',
+      options.upscale ?? DEFAULT_OPTIONS.upscale
     ),
   };
 };

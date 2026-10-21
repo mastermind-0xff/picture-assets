@@ -1,3 +1,31 @@
+export {
+  CONFIG_KEYS,
+  DEFAULT_FORMATS,
+  DEFAULT_SIZES,
+  generateAssets,
+  planAssets,
+  type AssetsConfig,
+  type AssetsPlan,
+  type PlannedSize,
+  type PlannedSource,
+} from './lib/generate-assets.js';
+export {
+  MANIFEST_VERSION,
+  readManifest,
+  type Manifest,
+  type ManifestEntry,
+  type ManifestOutput,
+} from './lib/manifest.js';
+export {
+  expandFormats,
+  expandSizes,
+  FORMAT_PRESETS,
+  SIZE_PRESETS,
+  type FormatPreset,
+  type FormatsInput,
+  type SizePreset,
+  type SizesInput,
+} from './config/presets.js';
 export { imageResize } from './lib/image-resize.js';
 export {
   batchImageResize,
@@ -27,6 +55,7 @@ export type {
   ImageResizeOptions,
 } from './types/options.js';
 export type {
+  FormatSelector,
   OutputFormat,
   OutputFormats,
   OutputFormatsOptions,

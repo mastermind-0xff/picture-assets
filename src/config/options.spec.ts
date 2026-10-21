@@ -55,6 +55,7 @@ describe('resolveOptions', () => {
       resizeStrategyHint: 'x2',
       formatOptions: {},
       logger,
+      upscale: true,
     });
   });
 

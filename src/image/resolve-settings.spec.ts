@@ -6,6 +6,7 @@ import type { ResizeStrategyHint } from '../types/size.js';
 import {
   findSettingsResolutionBoundaries,
   getSourceMultiplier,
+  limitToSource,
   resolveOutputSettings,
   type SourceDimensions,
 } from './resolve-settings.js';
@@ -317,5 +318,68 @@ describe('resolveOutputSettings', () => {
       logger
     );
     expect(resolved.map(({ width }) => width)).toEqual(widths);
+  });
+});
+
+describe('limitToSource', () => {
+  const { logger } = createRecordingLogger();
+  const source = { srcWidth: 800, srcHeight: 600 };
+  const limit = (settings: OutputSetting[]) =>
+    limitToSource(
+      resolveOutputSettings(settings, source, 'downsample', logger),
+      source
+    ).map(({ width, height, skipped, generateFromSource }) => ({
+      size: `${width}x${height}`,
+      skipped: skipped ?? false,
+      generateFromSource,
+    }));
+
+  test('the largest of the larger sizes made at the source size, the others skipped', () => {
+    expect(limit([{ width: 2000 }, { width: 1200 }, { width: 400 }])).toEqual([
+      { size: '800x600', skipped: false, generateFromSource: true },
+      { size: '1200x900', skipped: true, generateFromSource: true },
+      { size: '400x300', skipped: false, generateFromSource: false },
+    ]);
+  });
+
+  test('another aspect ratio: the largest that fits', () => {
+    expect(limit([{ width: 1600, height: 400 }])).toEqual([
+      { size: '800x200', skipped: false, generateFromSource: true },
+    ]);
+  });
+
+  test('skipped when a size already is the source size', () => {
+    expect(limit([{ width: 1000 }, { width: 800 }])).toEqual([
+      { size: '1000x750', skipped: true, generateFromSource: true },
+      { size: '800x600', skipped: false, generateFromSource: false },
+    ]);
+  });
+
+  test('crops are skipped, the next larger size is made instead', () => {
+    expect(
+      limit([
+        {
+          width: 2000,
+          extractRegion: { left: 0, top: 0, width: 100, height: 100 },
+        },
+        { width: 1000 },
+      ])
+    ).toEqual([
+      { size: '2000x1500', skipped: true, generateFromSource: true },
+      { size: '800x600', skipped: false, generateFromSource: true },
+    ]);
+  });
+
+  test('the multipliers follow the new size', () => {
+    const [made] = limitToSource(
+      resolveOutputSettings([{ width: 1600 }], source, 'x1', logger),
+      source
+    );
+    expect(made).toMatchObject({
+      width: 800,
+      widthMultiplier: 1,
+      sizeMultiplier: 1,
+      useAsNextResizeIteration: true,
+    });
   });
 });

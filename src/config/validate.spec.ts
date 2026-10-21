@@ -6,12 +6,14 @@ import {
   createEncoders,
   describe as describeValue,
   parseAbortScope,
+  parseBoolean,
   parseConcurrency,
   parseFormatOptions,
   parseFormats,
   parseLogger,
   parseResizeStrategyHint,
   parseSuffixOption,
+  selectEncoders,
 } from './validate.js';
 
 describe('describe', () => {
@@ -194,5 +196,60 @@ describe('option parsers', () => {
       'Logger is missing the methods error, warning, debug, verbose.'
     );
     expect(() => parseLogger(true)).toThrow(TypeError);
+  });
+});
+
+describe("the 'fallback' format", () => {
+  test('in lists only', () => {
+    expect([...parseFormats(['avif', 'fallback'])]).toEqual([
+      ['avif', undefined],
+      ['fallback', undefined],
+    ]);
+    expect(() => parseFormats({ fallback: {} })).toThrow(
+      "'fallback' takes no options: put it in a list, and set the options of jpg and png."
+    );
+  });
+
+  test('both encoders, with the options of jpg and png', () => {
+    expect(
+      createEncoders(parseFormats(['fallback']), { png: { effort: 3 } })
+    ).toEqual([
+      {
+        format: 'fallback',
+        opaque: { format: 'jpg', options: { quality: 80, progressive: true } },
+        transparent: {
+          format: 'png',
+          options: { compressionLevel: 9, effort: 3 },
+        },
+      },
+    ]);
+  });
+
+  test('selectEncoders: JPEG, or PNG for transparent sources, each once', () => {
+    const encoders = createEncoders(
+      parseFormats(['png', 'fallback', 'jpg']),
+      {}
+    );
+    expect(selectEncoders(encoders, false).map(({ format }) => format)).toEqual(
+      ['png', 'jpg']
+    );
+    expect(selectEncoders(encoders, true).map(({ format }) => format)).toEqual([
+      'png',
+      'jpg',
+    ]);
+    expect(
+      selectEncoders(createEncoders(parseFormats(['fallback']), {}), true).map(
+        ({ format }) => format
+      )
+    ).toEqual(['png']);
+  });
+});
+
+describe('parseBoolean', () => {
+  test('booleans only', () => {
+    expect(parseBoolean('upscale', false)).toBe(false);
+    expect(() => parseBoolean('upscale', 'no')).toThrow(
+      "upscale must be true or false, got 'no'."
+    );
   });
 });

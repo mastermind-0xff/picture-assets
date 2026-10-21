@@ -43,11 +43,17 @@ export type OutputFormat = keyof OutputFormatsOptions;
  * of the format (see `formatOptions`).
  */
 export type OutputFormats =
-  | readonly OutputFormat[]
+  | readonly FormatSelector[]
   | { readonly [F in OutputFormat]?: OutputFormatsOptions[F] };
 
+/**
+ * An output format, or `'fallback'`: JPEG, or PNG for transparent sources,
+ * chosen per source. The format for older browsers next to AVIF and WebP.
+ */
+export type FormatSelector = OutputFormat | 'fallback';
+
 /** Image processing result completion type. */
-export type ResultStatus = 'succeed' | 'failed' | 'aborted';
+export type ResultStatus = 'succeed' | 'failed' | 'aborted' | 'skipped';
 
 /**
  * Result of one output file.
@@ -63,6 +69,8 @@ export type ResultFormat = { format: OutputFormat; file: string } & (
  * Result of one output setting (one size) of a source.
  * - `'succeed'`: every format was written.
  * - `'failed'`: the resize failed (`error`) or some format failed (`files`).
+ * - `'skipped'`: not written, being larger than the source with
+ *   `upscale: false`.
  */
 export interface ResultSetting {
   status: Exclude<ResultStatus, 'aborted'>;
@@ -74,15 +82,20 @@ export interface ResultSetting {
 
 /**
  * Result of one source image.
- * - `'succeed'`: every setting succeeded.
+ * - `'succeed'`: every setting succeeded or was skipped.
  * - `'failed'`: the source couldn't be read (`error`) or some setting failed.
  * - `'aborted'`: stopped before its settings were done, because another
- *   source failed with `abortScope: 'batch'`. `outputsBySetting` has the
- *   settings done until then.
+ *   source failed with `abortScope: 'batch'` or the run was stopped (its
+ *   `signal`). `outputsBySetting` has the settings done until then.
+ * - `'skipped'`: unchanged since the run that wrote its files, see
+ *   `generateAssets`' `manifest`.
  */
 export interface ResultSource {
   status: ResultStatus;
   source: string;
+  /** Size of the source as shown (auto-oriented), when it was read. */
+  width?: number;
+  height?: number;
   outputsBySetting: ResultSetting[];
   error?: unknown;
   /** Processing time in milliseconds. */
@@ -91,11 +104,13 @@ export interface ResultSource {
 
 /**
  * Result of a batch: one entry per source found, in path order.
- * - `'succeed'`: every source succeeded.
- * - `'failed'`: no source was found, or some source failed or was aborted.
+ * - `'succeed'`: every source succeeded or was skipped.
+ * - `'failed'`: no source was found, or some source failed or was aborted
+ *   by another's failure.
+ * - `'aborted'`: the run was stopped by its `signal`.
  */
 export interface ResultBatch {
-  status: Exclude<ResultStatus, 'aborted'>;
+  status: Exclude<ResultStatus, 'skipped'>;
   sources: ResultSource[];
   /** Processing time in milliseconds. */
   duration: number;

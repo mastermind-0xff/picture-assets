@@ -4,7 +4,11 @@ import path from 'node:path';
 import sharp, { type Sharp } from 'sharp';
 
 import type { ResolvedOptions } from '../config/options.js';
-import type { Encoder } from '../config/validate.js';
+import {
+  selectEncoders,
+  type Encoder,
+  type TargetEncoder,
+} from '../config/validate.js';
 import type { ImageAssetsLogger } from '../log/logger.js';
 import type {
   OutputSetting,
@@ -13,7 +17,11 @@ import type {
 } from '../types/output.js';
 import { allResultsSucceeded, formatBytes } from '../utils/helpers.js';
 import { supportsAlpha, toSharpFormat } from './formats.js';
-import { resolveOutputSettings } from './resolve-settings.js';
+import {
+  limitToSource,
+  resolveOutputSettings,
+  type ResolvedOutputSettings,
+} from './resolve-settings.js';
 import { parseSuffix } from './suffix.js';
 
 /** Options of a run, with the signal stopping it (`abortScope: 'batch'`). */
@@ -22,6 +30,69 @@ export interface RunContext extends ResolvedOptions {
   /** Stops the run: sources not started are skipped, settings not started too. */
   readonly abort: (reason: unknown) => void;
 }
+
+/** What a source gives: its size, its resolved sizes and its encoders. */
+export interface SourcePlan {
+  /** Size of the source as shown (auto-oriented). */
+  readonly width: number;
+  readonly height: number;
+  readonly hasAlpha: boolean;
+  /** From the largest; those larger than the source `skipped` without upscale. */
+  readonly settings: ResolvedOutputSettings[];
+  /** `'fallback'` resolved for this source. */
+  readonly encoders: Encoder[];
+}
+
+/**
+ * Reads a source's metadata and resolves what it will give, without
+ * resizing anything.
+ */
+export const planSource = async (
+  source: Sharp,
+  settings: readonly OutputSetting[],
+  encoders: readonly TargetEncoder[],
+  {
+    logger,
+    resizeStrategyHint,
+    upscale,
+  }: Pick<ResolvedOptions, 'logger' | 'resizeStrategyHint' | 'upscale'>
+): Promise<SourcePlan> => {
+  const {
+    autoOrient: { width, height },
+    hasAlpha,
+  } = await source.metadata();
+  const dimensions = { srcWidth: width, srcHeight: height };
+  const resolved = resolveOutputSettings(
+    settings,
+    dimensions,
+    resizeStrategyHint,
+    logger
+  );
+  return {
+    width,
+    height,
+    hasAlpha,
+    settings: upscale ? resolved : limitToSource(resolved, dimensions),
+    encoders: selectEncoders(encoders, hasAlpha),
+  };
+};
+
+/**
+ * Output path of a setting without the extension, with its planned size:
+ * the actual size can differ with `resizeOptions` like `withoutEnlargement`.
+ */
+export const plannedIdentifier = (
+  outputPath: string,
+  setting: ResolvedOutputSettings,
+  suffix: string
+) =>
+  `${outputPath}${parseSuffix(setting.suffix ?? suffix, {
+    width: setting.extractRegion?.width ?? setting.width,
+    height: setting.extractRegion?.height ?? setting.height,
+    widthMultiplier: setting.widthMultiplier,
+    heightMultiplier: setting.heightMultiplier,
+    sizeMultiplier: setting.sizeMultiplier,
+  })}`;
 
 /** Background of transparent images written to formats without alpha. */
 const FLATTEN_BACKGROUND = '#ffffff';
@@ -67,7 +138,8 @@ export const sharpToFile = async (
  * attempted and awaited, so no file is written after this resolves.
  *
  * @param image The image, already resized.
- * @param encoders Formats to write and their options.
+ * @param encoders Formats to write and their options, `'fallback'` resolved
+ * once the source tells if it is transparent.
  * @param outputIdentifier Full path to the output file without the extension.
  * @param hasAlpha Whether the image is transparent, see `sharpToFile`.
  * @param logger Receives a debug log per file and an error per failure.
@@ -130,7 +202,8 @@ interface ResizeBase {
  *
  * A failed setting is added to the result with a failed status. With
  * `abortScope` `'source'` or `'batch'` it stops the source: the settings after
- * it are not processed.
+ * it are not processed. With `upscale: false`, settings larger than the
+ * source are skipped, see `limitToSource`.
  *
  * @param srcPath Source's image full path.
  * @param settings Settings list to generate files.
@@ -139,41 +212,43 @@ interface ResizeBase {
  * format will be added automatically later on.
  * @param context Options of the run and its abort signal.
  * @returns Promise that resolves to a list of objects containing metadata about
- * each setting and its resulting files, and whether the source stopped before
- * its last setting.
+ * each setting and its resulting files, whether the source stopped before
+ * its last setting, and the source's size.
  * @throws When the source can't be read or the output directory can't be
  * created: nothing was processed.
  */
 export const sourceToSettings = async (
   srcPath: string,
   settings: readonly OutputSetting[],
-  encoders: readonly Encoder[],
+  targetEncoders: readonly TargetEncoder[],
   outputPath: string,
   context: RunContext
-): Promise<{ outputsBySetting: ResultSetting[]; stopped: boolean }> => {
-  const { logger, resizeStrategyHint, suffix, abortScope, signal } = context;
+): Promise<{
+  outputsBySetting: ResultSetting[];
+  stopped: boolean;
+  width: number;
+  height: number;
+}> => {
+  const { logger, suffix, abortScope, signal } = context;
 
   // read once: every size sees the same file, and libvips' file cache never
   // keeps it open (Windows can't change or delete open files)
   const input = await fs.readFile(srcPath);
   // EXIF orientation applied: phone photos are often stored sideways
   const source = sharp(input, { autoOrient: true });
-  const {
-    autoOrient: { width: srcWidth, height: srcHeight },
-    hasAlpha,
-  } = await source.metadata();
-
-  const resolvedSettings = resolveOutputSettings(
-    settings,
-    { srcWidth, srcHeight },
-    resizeStrategyHint,
-    logger
-  );
-  logger.verbose({ source: srcPath, settings: resolvedSettings });
+  const plan = await planSource(source, settings, targetEncoders, context);
+  const { width: srcWidth, height: srcHeight, hasAlpha, encoders } = plan;
+  logger.verbose({ source: srcPath, settings: plan.settings });
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
   const outputsBySetting: ResultSetting[] = [];
+  const done = (stopped: boolean) => ({
+    outputsBySetting,
+    stopped,
+    width: srcWidth,
+    height: srcHeight,
+  });
   const identifiers = new Set<string>();
   const sourceBase: ResizeBase = {
     image: source,
@@ -184,10 +259,21 @@ export const sourceToSettings = async (
   };
   let base = sourceBase;
 
-  for (const setting of resolvedSettings) {
-    if (signal.aborted) return { outputsBySetting, stopped: true };
+  for (const setting of plan.settings) {
+    if (signal.aborted) return done(true);
 
     const { width, height, resizeOptions, extractRegion } = setting;
+    if (setting.skipped) {
+      outputsBySetting.push({
+        status: 'skipped',
+        size: `${width}x${height}`,
+        files: [],
+      });
+      logger.debug(
+        `Skipped ${width}x${height} of ${srcPath}: larger than the source (${srcWidth}x${srcHeight})`
+      );
+      continue;
+    }
     const start =
       setting.generateFromSource || base.width < width || base.height < height ?
         sourceBase
@@ -285,9 +371,9 @@ export const sourceToSettings = async (
           })
         );
       }
-      return { outputsBySetting, stopped: true };
+      return done(true);
     }
   }
 
-  return { outputsBySetting, stopped: false };
+  return done(false);
 };

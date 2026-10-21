@@ -2,11 +2,11 @@ import path from 'node:path';
 
 import { parsePath } from '@mmutils/common';
 
-import type { OutputFormat } from '../types/output.js';
+import type { FormatSelector } from '../types/output.js';
 import { canWriteFormat, isOutputFormat } from './formats.js';
 
 /** Formats of an output, with the options given with each. */
-export type FormatsMap = ReadonlyMap<OutputFormat, object | undefined>;
+export type FormatsMap = ReadonlyMap<FormatSelector, object | undefined>;
 
 /**
  * Converts uncertain destination and formats to a reliable data.
