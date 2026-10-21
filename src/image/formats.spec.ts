@@ -65,7 +65,7 @@ describe('resolveFormatOptions', () => {
     );
     expect(resolveFormatOptions('jpeg', {})).toEqual({
       quality: 80,
-      mozjpeg: true,
+      progressive: true,
     });
   });
 
@@ -79,14 +79,14 @@ describe('resolveFormatOptions', () => {
     );
     expect(resolveFormatOptions('jpg', { jpeg: { quality: 60 } })).toEqual({
       quality: 60,
-      mozjpeg: true,
+      progressive: true,
     });
     expect(
       resolveFormatOptions('jpg', {
         jpeg: { quality: 60 },
         jpg: { progressive: false },
       })
-    ).toEqual({ quality: 60, mozjpeg: true, progressive: false });
+    ).toEqual({ quality: 60, progressive: false });
   });
 
   test('call options win over format options, which win over defaults', () => {

@@ -15,10 +15,12 @@ import {
 import { ResultSourceError } from '../errors/image-resize-errors.js';
 import {
   createTempDir,
+  detailedImage,
   listFiles,
   writeFixtures,
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
+import { ssim } from '../test-utils/ssim.js';
 import type { OutputSetting, ResultSource } from '../types/output.js';
 import type { ResizeStrategyHint } from '../types/size.js';
 import { imageResize } from './image-resize.js';
@@ -133,7 +135,7 @@ describe('imageResize: destinations and formats', () => {
     await expect(fs.access(out)).rejects.toThrow();
   });
 
-  test('default format options are applied: mozjpeg JPEGs are progressive', async () => {
+  test('default format options are applied: JPEGs are progressive', async () => {
     const out = outDir();
     await imageResize(
       file('landscape.jpg'),
@@ -150,7 +152,7 @@ describe('imageResize: destinations and formats', () => {
       file('landscape.jpg'),
       `${out}plain`,
       [{ width: 100 }],
-      { jpg: { mozjpeg: false } },
+      { jpg: { progressive: false } },
       silent
     );
     expect((await sharp(`${out}plain@100w.jpg`).metadata()).isProgressive).toBe(
@@ -264,6 +266,28 @@ describe('imageResize: sizes', () => {
     expect(green).toBeLessThan(60);
   });
 
+  test('colors converted to sRGB, profile and EXIF stripped', async () => {
+    const out = outDir();
+    await imageResize(
+      file('display-p3.png'),
+      out,
+      [{ width: 32 }],
+      ['png', 'jpg'],
+      silent
+    );
+    for (const format of ['png', 'jpg']) {
+      const output = `${out}display-p3@32w.${format}`;
+      const { icc, exif } = await sharp(output).metadata();
+      expect({ icc, exif }).toEqual({ icc: undefined, exif: undefined });
+      // stored as P3 values (187, 105, 62): read without the profile, the
+      // colors would shift
+      const [red = 0, green = 0, blue = 0] = await pixel(output, 16, 16);
+      expect(Math.abs(red - 200)).toBeLessThanOrEqual(2);
+      expect(Math.abs(green - 100)).toBeLessThanOrEqual(2);
+      expect(Math.abs(blue - 50)).toBeLessThanOrEqual(2);
+    }
+  });
+
   test('a crop never leaks into the next size', async () => {
     const out = outDir();
     const result = await imageResize(
@@ -285,6 +309,34 @@ describe('imageResize: sizes', () => {
     expect((await sharp(`${out}landscape@200w.png`).metadata()).height).toBe(
       150
     );
+  });
+
+  test('chained sizes stay aligned with one resize from the source', async () => {
+    const out = outDir();
+    const source = path.join(dir, 'detailed.png');
+    // 667 pixels high: every size's height is rounded
+    await detailedImage(1000, 667).png().toFile(source);
+    const widths = [800, 640, 480, 320, 160];
+    const result = await imageResize(
+      source,
+      out,
+      widths.map((width) => ({ width })),
+      ['png'],
+      silent
+    );
+    for (const size of sizes(result)) {
+      const [width = 0, height = 0] = size.split('x').map(Number);
+      // one resize, scaling each side to the size like the library does
+      const reference = await sharp(source)
+        .resize(width, height, { fit: 'fill' })
+        .png()
+        .toBuffer();
+      // with 'cover', each size cropped a fraction of a pixel more: 0.969 at 480
+      expect(
+        await ssim(reference, `${out}detailed@${width}w.png`),
+        size
+      ).toBeGreaterThan(0.98);
+    }
   });
 
   test('a size is resized from the last buffer only if it is large enough', async () => {
@@ -401,7 +453,9 @@ describe('imageResize: failures and abortScope', () => {
     )) as ResultSourceError;
     expect(error.resultSource.status).toBe('failed');
     expect(error.resultSource.outputsBySetting).toHaveLength(2);
+    // the chain of causes leads to sharp's error about the blocked file
     expect(error.cause).toBeInstanceOf(Error);
+    expect((error.cause as Error).cause).toBeInstanceOf(Error);
   });
 
   test('a source that is not an image', async () => {

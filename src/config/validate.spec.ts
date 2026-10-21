@@ -106,7 +106,7 @@ describe('createEncoders', () => {
     );
     expect(encoders).toEqual([
       { format: 'webp', options: { quality: 60 } },
-      { format: 'jpg', options: { quality: 70, mozjpeg: true } },
+      { format: 'jpg', options: { quality: 70, progressive: true } },
     ]);
   });
 

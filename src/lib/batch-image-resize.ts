@@ -254,10 +254,10 @@ export const batchImageResize = async (
     stopProbes?.();
   }
 
-  const resultSources = results.map(
-    (result, index) =>
-      result ??
-      sourceResult(sources[index]?.path ?? '', 'aborted', performance.now())
+  // every source has a result: those never reached are aborted
+  const resultSources = sources.map(
+    (source, index) =>
+      results[index] ?? sourceResult(source.path, 'aborted', performance.now())
   );
   const batch: ResultBatch = {
     status: allResultsSucceeded(resultSources) ? 'succeed' : 'failed',

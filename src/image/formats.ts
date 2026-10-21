@@ -30,21 +30,23 @@ const OPTIONS_FORMAT: Partial<Record<OutputFormat, OutputFormat>> = {
 const OPAQUE_FORMATS: ReadonlySet<OutputFormat> = new Set(['jpeg', 'jpg']);
 
 /**
- * Default options per format, tuned for the web: small files that look the
- * same as the source at screen sizes.
+ * Default options per format, tuned for the web. JPEG at quality 80 is the
+ * baseline; measured on three photos at 1280 pixels wide (bench/weight.js,
+ * SSIM against the uncompressed pixels):
  *
- * - `jpeg`: mozjpeg (trellis quantisation, progressive scans), about 10%
- *   smaller than libjpeg at the same quality.
- * - `avif`, `heif`: AVIF at quality 50 looks like JPEG at 80, at about half
- *   the size.
- * - `png`: lossless at the highest zlib compression. Its `quality` option
- *   is not set on purpose: it turns on a lossy palette.
+ * - `jpeg`: progressive, 3.5% smaller than baseline JPEG at the same SSIM,
+ *   and shown while it loads. mozjpeg (`{ mozjpeg: true }`) was not smaller
+ *   at the same SSIM, and encodes about 6 times slower.
+ * - `webp`: quality 80, 73% of the JPEG's bytes at the same SSIM.
+ * - `avif`, `heif`: quality 60, 53% of the JPEG's bytes, SSIM within 0.002.
+ * - `png`: lossless, zlib level 9: 4% smaller than level 6. Its `quality`
+ *   option is not set on purpose: it turns on a lossy palette.
  */
 export const DEFAULT_FORMAT_OPTIONS = {
-  avif: { quality: 50 },
+  avif: { quality: 60 },
   gif: {},
-  heif: { quality: 50, compression: 'av1' },
-  jpeg: { quality: 80, mozjpeg: true },
+  heif: { quality: 60, compression: 'av1' },
+  jpeg: { quality: 80, progressive: true },
   jpg: {},
   jp2: {},
   jxl: {},

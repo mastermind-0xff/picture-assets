@@ -18,6 +18,22 @@ const gradient = (width: number, height: number): Buffer => {
   return data;
 };
 
+/**
+ * Fine detail: thin diagonal lines, where a fraction of a pixel of shift
+ * shows in SSIM.
+ */
+export const detailedImage = (width: number, height: number) => {
+  const data = Buffer.alloc(width * height * 3);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++)
+      data.fill(
+        (x + y) % 6 < 2 ? 30 : 225,
+        (y * width + x) * 3,
+        (y * width + x + 1) * 3
+      );
+  return sharp(data, { raw: { width, height, channels: 3 } });
+};
+
 /** An opaque image of the given size. */
 export const opaqueImage = (width: number, height: number) =>
   sharp(gradient(width, height), { raw: { width, height, channels: 3 } });
@@ -54,6 +70,8 @@ export const createTempDir = async (prefix = 'image-assets-') => {
  *   600x800, like phone photos.
  * - `transparent.png`: 400x400, transparent background.
  * - `small.webp`: 200x100.
+ * - `display-p3.png`: 64x64 of sRGB (200, 100, 50), stored as Display P3
+ *   values with the P3 profile, and EXIF.
  * - `corrupt.jpg`: not an image.
  * - `notes.txt`: not an image either, ignored by batches.
  * - `tree/a.jpg`, `tree/sub/b.png`, `tree/sub/deeper/c.webp`: 400x300
@@ -70,6 +88,18 @@ export const writeFixtures = async (dir: string) => {
       .toFile(file('portrait-exif.jpg')),
     transparentImage(400).png().toFile(file('transparent.png')),
     opaqueImage(200, 100).webp().toFile(file('small.webp')),
+    sharp({
+      create: {
+        width: 64,
+        height: 64,
+        channels: 3,
+        background: { r: 200, g: 100, b: 50 },
+      },
+    })
+      .withIccProfile('p3')
+      .withExif({ IFD0: { Copyright: 'fixture' } })
+      .png()
+      .toFile(file('display-p3.png')),
     fs.writeFile(file('corrupt.jpg'), 'not an image'),
     fs.writeFile(file('notes.txt'), 'not an image either'),
     opaqueImage(400, 300).jpeg().toFile(file('tree/a.jpg')),

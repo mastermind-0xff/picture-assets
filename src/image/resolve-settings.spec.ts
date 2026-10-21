@@ -284,6 +284,20 @@ describe('resolveOutputSettings', () => {
     });
   });
 
+  test('the source multiplier is not rounded: no pixel lost', () => {
+    // 3901 / 640 = 6.0953…, rounded to 6.1 it gave 640, 1279 and 1919
+    const resolved = resolveOutputSettings(
+      [{ width: 'x3' }, { width: 'x2' }, { width: 'x1' }],
+      { srcWidth: 3901, srcHeight: 2926 },
+      { width: 640, height: 480 },
+      logger
+    );
+    expect(resolved.map(({ width }) => width)).toEqual([1920, 1280, 640]);
+    expect(resolved.map(({ sizeMultiplier }) => sizeMultiplier)).toEqual([
+      3, 2, 1,
+    ]);
+  });
+
   test('sizes are at least 1 pixel', () => {
     expect(
       resolveOutputSettings([{ width: 'x0.001' }], source, 'x1', logger)

@@ -111,6 +111,8 @@ interface ResizeBase {
   height: number;
   /** A baked buffer of an earlier size, not the source. */
   isBuffer: boolean;
+  /** Has the source's aspect ratio, up to the rounding of its size. */
+  keepsAspectRatio: boolean;
 }
 
 /**
@@ -178,6 +180,7 @@ export const sourceToSettings = async (
     width: srcWidth,
     height: srcHeight,
     isBuffer: false,
+    keepsAspectRatio: true,
   };
   let base = sourceBase;
 
@@ -195,8 +198,18 @@ export const sourceToSettings = async (
 
     let result: ResultSetting;
     try {
+      // same aspect ratio up to rounding: 'cover' would crop a fraction of a
+      // pixel, and each size resized from the previous one would add its
+      // own, shifting the image (up to 0.1 SSIM lost after a few sizes)
+      const fit =
+        resizeOptions?.fit ??
+        (start.keepsAspectRatio && setting.isMatchingSourceAspectRatio ?
+          'fill'
+        : undefined);
       // a fresh pipeline per setting: operations never leak to the next one
-      const pipeline = start.image.clone().resize(width, height, resizeOptions);
+      const pipeline = start.image
+        .clone()
+        .resize(width, height, { ...resizeOptions, ...(fit && { fit }) });
       if (extractRegion) pipeline.extract(extractRegion);
 
       const { data, info } = await pipeline
@@ -245,6 +258,8 @@ export const sourceToSettings = async (
           width: info.width,
           height: info.height,
           isBuffer: true,
+          keepsAspectRatio:
+            setting.isMatchingSourceAspectRatio && extractRegion === undefined,
         };
     } catch (error: unknown) {
       result = {
@@ -259,12 +274,17 @@ export const sourceToSettings = async (
     outputsBySetting.push(result);
 
     if (result.status === 'failed' && abortScope !== 'none') {
-      if (abortScope === 'batch')
+      if (abortScope === 'batch') {
+        // the resize's error, or the first file's
+        const failedFile = result.files.find(
+          (file) => file.status === 'failed'
+        );
         context.abort(
           new Error(`Setting ${result.size} of ${srcPath} failed.`, {
-            cause: result.error,
+            cause: result.error ?? failedFile?.error,
           })
         );
+      }
       return { outputsBySetting, stopped: true };
     }
   }

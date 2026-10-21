@@ -127,14 +127,10 @@ export const getSourceMultiplier = (
 
   if (typeof resizeStrategyHint === 'object') {
     // get the multiplier that can satisfy both width and height and will match
-    // aspect ratio of the x1 resolution
-    return (
-      Math.round(
-        Math.min(
-          srcWidth / resizeStrategyHint.width,
-          srcHeight / resizeStrategyHint.height
-        ) * 100
-      ) / 100
+    // aspect ratio of the x1 resolution; not rounded: sizes derive from it
+    return Math.min(
+      srcWidth / resizeStrategyHint.width,
+      srcHeight / resizeStrategyHint.height
     );
   }
 
@@ -143,8 +139,7 @@ export const getSourceMultiplier = (
       settings,
       sourceDimensions
     );
-    if (minWidth && minWidth <= srcWidth)
-      return Math.round((srcWidth / minWidth) * 100) / 100;
+    if (minWidth && minWidth <= srcWidth) return srcWidth / minWidth;
 
     if (isNumber(maxMultiplier)) return maxMultiplier;
 
