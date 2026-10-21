@@ -11,7 +11,7 @@
  */
 import path from 'node:path';
 
-import { generateAssets, readManifest } from 'image-assets-generator';
+import { generateAssets, readManifest } from '@mmutils/image-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'generate');
 const config = {

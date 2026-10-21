@@ -14,7 +14,7 @@
  */
 import path from 'node:path';
 
-import { DEFAULT_FORMAT_OPTIONS, imageResize } from 'image-assets-generator';
+import { DEFAULT_FORMAT_OPTIONS, imageResize } from '@mmutils/image-assets';
 
 console.log('defaults:', JSON.stringify(DEFAULT_FORMAT_OPTIONS.webp));
 

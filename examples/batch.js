@@ -16,7 +16,7 @@
  */
 import path from 'node:path';
 
-import { batchImageResize } from 'image-assets-generator';
+import { batchImageResize } from '@mmutils/image-assets';
 
 const images = path.join(import.meta.dirname, 'images');
 const output = path.join(import.meta.dirname, 'output');

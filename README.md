@@ -1,4 +1,4 @@
-# image-assets-generator
+# @mmutils/image-assets
 
 Turns source images into web-ready assets: every resolution (pixels or
 `x2`-style multipliers) and format you need, from one image or a whole
@@ -7,11 +7,11 @@ library, built on [sharp](https://sharp.pixelplumbing.com/), logging with
 [@mmutils/logger](https://www.npmjs.com/package/@mmutils/logger).
 
 ```sh
-npx image-assets src/images -o public/img
+npx @mmutils/image-assets src/images -o public/img
 ```
 
 ```ts
-import { generateAssets } from 'image-assets-generator';
+import { generateAssets } from '@mmutils/image-assets';
 
 await generateAssets({ input: 'src/images', output: 'public/img' });
 ```
@@ -45,10 +45,13 @@ for transparent images): `public/img/house@1280w.avif`, ….
 ## Install
 
 ```sh
-npm install image-assets-generator
+npm install @mmutils/image-assets
 ```
 
-Requires Node.js 22.17 or newer.
+Requires Node.js 22.17 or newer. The package installs the `image-assets`
+command: run it with `npx image-assets` or from your `package.json`
+scripts. Without installing, run `npx @mmutils/image-assets`:
+`npx image-assets` alone would fetch `image-assets`, another package.
 
 ## Command line: `image-assets`
 
@@ -420,7 +423,7 @@ left before 1.0: [docs/cli-proposal.md](docs/cli-proposal.md).
 
 ## AI use
 
-image-assets-generator is developed with AI assistance: since the 2026
+@mmutils/image-assets is developed with AI assistance: since the 2026
 revamp (the toolchain, the fixes, the command line), most of the code,
 tests, benchmarks and documentation was written with AI. The author
 designs the features, makes the decisions and reviews the changes, and

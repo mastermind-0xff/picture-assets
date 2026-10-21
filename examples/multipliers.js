@@ -15,7 +15,7 @@
  */
 import path from 'node:path';
 
-import { imageResize } from 'image-assets-generator';
+import { imageResize } from '@mmutils/image-assets';
 
 const source = path.join(import.meta.dirname, 'images', 'house-01.jpg');
 const output = path.join(import.meta.dirname, 'output', 'multipliers');

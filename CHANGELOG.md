@@ -36,6 +36,8 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Changed
 
+- **Package name**: `@mmutils/image-assets` (was `image-assets-generator`,
+  taken on npm by another package). The command is still `image-assets`.
 - **License**: MIT (was ISC).
 - **Suffix wildcards** `{sm}`, `{wm}` and `{hm}` are `{x}` (the multiplier,
   as in `@{x}x` for `@2x`), `{wx}` and `{hx}`. Any other name in braces

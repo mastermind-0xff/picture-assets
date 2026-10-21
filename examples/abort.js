@@ -18,7 +18,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { generateAssets } from 'image-assets-generator';
+import { generateAssets } from '@mmutils/image-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'abort');
 // start from nothing, so the first run has work to stop

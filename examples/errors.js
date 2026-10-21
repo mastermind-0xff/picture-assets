@@ -17,7 +17,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { batchImageResize, ResultBatchError } from 'image-assets-generator';
+import { batchImageResize, ResultBatchError } from '@mmutils/image-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'errors');
 const sources = path.join(output, 'sources');

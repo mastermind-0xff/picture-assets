@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { batchImageResize } from 'image-assets-generator';
+import { batchImageResize } from '@mmutils/image-assets';
 import { jsonPlugin, Logger } from '@mmutils/logger';
 
 const images = path.join(import.meta.dirname, 'images', 'group-1');

@@ -9,7 +9,7 @@
  */
 import path from 'node:path';
 
-import { imageResize } from 'image-assets-generator';
+import { imageResize } from '@mmutils/image-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'picture');
 const result = await imageResize(

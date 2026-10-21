@@ -1,5 +1,5 @@
 {
-  "name": "image-assets-generator",
+  "name": "@mmutils/image-assets",
   "version": "0.0.1",
   "description": "Turns source images into web-ready assets: every resolution (pixels or x2-style multipliers) and format you need, from a single image or a whole directory tree, with high quality, low weight defaults.",
   "keywords": [
@@ -10,10 +10,15 @@
     "avif",
     "webp",
     "sharp",
-    "assets"
+    "assets",
+    "cli",
+    "mmutils"
   ],
   "author": "Tihomir Trifonov aka Mastermind",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",

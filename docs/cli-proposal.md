@@ -20,7 +20,7 @@ A single function whose argument is plain JSON, so code, a config file and
 CLI flags all describe the same thing:
 
 ```ts
-import { generateAssets } from 'image-assets-generator';
+import { generateAssets } from '@mmutils/image-assets';
 
 const result = await generateAssets({
   input: 'src/images', // file, directory, glob, or a list of them
@@ -168,10 +168,11 @@ Breaking changes, cheapest now, while nothing is published:
    `'x2'`, or `{ width, height }`: what it sets, not how.
 3. **Statuses**: `'succeeded'`, `'failed'`, `'aborted'`, `'skipped'`;
    `outputsBySetting` → `sizes`; `fileData` → `info`.
-4. **Package name**: `image-assets-generator` is taken on npm, by another
-   author's package (1.0.2, a tool that writes JSON files for asset
-   directories). `@mmutils/image-assets` would match the other packages.
-   The license is decided: MIT, as theirs.
+4. **Package name and license**: decided. `@mmutils/image-assets`, as
+   `image-assets-generator` is taken on npm by another author's package,
+   and MIT, as the other `@mmutils` packages. The command stays
+   `image-assets` (`image-assets` on npm is another package too: run
+   without installing, it is `npx @mmutils/image-assets`).
 5. **Animated images**: GIF and WebP sources are read as their first frame
    only. Supporting animation is sharp's `animated: true` on input and
    output, with sizes resized frame by frame.
