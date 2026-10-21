@@ -27,7 +27,11 @@ export class ResultBatchError extends Error {
   override name = 'ResultBatchError';
   readonly resultBatch: ResultBatch;
 
-  constructor(message: string, resultBatch: ResultBatch, options?: ErrorOptions) {
+  constructor(
+    message: string,
+    resultBatch: ResultBatch,
+    options?: ErrorOptions
+  ) {
     super(message, options);
     this.resultBatch = resultBatch;
   }

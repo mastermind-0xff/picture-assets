@@ -139,9 +139,7 @@ export const parseLogger = (value: unknown): LogLevel | ImageAssetsLogger => {
       (method) => typeof value[method] !== 'function'
     );
     if (missing.length === 0) return value as unknown as ImageAssetsLogger;
-    throw new TypeError(
-      `Logger is missing the methods ${missing.join(', ')}.`
-    );
+    throw new TypeError(`Logger is missing the methods ${missing.join(', ')}.`);
   }
   throw new TypeError(
     `Logger must be a log level or a logger object, got ${describe(value)}.`

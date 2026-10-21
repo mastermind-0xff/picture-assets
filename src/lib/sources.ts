@@ -15,8 +15,7 @@ import { isInputFile } from '../image/formats.js';
  * before its first wildcard, or `root`) is mirrored in the destination.
  */
 export type BatchSource =
-  | string
-  | { readonly root: string; readonly pattern: string };
+  string | { readonly root: string; readonly pattern: string };
 
 /** A source file found for a batch. */
 export interface FoundSource {
@@ -43,7 +42,10 @@ export const splitGlob = (glob: string): { root: string; pattern: string } => {
   // keep filesystem roots: '/**' is '/', 'C:/**' is 'C:/'
   if (root === '' && normalized.startsWith('/')) root = '/';
   else if (/^[a-z]:$/i.test(root)) root += '/';
-  return { root: root === '' ? '.' : root, pattern: segments.slice(index).join('/') };
+  return {
+    root: root === '' ? '.' : root,
+    pattern: segments.slice(index).join('/'),
+  };
 };
 
 /** Checks the batch's `srcPath` argument. */
@@ -90,7 +92,9 @@ export const findSources = async (
         sources: [{ path: input, relativeDir: '' }],
       };
     ({ root, pattern } =
-      stats?.isDirectory() ? { root: input, pattern: '**/*' } : splitGlob(input));
+      stats?.isDirectory() ?
+        { root: input, pattern: '**/*' }
+      : splitGlob(input));
   } else ({ root, pattern } = input);
 
   const absoluteRoot = path.resolve(root);

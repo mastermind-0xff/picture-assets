@@ -43,7 +43,9 @@ export interface ImageResizeOptions {
    *
    * Default: `{}` (`IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS`, as JSON).
    */
-  readonly formatOptions?: { readonly [F in keyof OutputFormatsOptions]?: OutputFormatsOptions[F] };
+  readonly formatOptions?: {
+    readonly [F in keyof OutputFormatsOptions]?: OutputFormatsOptions[F];
+  };
 
   /**
    * What a failure stops, see `AbortScope`.

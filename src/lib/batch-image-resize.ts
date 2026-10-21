@@ -55,7 +55,8 @@ export const computeConcurrency = (
   env: NodeJS.ProcessEnv = process.env
 ): number => {
   const uvThreads = Number(env.UV_THREADPOOL_SIZE);
-  const poolSize = Number.isSafeInteger(uvThreads) && uvThreads > 0 ? uvThreads : 4;
+  const poolSize =
+    Number.isSafeInteger(uvThreads) && uvThreads > 0 ? uvThreads : 4;
   const parallelism = os.availableParallelism();
   const wanted =
     concurrency === 'auto' ? Math.min(poolSize, parallelism)
@@ -207,7 +208,9 @@ export const batchImageResize = async (
         resolvedOptions.formatOptions
       );
       const key =
-        CASE_INSENSITIVE_FS ? target.outputPath.toLowerCase() : target.outputPath;
+        CASE_INSENSITIVE_FS ?
+          target.outputPath.toLowerCase()
+        : target.outputPath;
       const owner = owners.get(key);
       if (owner !== undefined)
         throw new Error(
@@ -217,7 +220,12 @@ export const batchImageResize = async (
       targets[index] = target;
     } catch (error: unknown) {
       logger.error({ source: source.path, error });
-      results[index] = sourceResult(source.path, 'failed', performance.now(), error);
+      results[index] = sourceResult(
+        source.path,
+        'failed',
+        performance.now(),
+        error
+      );
       if (resolvedOptions.abortScope === 'batch') context.abort(error);
     }
   });
@@ -231,7 +239,12 @@ export const batchImageResize = async (
       const source = sources[index];
       const target = targets[index];
       if (source === undefined || target === undefined) continue;
-      results[index] = await processSource(source.path, target, settings, context);
+      results[index] = await processSource(
+        source.path,
+        target,
+        settings,
+        context
+      );
       processed++;
     }
   };
@@ -243,7 +256,8 @@ export const batchImageResize = async (
 
   const resultSources = results.map(
     (result, index) =>
-      result ?? sourceResult(sources[index]?.path ?? '', 'aborted', performance.now())
+      result ??
+      sourceResult(sources[index]?.path ?? '', 'aborted', performance.now())
   );
   const batch: ResultBatch = {
     status: allResultsSucceeded(resultSources) ? 'succeed' : 'failed',

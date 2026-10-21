@@ -109,6 +109,8 @@ interface ResizeBase {
   image: Sharp;
   width: number;
   height: number;
+  /** A baked buffer of an earlier size, not the source. */
+  isBuffer: boolean;
 }
 
 /**
@@ -149,8 +151,11 @@ export const sourceToSettings = async (
 ): Promise<{ outputsBySetting: ResultSetting[]; stopped: boolean }> => {
   const { logger, resizeStrategyHint, suffix, abortScope, signal } = context;
 
+  // read once: every size sees the same file, and libvips' file cache never
+  // keeps it open (Windows can't change or delete open files)
+  const input = await fs.readFile(srcPath);
   // EXIF orientation applied: phone photos are often stored sideways
-  const source = sharp(srcPath, { autoOrient: true });
+  const source = sharp(input, { autoOrient: true });
   const {
     autoOrient: { width: srcWidth, height: srcHeight },
     hasAlpha,
@@ -168,28 +173,41 @@ export const sourceToSettings = async (
 
   const outputsBySetting: ResultSetting[] = [];
   const identifiers = new Set<string>();
-  let base: ResizeBase = { image: source, width: srcWidth, height: srcHeight };
+  const sourceBase: ResizeBase = {
+    image: source,
+    width: srcWidth,
+    height: srcHeight,
+    isBuffer: false,
+  };
+  let base = sourceBase;
 
   for (const setting of resolvedSettings) {
     if (signal.aborted) return { outputsBySetting, stopped: true };
 
     const { width, height, resizeOptions, extractRegion } = setting;
-    const fromSource =
-      setting.generateFromSource || base.width < width || base.height < height;
+    const start =
+      setting.generateFromSource || base.width < width || base.height < height ?
+        sourceBase
+      : base;
+    logger.verbose(
+      `Resizing ${srcPath} to ${width}x${height} from ${start.isBuffer ? `the ${start.width}x${start.height} buffer` : 'the source'}`
+    );
 
     let result: ResultSetting;
     try {
       // a fresh pipeline per setting: operations never leak to the next one
-      const pipeline = (fromSource ? source : base.image)
-        .clone()
-        .resize(width, height, resizeOptions);
+      const pipeline = start.image.clone().resize(width, height, resizeOptions);
       if (extractRegion) pipeline.extract(extractRegion);
 
       const { data, info } = await pipeline
         .raw({ depth: 'uchar' })
         .toBuffer({ resolveWithObject: true });
       const baked = sharp(data, {
-        raw: { width: info.width, height: info.height, channels: info.channels },
+        raw: {
+          width: info.width,
+          height: info.height,
+          channels: info.channels,
+        },
       });
 
       const outputIdentifier = `${outputPath}${parseSuffix(
@@ -222,9 +240,19 @@ export const sourceToSettings = async (
       };
 
       if (setting.useAsNextResizeIteration)
-        base = { image: baked, width: info.width, height: info.height };
+        base = {
+          image: baked,
+          width: info.width,
+          height: info.height,
+          isBuffer: true,
+        };
     } catch (error: unknown) {
-      result = { status: 'failed', size: `${width}x${height}`, files: [], error };
+      result = {
+        status: 'failed',
+        size: `${width}x${height}`,
+        files: [],
+        error,
+      };
       logger.error({ source: srcPath, size: result.size, error });
     }
 

@@ -51,7 +51,9 @@ export const resolveTarget = (
 /** Checks a path argument: a non-empty string. */
 export const assertPath = (name: string, value: unknown): string => {
   if (typeof value === 'string' && value.trim() !== '') return value;
-  throw new TypeError(`${name} must be a non-empty path, got ${describe(value)}.`);
+  throw new TypeError(
+    `${name} must be a non-empty path, got ${describe(value)}.`
+  );
 };
 
 /** Creates the result of a source that was not processed or failed early. */

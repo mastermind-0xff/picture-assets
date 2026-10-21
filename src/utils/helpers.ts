@@ -34,14 +34,16 @@ export const formatDuration = (ms: number): string =>
 /** Formats a size in bytes: `'812 B'`, `'45.3 kB'`, `'1.25 MB'`. */
 export const formatBytes = (bytes: number): string => {
   if (bytes < 1000) return `${bytes} B`;
-  const units = ['kB', 'MB', 'GB'];
+  const units = ['kB', 'MB', 'GB', 'TB'];
   let value = bytes / 1000;
   let unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
+  // 999.5 would print as 1.00e+3: move up a unit before rounding does
+  while (value >= 999.5 && unit < units.length - 1) {
     value /= 1000;
     unit++;
   }
-  return `${value.toPrecision(3)} ${units[unit] ?? ''}`;
+  const digits = value >= 100 ? `${Math.round(value)}` : value.toPrecision(3);
+  return `${digits} ${units[unit] ?? ''}`;
 };
 
 /** CPU usage snapshot with a high‑resolution timestamp (nanoseconds). */

@@ -25,8 +25,7 @@ export interface SourceDimensions {
   srcHeight: number;
 }
 
-const isNumber = (value: unknown): value is number =>
-  typeof value === 'number';
+const isNumber = (value: unknown): value is number => typeof value === 'number';
 
 /**
  * Get the boundaries from width and height properties of the output settings

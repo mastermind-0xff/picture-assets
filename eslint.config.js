@@ -5,7 +5,13 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', 'coverage', 'examples/output', 'bench/output'],
+    ignores: [
+      'dist',
+      'node_modules',
+      'coverage',
+      'examples/output',
+      'bench/output',
+    ],
   },
   js.configs.recommended,
   {
