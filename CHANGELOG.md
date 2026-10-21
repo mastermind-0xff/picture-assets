@@ -6,7 +6,33 @@ A revamp of the unreleased 0.0.1: the same pipeline (sizes resolved from
 pixels or multipliers, each size resized from the previous one, formats
 encoded in parallel, batches processed by a pool of workers) on a modern
 toolchain, with its bugs fixed, every argument validated and logging with
-`@mmutils/logger`.
+`@mmutils/logger`. And a command line, with the one-config API under it.
+
+### Added: the command line and `generateAssets`
+
+- **`image-assets`**: `image-assets <input...> -o <dir>`, with flags for
+  sizes, formats, quality, suffix, strategy, upscaling, failures,
+  concurrency, a manifest, `--dry-run` and `--json`; a config file
+  (`image-assets.config.json`, `.js` or `.mjs`) under the flags. Logs on
+  stderr; exit codes 0, 1 (failures), 2 (usage), 130 (interrupted); Ctrl+C
+  lets the files in progress finish. Without `UV_THREADPOOL_SIZE`, it runs
+  itself again with the pool sized to the cores: a third less time per
+  batch.
+- **`generateAssets(config)`**: one plain data config for code, config
+  files and flags; only `input` (files, directories, globs, or a list) and
+  `output` are required. Unknown keys throw.
+- **`planAssets(config)`**: what a run would write, nothing written.
+- **Presets**: sizes `'responsive'` (default) and `'retina'`; formats
+  `'web'` (default), `'modern'` and `'lossless'`. Shorthands: widths
+  `[1280, 640]`, multipliers `['x2']` suffixed `@2x`.
+- **`'fallback'` format**: JPEG, or PNG for transparent sources.
+- **`upscale`**: with `false`, sizes larger than the source are skipped,
+  the largest made at the source's size. `false` with a sizes preset.
+- **Manifest and incremental runs** (`manifest`, `force`): unchanged
+  sources are `'skipped'`; the manifest lists every file for templates;
+  `readManifest`.
+- **`signal`** for batches: an `AbortSignal` that stops them (`'aborted'`).
+- Sources report their `width` and `height`.
 
 ### Changed
 

@@ -86,7 +86,7 @@ picks: more only wait for a thread. With a pool as large as the
 machine's parallelism, all 10 sources at once take 885ms: 33% less time, the
 CPU 70% busy instead of 32%. The pool must be sized before the process
 starts, which a library can't do for its host: set `UV_THREADPOOL_SIZE` for
-your build scripts, and the CLI will set it (see
+your build scripts; the command line does it for you (see
 [docs/cli-proposal.md](../docs/cli-proposal.md)).
 
 **formats.js**: encoding a 1280 pixels wide image, nothing else.

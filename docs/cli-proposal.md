@@ -1,6 +1,9 @@
 # Proposal: a CLI-ready 1.0
 
-Status: proposal, for discussion. Nothing here is implemented yet.
+Status: sections 1 to 4 are implemented (`generateAssets`, `planAssets`,
+presets, the manifest and the `image-assets` command; see the README).
+Section 5 is open: its decisions are the author's. Where the
+implementation differs from the plan below, a note says why.
 
 The goal: one tool for code and for the command line, with very few
 settings and a great result every time. The revamp laid the groundwork a
@@ -33,6 +36,10 @@ const result = await generateAssets({
   incremental: true,
 });
 ```
+
+_Implemented without `incremental`:_ a `manifest` alone makes runs
+incremental, and `force: true` processes everything; one key less, and no
+incremental run without the file it needs.
 
 - `generateAssets` is a batch: a single file is a batch of one, so there
   is one result shape (`ResultBatch`).
@@ -114,9 +121,17 @@ image-assets <input...> --output <dir> [options]
   file is left behind, then the partial result is printed.
 - **Thread pool**: sharp runs on libuv's pool, 4 threads by default, which
   `concurrency: 'auto'` follows. On a 12 thread laptop, a pool of 12 cut a
-  10 photo batch from 1.32s to 885ms (bench/README.md). The bin sets
-  `process.env.UV_THREADPOOL_SIZE` to `os.availableParallelism()` on its
-  first line, before anything uses the pool, unless the user set it.
+  10 photo batch from 1.32s to 885ms (bench/README.md).
+
+  _Implemented differently:_ the plan was to set
+  `process.env.UV_THREADPOOL_SIZE` on the bin's first line. Measured, it
+  has no effect: libuv sizes its pool when the process starts (12 parallel
+  `pbkdf2` jobs took as long as with 4 threads, whether set from an ES
+  module, a CommonJS file's first line or before a dynamic `import()`).
+  Without the variable, the command runs itself again once with it set:
+  one more Node start-up, for a third less time per batch. A size set by
+  the user is kept, and Ctrl+C reaches both processes.
+
 - **Dry run** prints the resolved sizes per source (pixels from
   multipliers) and the files, without writing: settings with multipliers
   are hard to predict otherwise.
@@ -133,6 +148,13 @@ src/cli/
 ```
 
 `package.json` gets `"bin": { "image-assets": "./dist/esm/cli/main.js" }`.
+
+_Implemented as:_ `src/cli.ts` (the bin, `dist/esm/cli.js`: thread pool,
+signals, process streams), `src/cli/run.ts` (`runCli`, which takes its
+streams as arguments, so the whole command is tested in-process),
+`src/cli/args.ts`, `src/cli/config.ts`, `src/config/presets.ts` (presets
+are a library feature), `src/lib/generate-assets.ts` and
+`src/lib/manifest.ts`.
 
 ## 5. API decisions to take before 1.0
 

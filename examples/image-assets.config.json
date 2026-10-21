@@ -1,0 +1,8 @@
+{
+  "input": "images/group-1",
+  "output": "output/cli",
+  "sizes": [1280, 640],
+  "formats": "modern",
+  "formatOptions": { "avif": { "quality": 55 } },
+  "manifest": "output/cli/assets.json"
+}

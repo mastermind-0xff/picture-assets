@@ -15,6 +15,8 @@ const EXAMPLES = [
   'batch.js',
   'errors.js',
   'logging.js',
+  'generate.js',
+  'cli.js',
 ];
 
 for (const example of EXAMPLES) {
