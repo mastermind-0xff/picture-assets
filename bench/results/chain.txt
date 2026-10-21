@@ -1,0 +1,109 @@
+mm-bench  node v22.22.2 · win32 x64 · Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz (12 cores) · timer step 100ns
+2 cases · 4 samples · 12.0s · 1 warm-up runs
+  sample 1/4  chained (default)  3 runs in 4.01s · mean 1.34s
+  sample 1/4  from the source  2 runs in 4.16s · mean 2.08s
+  sample 2/4  from the source  2 runs in 4.14s · mean 2.07s
+  sample 2/4  chained (default)  3 runs in 3.86s · mean 1.29s
+  sample 3/4  chained (default)  3 runs in 3.85s · mean 1.28s
+  sample 3/4  from the source  2 runs in 4.14s · mean 2.07s
+  sample 4/4  from the source  2 runs in 4.14s · mean 2.07s
+  sample 4/4  chained (default)  3 runs in 3.88s · mean 1.29s
+
+chained (default) async                                                  fastest
+mean      1.30s                         median    1.29s
+p99       1.34s                         p99.9     1.34s
+ops/s     0.77                          runs      12
+stddev    23.1ms                        off graph 0%
+overhead  64.0ns (subtracted)
+! 12 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                       41.7 %
+│█                                                                             │
+│█                                                                             │
+│█                                                                             │
+│█                                                                             │
+│█                                                                             │
+│█▅   ▅                                                                        │
+│██   █                                                                        │
+│██▆▆ █▆                                                                       │
+│████ ██                                                                       │
+1s 276ms                                                                 2s 85ms
+                                                                           0.0 %
+
+Mean run time over the sample                                             2.08 s
+│                                                                              │
+│▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 900ms
+average: 1.30 s                                                           0.00 s
+min: 1.30 s
+max: 1.30 s
+
+All cores usage, % of 12 cores                                             9.3 %
+│███████████████████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇█████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 900ms
+average: 9.3 %                                                             0.0 %
+min: 9.1 %
+max: 9.3 %
+
+from the source async                                               59.3% slower
+mean      2.07s                         median    2.07s
+p99       2.09s                         p99.9     2.09s
+ops/s     0.48                          runs      8
+stddev    9.78ms                        off graph 0%
+overhead  64.7ns (subtracted)
+! 8 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                       41.7 %
+│                                                                            ▁▁│
+│                                                                            ██│
+│                                                                            ██│
+│                                                                           ▃██│
+│                                                                           ███│
+│                                                                           ███│
+│                                                                           ███│
+│                                                                           ███│
+│                                                                           ███│
+1s 276ms                                                                 2s 85ms
+                                                                           0.0 %
+
+Mean run time over the sample                                             2.08 s
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     4s 143ms
+average: 2.07 s                                                           0.00 s
+min: 2.07 s
+max: 2.08 s
+
+All cores usage, % of 12 cores                                             9.3 %
+│▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     4s 143ms
+average: 8.8 %                                                             0.0 %
+min: 8.7 %
+max: 8.9 %
+
+case              |  mean | median |   p99 | ops/s | vs fastest
+chained (default) | 1.30s |  1.29s | 1.34s |  0.77 | fastest
+from the source   | 2.07s |  2.07s | 2.09s |  0.48 | 59.3% slower
+08:06:39 [i]   info    Quality: SSIM against one resize from the full resolution pixels
+photo    | width | chained | from the source
+house-01 | 2560w |       1 |               1
+house-01 | 1920w |  0.9987 |               1
+house-01 | 1280w |  0.9987 |          0.9905
+house-01 | 960w  |  0.9979 |          0.9947
+house-01 | 640w  |  0.9976 |          0.9784
+house-01 | 320w  |   0.998 |          0.9563
+house-10 | 1920w |  0.9959 |          0.9959
+house-10 | 1280w |  0.9969 |          0.9892
+house-10 | 960w  |  0.9973 |          0.9935
+house-10 | 640w  |  0.9978 |          0.9683
+house-10 | 320w  |  0.9986 |          0.9888
+house-03 | 1600w |       1 |               1
+house-03 | 1200w |  0.9984 |               1
+house-03 | 800w  |  0.9984 |          0.9986
+house-03 | 400w  |  0.9982 |           0.998

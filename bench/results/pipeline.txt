@@ -1,0 +1,136 @@
+mm-bench  node v22.22.2 · win32 x64 · Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz (12 cores) · timer step 100ns
+3 cases · 4 samples · 12.0s · 1 warm-up runs
+  sample 1/4  sharp, naive  2 runs in 3.36s · mean 1.68s
+  sample 1/4  sharp, decode per size  3 runs in 3.03s · mean 1.01s
+  sample 1/4  imageResize  5 runs in 3.70s · mean 739ms
+  sample 2/4  imageResize  5 runs in 3.65s · mean 730ms
+  sample 2/4  sharp, decode per size  4 runs in 3.92s · mean 980ms
+  sample 2/4  sharp, naive  2 runs in 3.32s · mean 1.66s
+  sample 3/4  sharp, naive  2 runs in 3.22s · mean 1.61s
+  sample 3/4  sharp, decode per size  4 runs in 3.92s · mean 979ms
+  sample 3/4  imageResize  5 runs in 3.69s · mean 739ms
+  sample 4/4  imageResize  4 runs in 3.00s · mean 751ms
+  sample 4/4  sharp, decode per size  4 runs in 3.91s · mean 977ms
+  sample 4/4  sharp, naive  2 runs in 3.21s · mean 1.61s
+
+sharp, naive async                                                  2.22× slower
+mean      1.64s                         median    1.62s
+p99       1.69s                         p99.9     1.69s
+ops/s     0.61                          runs      8
+stddev    34.2ms                        off graph 0%
+overhead  64.3ns (subtracted)
+! 8 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                       42.1 %
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                       ▃     ▃│
+│                                                                       █     █│
+│                                                                       █     █│
+│                                                                      ▅█▅ ▅ ▅█│
+│                                                                      ███ █ ██│
+│                                                                      ███ █ ██│
+720ms 629µs                                                             1s 687ms
+                                                                           0.0 %
+
+Mean run time over the sample                                             1.64 s
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 277ms
+average: 1.64 s                                                           0.00 s
+min: 1.63 s
+max: 1.64 s
+
+All cores usage, % of 12 cores                                            11.2 %
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 277ms
+average: 9.1 %                                                             0.0 %
+min: 9.0 %
+max: 9.1 %
+
+sharp, decode per size async                                        33.2% slower
+mean      985ms                         median    983ms
+p99       1.03s                         p99.9     1.03s
+ops/s     1.02                          runs      15
+stddev    16.2ms                        off graph 0%
+overhead  66.9ns (subtracted)
+! 15 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                       42.1 %
+│                    ▄                                                         │
+│                    █                                                         │
+│                    █                                                         │
+│                    █▆                                                        │
+│                    ██                                                        │
+│                    ██                                                        │
+│                    ██▇                                                       │
+│                   ▃███▃▃                                                     │
+│                   ██████                                                     │
+720ms 629µs                                                             1s 687ms
+                                                                           0.0 %
+
+Mean run time over the sample                                             1.64 s
+│                                                                              │
+│▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 694ms
+average: 0.99 s                                                           0.00 s
+min: 0.98 s
+max: 0.99 s
+
+All cores usage, % of 12 cores                                            11.2 %
+│▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 694ms
+average: 9.8 %                                                             0.0 %
+min: 9.4 %
+max: 10.1 %
+
+imageResize async                                                        fastest
+mean      739ms                         median    737ms
+p99       784ms                         p99.9     784ms
+ops/s     1.35                          runs      19
+stddev    14.3ms                        off graph 0%
+overhead  63.5ns (subtracted)
+! 19 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                       42.1 %
+│█                                                                             │
+│█▇                                                                            │
+│██                                                                            │
+│██                                                                            │
+│██                                                                            │
+│██                                                                            │
+│██▂                                                                           │
+│███▁ ▁                                                                        │
+│████ █                                                                        │
+720ms 629µs                                                             1s 687ms
+                                                                           0.0 %
+
+Mean run time over the sample                                             1.64 s
+│                                                                              │
+│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 512ms
+average: 0.74 s                                                           0.00 s
+min: 0.73 s
+max: 0.75 s
+
+All cores usage, % of 12 cores                                            11.2 %
+│▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▆▆█████████████▇▇▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 512ms
+average: 10.2 %                                                            0.0 %
+min: 9.9 %
+max: 11.2 %
+
+case                   |  mean | median |   p99 | ops/s | vs fastest
+sharp, naive           | 1.64s |  1.62s | 1.69s |  0.61 | 2.22× slower
+sharp, decode per size | 985ms |  983ms | 1.03s |  1.02 | 33.2% slower
+imageResize            | 739ms |  737ms | 784ms |  1.35 | fastest

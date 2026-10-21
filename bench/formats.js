@@ -1,0 +1,41 @@
+/**
+ * Encoding cost per format: the photo resized once to 1280 pixels wide
+ * (prepared at the top level, so every worker has it), then encoded to a
+ * buffer with the library's default options, and with the options they
+ * replace. Only the encoder is measured: no decoding, resizing or writing.
+ *
+ * What the bytes buy is in bench/weight.js.
+ *
+ * Run: npm run build && node bench/formats.js [--quick]
+ */
+import { bench, compare, loggerReporter } from '@mmutils/bench';
+import sharp from 'sharp';
+
+import { GRAPHS, LIBRARY, PHOTO, measureOptions } from './shared.js';
+
+const { DEFAULT_FORMAT_OPTIONS: DEFAULTS } = await import(LIBRARY.href);
+
+const { data, info } = await sharp(PHOTO)
+  .autoOrient()
+  .resize(1280)
+  .raw()
+  .toBuffer({ resolveWithObject: true });
+const image = () =>
+  sharp(data, {
+    raw: { width: info.width, height: info.height, channels: info.channels },
+  });
+
+await compare(
+  bench('jpeg q80 baseline', () => image().jpeg({ quality: 80 }).toBuffer()),
+  bench('jpeg q80 progressive (default)', () =>
+    image().jpeg(DEFAULTS.jpeg).toBuffer()
+  ),
+  bench('jpeg q86 mozjpeg', () =>
+    image().jpeg({ quality: 86, mozjpeg: true }).toBuffer()
+  ),
+  bench('webp q80 (default)', () => image().webp(DEFAULTS.webp).toBuffer()),
+  bench('avif q60 (default)', () => image().avif(DEFAULTS.avif).toBuffer()),
+  bench('png zlib 6', () => image().png().toBuffer()),
+  bench('png zlib 9 (default)', () => image().png(DEFAULTS.png).toBuffer()),
+  { ...measureOptions(6000), output: loggerReporter({ graphs: GRAPHS }) }
+);
