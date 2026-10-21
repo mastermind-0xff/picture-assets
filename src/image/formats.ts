@@ -36,7 +36,7 @@ const OPAQUE_FORMATS: ReadonlySet<OutputFormat> = new Set(['jpeg', 'jpg']);
  *
  * - `jpeg`: progressive, 3.5% smaller than baseline JPEG at the same SSIM,
  *   and shown while it loads. mozjpeg (`{ mozjpeg: true }`) was not smaller
- *   at the same SSIM, and encodes about 6 times slower.
+ *   at the same SSIM, and encodes about 5 times slower.
  * - `webp`: quality 80, 73% of the JPEG's bytes at the same SSIM.
  * - `avif`, `heif`: quality 60, 53% of the JPEG's bytes, SSIM within 0.002.
  * - `png`: lossless, zlib level 9: 4% smaller than level 6. Its `quality`

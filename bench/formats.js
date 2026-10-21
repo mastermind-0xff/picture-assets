@@ -8,10 +8,10 @@
  *
  * Run: npm run build && node bench/formats.js [--quick]
  */
-import { bench, compare, loggerReporter } from '@mmutils/bench';
+import { bench, compare } from '@mmutils/bench';
 import sharp from 'sharp';
 
-import { GRAPHS, LIBRARY, PHOTO, measureOptions } from './shared.js';
+import { LIBRARY, PHOTO, reporter, timedMeasureOptions } from './shared.js';
 
 const { DEFAULT_FORMAT_OPTIONS: DEFAULTS } = await import(LIBRARY.href);
 
@@ -37,5 +37,5 @@ await compare(
   bench('avif q60 (default)', () => image().avif(DEFAULTS.avif).toBuffer()),
   bench('png zlib 6', () => image().png().toBuffer()),
   bench('png zlib 9 (default)', () => image().png(DEFAULTS.png).toBuffer()),
-  { ...measureOptions(6000), output: loggerReporter({ graphs: GRAPHS }) }
+  { ...timedMeasureOptions(), output: reporter() }
 );

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import { isWorker } from '@mmutils/bench';
+import { DEFAULT_SUMMARY, isWorker, loggerReporter } from '@mmutils/bench';
 import { Logger, messagePlugin } from '@mmutils/logger';
 
 /**
@@ -43,20 +43,43 @@ const parseOptions = () => {
 
 export const options = parseOptions();
 
+/** Measured runs per case: enough for a distribution worth reading. */
+export const RUNS = 20;
+
+const QUICK = { samples: 2, runs: 2, warmup: { runs: 0 } };
+
 /**
- * Measure options for image work: runs take hundreds of milliseconds, far
- * from mm-bench's microbenchmark defaults. `--quick` is a smoke test, not a
- * measurement.
- *
- * @param time Measured time per case in ms, split between the samples.
+ * Measure options for image work, whose runs take from hundreds of
+ * milliseconds to seconds, far from mm-bench's microbenchmark defaults:
+ * exactly `RUNS` measured runs per case, 5 in each of 4 samples. No warm-up
+ * runs: the work is native, and each sample's first call, which is not
+ * measured, already loads sharp and its caches. `--quick` is a smoke test,
+ * not a measurement.
  */
-export const measureOptions = (time = 12_000) =>
-  options.quick ?
-    { samples: 2, time: Math.min(time, 3000), warmup: { runs: 0 } }
-  : { samples: 4, time, warmup: { runs: 1 } };
+export const measureOptions = () =>
+  options.quick ? QUICK : { samples: 4, runs: RUNS, warmup: { runs: 0 } };
+
+/**
+ * Measure options for cases from milliseconds to a second: at least 4
+ * seconds per case, so fast cases get hundreds of runs, and long enough for
+ * `RUNS` runs of the slow ones. Half a second of warm-up estimates a run's
+ * time.
+ */
+export const timedMeasureOptions = () =>
+  options.quick ? QUICK : (
+    {
+      samples: 4,
+      time: { min: 4000, max: 120_000, runs: RUNS },
+      warmup: { time: 500 },
+    }
+  );
 
 /** Graphs that tell something about image work: native threads, not heap. */
 export const GRAPHS = ['distribution', 'timeline', 'cores'];
+
+/** mm-bench's reporter, with the number of runs in the summary. */
+export const reporter = (graphs = GRAPHS) =>
+  loggerReporter({ graphs, summary: [...DEFAULT_SUMMARY, 'runs'] });
 
 /** For the main thread's messages; the workers' output is dropped anyway. */
 export const logger = new Logger({

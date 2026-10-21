@@ -11,10 +11,16 @@
  *
  * Run: npm run build && node bench/pipeline.js [--quick]
  */
-import { bench, compare, loggerReporter } from '@mmutils/bench';
+import { bench, compare } from '@mmutils/bench';
 import sharp from 'sharp';
 
-import { GRAPHS, LIBRARY, PHOTO, measureOptions, outputDir } from './shared.js';
+import {
+  LIBRARY,
+  PHOTO,
+  measureOptions,
+  outputDir,
+  reporter,
+} from './shared.js';
 
 const { imageResize, DEFAULT_FORMAT_OPTIONS } = await import(LIBRARY.href);
 
@@ -77,5 +83,5 @@ await compare(
     )
   ),
 
-  { ...measureOptions(), output: loggerReporter({ graphs: GRAPHS }) }
+  { ...measureOptions(), output: reporter() }
 );

@@ -13,8 +13,12 @@ node bench/pipeline.js     # or any file below; --quick for a smoke test
 npm run bench              # build, then pipeline.js
 ```
 
-`--quick` runs 2 short samples per case: it checks that a benchmark works,
-it doesn't measure. Outputs go to `bench/output` (git-ignored). Keep the
+Each case is measured on 4 samples, fresh workers, with at least 20 runs
+in all: exactly 20 for the image work, which takes from hundreds of
+milliseconds to seconds per run, and as many as 4 seconds allow for the
+encoders (21 to 378). Every summary table has a `runs` column. `--quick`
+runs 2 runs on 2 samples per case: it checks that a benchmark works, it
+doesn't measure. Outputs go to `bench/output` (git-ignored). Keep the
 machine quiet: mm-bench warns when other processes use 10% of the CPU or
 more during a case.
 
@@ -37,16 +41,16 @@ WebP and JPEG, the same encoder options everywhere.
 
 | Case                                                   | Mean  | vs imageResize |
 | ------------------------------------------------------ | ----- | -------------- |
-| `imageResize`                                          | 739ms |                |
-| sharp, each size resized once, formats in parallel     | 985ms | 33% slower     |
-| sharp, one call per file (decode and resize each time) | 1.64s | 2.22× slower   |
+| `imageResize`                                          | 741ms |                |
+| sharp, each size resized once, formats in parallel     | 997ms | 34.5% slower   |
+| sharp, one call per file (decode and resize each time) | 1.63s | 2.20× slower   |
 
 **chain.js**: the photo to 6 srcset widths (2560 to 320) in WebP.
 
 | Case                             | Mean  |            |
 | -------------------------------- | ----- | ---------- |
-| chained: each size from the last | 1.30s |            |
-| every size from the source       | 2.07s | 59% slower |
+| chained: each size from the last | 1.34s |            |
+| every size from the source       | 2.13s | 59% slower |
 
 Quality, on 3 photos: SSIM of each size against one resize from the
 photo's full resolution pixels (1 is identical). The lowest of each:
@@ -70,16 +74,16 @@ megapixels) to 1024 and 512 pixels wide in WebP.
 
 | Concurrency                 | Mean, pool of 4 (default) | Mean, `UV_THREADPOOL_SIZE=12` |
 | --------------------------- | ------------------------- | ----------------------------- |
-| 1                           | 4.15s                     | 4.16s                         |
-| 2                           | 2.23s                     | 2.20s                         |
-| 4                           | 1.38s                     | 1.34s                         |
-| `'max'`: 10, one per source | 1.47s                     | **904ms**                     |
+| 1                           | 4.14s                     | 4.13s                         |
+| 2                           | 2.19s                     | 2.20s                         |
+| 4                           | 1.32s                     | 1.34s                         |
+| `'max'`: 10, one per source | 1.38s                     | **885ms**                     |
 
 Sharp runs each operation on a thread of libuv's pool, and libvips spreads
 the pixels of each over its own threads. With the default pool of 4,
 4 sources at a time is the fastest, which is what `concurrency: 'auto'`
 picks: more only wait for a thread. With a pool as large as the
-machine's parallelism, all 10 sources at once take 904ms: 34% less time, the
+machine's parallelism, all 10 sources at once take 885ms: 33% less time, the
 CPU 70% busy instead of 32%. The pool must be sized before the process
 starts, which a library can't do for its host: set `UV_THREADPOOL_SIZE` for
 your build scripts, and the CLI will set it (see
@@ -87,15 +91,15 @@ your build scripts, and the CLI will set it (see
 
 **formats.js**: encoding a 1280 pixels wide image, nothing else.
 
-| Encoder                        | Mean   |
-| ------------------------------ | ------ |
-| JPEG q80 baseline              | 10.6ms |
-| JPEG q80 progressive (default) | 26.3ms |
-| JPEG q86 mozjpeg               | 150ms  |
-| WebP q80 (default)             | 117ms  |
-| AVIF q60 (default)             | 789ms  |
-| PNG zlib 6                     | 66.5ms |
-| PNG zlib 9 (default)           | 103ms  |
+| Encoder                        | Mean   | Runs |
+| ------------------------------ | ------ | ---- |
+| JPEG q80 baseline              | 10.6ms | 378  |
+| JPEG q80 progressive (default) | 26.6ms | 153  |
+| JPEG q86 mozjpeg               | 142ms  | 31   |
+| WebP q80 (default)             | 116ms  | 36   |
+| AVIF q60 (default)             | 758ms  | 21   |
+| PNG zlib 6                     | 67.0ms | 60   |
+| PNG zlib 9 (default)           | 103ms  | 40   |
 
 **weight.js**: three photos at 1280 pixels wide, averages; SSIM against the
 uncompressed pixels.
@@ -116,7 +120,7 @@ uncompressed pixels.
 
 \* the library's defaults. mozjpeg's smaller files at q80 come with a
 lower SSIM; at the same SSIM (q86) it is not smaller than progressive
-libjpeg, and about 6 times slower to encode. AVIF q60 is within 0.002 of
+libjpeg, and about 5 times slower to encode. AVIF q60 is within 0.002 of
 JPEG's SSIM at about half its bytes; q50, sharp's default, is visibly
 softer.
 

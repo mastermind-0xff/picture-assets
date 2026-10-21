@@ -18,11 +18,10 @@
  */
 import path from 'node:path';
 
-import { bench, compare, isWorker, loggerReporter } from '@mmutils/bench';
+import { bench, compare, isWorker } from '@mmutils/bench';
 import sharp from 'sharp';
 
 import {
-  GRAPHS,
   IMAGES,
   LIBRARY,
   PHOTO,
@@ -30,6 +29,7 @@ import {
   measureOptions,
   outputDir,
   pixels,
+  reporter,
   ssim,
   table,
 } from './shared.js';
@@ -51,7 +51,7 @@ const run = (dir, generateFromSource) =>
 await compare(
   bench('chained (default)', () => run(chainedDir, false)),
   bench('from the source', () => run(sourceDir, true)),
-  { ...measureOptions(), output: loggerReporter({ graphs: GRAPHS }) }
+  { ...measureOptions(), output: reporter() }
 );
 
 if (!isWorker()) {

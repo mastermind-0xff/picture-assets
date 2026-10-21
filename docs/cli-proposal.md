@@ -114,7 +114,7 @@ image-assets <input...> --output <dir> [options]
   file is left behind, then the partial result is printed.
 - **Thread pool**: sharp runs on libuv's pool, 4 threads by default, which
   `concurrency: 'auto'` follows. On a 12 thread laptop, a pool of 12 cut a
-  10 photo batch from 1.38s to 904ms (bench/README.md). The bin sets
+  10 photo batch from 1.32s to 885ms (bench/README.md). The bin sets
   `process.env.UV_THREADPOOL_SIZE` to `os.availableParallelism()` on its
   first line, before anything uses the pool, unless the user set it.
 - **Dry run** prints the resolved sizes per source (pixels from

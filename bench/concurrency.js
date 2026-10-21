@@ -15,14 +15,14 @@
 import os from 'node:os';
 import path from 'node:path';
 
-import { bench, compare, isWorker, loggerReporter } from '@mmutils/bench';
+import { bench, compare, isWorker } from '@mmutils/bench';
 
 import {
   IMAGES,
   LIBRARY,
   logger,
   measureOptions,
-  options,
+  reporter,
   outputDir,
 } from './shared.js';
 
@@ -53,10 +53,7 @@ await compare(
     );
   }),
   {
-    ...measureOptions(16_000),
-    // runs take seconds: fewer, longer samples
-    samples: options.quick ? 1 : 3,
-    warmup: { runs: 0 },
-    output: loggerReporter({ graphs: ['distribution', 'cores', 'machine'] }),
+    ...measureOptions(),
+    output: reporter(['distribution', 'cores', 'machine']),
   }
 );

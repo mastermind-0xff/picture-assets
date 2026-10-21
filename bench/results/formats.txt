@@ -1,41 +1,41 @@
 mm-bench  node v22.22.2 · win32 x64 · Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz (12 cores) · timer step 100ns
-7 cases · 4 samples · 6.00s · 1 warm-up runs
-  sample 1/4  jpeg q80 baseline  132 runs in 1.50s · mean 11.3ms
-  sample 1/4  jpeg q80 progressive (default)  57 runs in 1.51s · mean 26.4ms
-  sample 1/4  jpeg q86 mozjpeg  11 runs in 1.61s · mean 147ms
-  sample 1/4  webp q80 (default)  14 runs in 1.60s · mean 115ms
-  sample 1/4  avif q60 (default)  2 runs in 1.52s · mean 760ms
-  sample 1/4  png zlib 6  23 runs in 1.55s · mean 67.2ms
-  sample 1/4  png zlib 9 (default)  14 runs in 1.55s · mean 110ms
-  sample 2/4  png zlib 9 (default)  15 runs in 1.52s · mean 101ms
-  sample 2/4  png zlib 6  23 runs in 1.51s · mean 65.7ms
-  sample 2/4  avif q60 (default)  2 runs in 1.73s · mean 864ms
-  sample 2/4  webp q80 (default)  13 runs in 1.60s · mean 123ms
-  sample 2/4  jpeg q86 mozjpeg  9 runs in 1.59s · mean 176ms
-  sample 2/4  jpeg q80 progressive (default)  57 runs in 1.50s · mean 26.3ms
-  sample 2/4  jpeg q80 baseline  145 runs in 1.51s · mean 10.4ms
-  sample 3/4  jpeg q80 baseline  143 runs in 1.51s · mean 10.5ms
-  sample 3/4  jpeg q80 progressive (default)  57 runs in 1.51s · mean 26.4ms
-  sample 3/4  jpeg q86 mozjpeg  11 runs in 1.53s · mean 139ms
-  sample 3/4  webp q80 (default)  14 runs in 1.60s · mean 114ms
-  sample 3/4  avif q60 (default)  2 runs in 1.52s · mean 762ms
-  sample 3/4  png zlib 6  23 runs in 1.53s · mean 66.5ms
-  sample 3/4  png zlib 9 (default)  15 runs in 1.52s · mean 101ms
-  sample 4/4  png zlib 9 (default)  15 runs in 1.51s · mean 100ms
-  sample 4/4  png zlib 6  23 runs in 1.53s · mean 66.6ms
-  sample 4/4  avif q60 (default)  2 runs in 1.54s · mean 770ms
-  sample 4/4  webp q80 (default)  14 runs in 1.62s · mean 116ms
-  sample 4/4  jpeg q86 mozjpeg  11 runs in 1.56s · mean 141ms
-  sample 4/4  jpeg q80 progressive (default)  58 runs in 1.52s · mean 26.2ms
-  sample 4/4  jpeg q80 baseline  146 runs in 1.51s · mean 10.3ms
+7 cases · 4 samples · auto: 4.00s–120s, aiming at 20 runs · 500ms warm-up
+  sample 1/4  jpeg q80 baseline  87 runs in 1.01s · mean 11.5ms
+  sample 1/4  jpeg q80 progressive (default)  38 runs in 1.01s · mean 26.5ms
+  sample 1/4  jpeg q86 mozjpeg  8 runs in 1.12s · mean 141ms
+  sample 1/4  webp q80 (default)  9 runs in 1.06s · mean 117ms
+  sample 1/4  avif q60 (default)  5 runs in 3.88s · mean 775ms
+  sample 1/4  png zlib 6  15 runs in 1.01s · mean 67.2ms
+  sample 1/4  png zlib 9 (default)  10 runs in 1.02s · mean 102ms
+  sample 2/4  png zlib 9 (default)  10 runs in 1.02s · mean 102ms
+  sample 2/4  png zlib 6  15 runs in 1.00s · mean 66.7ms
+  sample 2/4  avif q60 (default)  5 runs in 3.78s · mean 756ms
+  sample 2/4  webp q80 (default)  9 runs in 1.05s · mean 117ms
+  sample 2/4  jpeg q86 mozjpeg  7 runs in 1.00s · mean 143ms
+  sample 2/4  jpeg q80 progressive (default)  38 runs in 1.02s · mean 26.9ms
+  sample 2/4  jpeg q80 baseline  96 runs in 1.00s · mean 10.4ms
+  sample 3/4  jpeg q80 baseline  97 runs in 1.00s · mean 10.3ms
+  sample 3/4  jpeg q80 progressive (default)  39 runs in 1.02s · mean 26.2ms
+  sample 3/4  jpeg q86 mozjpeg  8 runs in 1.13s · mean 142ms
+  sample 3/4  webp q80 (default)  9 runs in 1.03s · mean 114ms
+  sample 3/4  avif q60 (default)  5 runs in 3.76s · mean 751ms
+  sample 3/4  png zlib 6  15 runs in 1.01s · mean 67.3ms
+  sample 3/4  png zlib 9 (default)  10 runs in 1.04s · mean 104ms
+  sample 4/4  png zlib 9 (default)  10 runs in 1.02s · mean 102ms
+  sample 4/4  png zlib 6  15 runs in 1.00s · mean 66.9ms
+  sample 4/4  avif q60 (default)  6 runs in 4.51s · mean 752ms
+  sample 4/4  webp q80 (default)  9 runs in 1.04s · mean 115ms
+  sample 4/4  jpeg q86 mozjpeg  8 runs in 1.14s · mean 142ms
+  sample 4/4  jpeg q80 progressive (default)  38 runs in 1.02s · mean 26.8ms
+  sample 4/4  jpeg q80 baseline  98 runs in 1.01s · mean 10.3ms
 
 jpeg q80 baseline async                                                  fastest
-mean      10.6ms                        median    10.4ms
-p99       13.1ms                        p99.9     13.8ms
-ops/s     94.3                          runs      566
-stddev    672µs                         off graph 0%
-overhead  74.1ns (subtracted)
-! 566 runs: a rough distribution; raise time for more
+mean      10.6ms                        median    10.3ms
+p99       13.4ms                        p99.9     15.6ms
+ops/s     94.4                          runs      378
+stddev    778µs                         off graph 0%
+overhead  66.6ns (subtracted)
+! 378 runs: a rough distribution; raise time for more
 
 Run time, % of runs                                                      100.0 %
 │█                                                                             │
@@ -47,36 +47,37 @@ Run time, % of runs                                                      100.0 %
 │█                                                                             │
 │█                                                                             │
 │█                                                                             │
-9ms 695µs                                                             865ms 36µs
+9ms 595µs                                                            819ms 633µs
                                                                            0.0 %
 
-Mean run time over the sample                                          802.34 ms
+Mean run time over the sample                                          776.29 ms
 │                                                                              │
 │                                                                              │
 │                                                                              │
-0ms                                                                     1s 506ms
-average: 10.63 ms                                                        0.00 ms
-min: 10.24 ms
-max: 11.45 ms
+0ms                                                                       1s 4ms
+average: 10.64 ms                                                        0.00 ms
+min: 10.23 ms
+max: 13.04 ms
 
-All cores usage, % of 12 cores                                            73.7 %
+All cores usage, % of 12 cores                                            75.0 %
 │                                                                              │
 │                                                                              │
-│▄▄▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▄▄▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄│
-0ms                                                                     1s 506ms
-average: 10.3 %                                                            0.0 %
-min: 8.1 %
-max: 12.9 %
+│▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▄▄▄▃▃▃▃▄▄▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+0ms                                                                       1s 4ms
+average: 10.4 %                                                            0.0 %
+min: 8.8 %
+max: 12.3 %
 
-jpeg q80 progressive (default) async                                2.48× slower
-mean      26.3ms                        median    26.1ms
-p99       30.4ms                        p99.9     36.6ms
-ops/s     38.0                          runs      229
-stddev    1.16ms                        off graph 0%
-overhead  66.5ns (subtracted)
-! 229 runs: a rough distribution; raise time for more
+jpeg q80 progressive (default) async                                2.51× slower
+mean      26.6ms                        median    26.2ms
+p99       38.6ms                        p99.9     38.7ms
+ops/s     37.6                          runs      153
+stddev    1.77ms                        off graph 0%
+overhead  68.9ns (subtracted)
+! 153 runs: a rough distribution; raise time for more
 
 Run time, % of runs                                                      100.0 %
+│ ▆                                                                            │
 │ █                                                                            │
 │ █                                                                            │
 │ █                                                                            │
@@ -84,116 +85,113 @@ Run time, % of runs                                                      100.0 %
 │ █                                                                            │
 │ █                                                                            │
 │ █                                                                            │
-│ █                                                                            │
-│ █                                                                            │
-9ms 695µs                                                             865ms 36µs
+│ █▂                                                                           │
+9ms 595µs                                                            819ms 633µs
                                                                            0.0 %
 
-Mean run time over the sample                                          802.34 ms
+Mean run time over the sample                                          776.29 ms
 │                                                                              │
 │                                                                              │
 │▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁│
-0ms                                                                     1s 510ms
-average: 26.37 ms                                                        0.00 ms
-min: 25.56 ms
-max: 28.96 ms
+0ms                                                                      1s 19ms
+average: 26.69 ms                                                        0.00 ms
+min: 25.81 ms
+max: 30.83 ms
 
-All cores usage, % of 12 cores                                            73.7 %
+All cores usage, % of 12 cores                                            75.0 %
 │                                                                              │
 │                                                                              │
-│▄▄▄▄▃▃▃▃▃▃▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▄▄▃▃▃▂▂▂▂▃▃▃▃▃▃▃▃▃│
-0ms                                                                     1s 510ms
+│▂▂▂▂▂▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+0ms                                                                      1s 19ms
 average: 9.3 %                                                             0.0 %
-min: 7.5 %
-max: 11.9 %
-
-jpeg q86 mozjpeg async                                             14.12× slower
-mean      150ms                         median    142ms
-p99       211ms                         p99.9     211ms
-ops/s     6.68                          runs      42
-stddev    18.0ms                        off graph 0%
-overhead  123ns (subtracted)
-! busy machine: other processes used 16% CPU
-! 42 runs: a rough distribution; raise time for more
-
-Run time, % of runs                                                      100.0 %
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│           ▇                                                                  │
-│           █▅                                                                 │
-│           ██▂                                                                │
-│           ███▃▂ ▃▂                                                           │
-9ms 695µs                                                             865ms 36µs
-                                                                           0.0 %
-
-Mean run time over the sample                                          802.34 ms
-│                                                                              │
-│                                                                              │
-│▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▅▅▅▅▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
-0ms                                                                     1s 572ms
-average: 151.57 ms                                                       0.00 ms
-min: 142.62 ms
-max: 162.18 ms
-
-All cores usage, % of 12 cores                                            73.7 %
-│                                                                              │
-│                                                                              │
-│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
-0ms                                                                     1s 572ms
-average: 8.6 %                                                             0.0 %
-min: 8.0 %
-max: 9.4 %
-
-webp q80 (default) async                                           11.02× slower
-mean      117ms                         median    115ms
-p99       145ms                         p99.9     145ms
-ops/s     8.56                          runs      55
-stddev    5.69ms                        off graph 0%
-overhead  73.1ns (subtracted)
-! 55 runs: a rough distribution; raise time for more
-
-Run time, % of runs                                                      100.0 %
-│                                                                              │
-│         ▄                                                                    │
-│         █                                                                    │
-│         █                                                                    │
-│         █                                                                    │
-│         █                                                                    │
-│         █                                                                    │
-│         █▁                                                                   │
-│         ██▁▁                                                                 │
-9ms 695µs                                                             865ms 36µs
-                                                                           0.0 %
-
-Mean run time over the sample                                          802.34 ms
-│                                                                              │
-│                                                                              │
-│▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄▃▃▃▄▃▄▄▄▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
-0ms                                                                     1s 607ms
-average: 117.04 ms                                                       0.00 ms
-min: 113.32 ms
-max: 124.55 ms
-
-All cores usage, % of 12 cores                                            73.7 %
-│                                                                              │
-│                                                                              │
-│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
-0ms                                                                     1s 607ms
-average: 8.7 %                                                             0.0 %
 min: 7.8 %
-max: 10.3 %
+max: 12.6 %
 
-avif q60 (default) async                                           74.44× slower
-mean      789ms                         median    762ms
-p99       865ms                         p99.9     865ms
-ops/s     1.27                          runs      8
-stddev    49.2ms                        off graph 0%
-overhead  70.3ns (subtracted)
-! busy machine: other processes used 11% CPU
-! 8 runs: a rough distribution; raise time for more
+jpeg q86 mozjpeg async                                             13.39× slower
+mean      142ms                         median    140ms
+p99       157ms                         p99.9     157ms
+ops/s     7.05                          runs      31
+stddev    4.58ms                        off graph 0%
+overhead  67.0ns (subtracted)
+! 31 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                      100.0 %
+│                                                                              │
+│                                                                              │
+│            █                                                                 │
+│            █                                                                 │
+│            █                                                                 │
+│            █                                                                 │
+│            █                                                                 │
+│            █▆                                                                │
+│            ██▂                                                               │
+9ms 595µs                                                            819ms 633µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          776.29 ms
+│                                                                              │
+│                                                                              │
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▅▅▅▅▅▅▅▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
+0ms                                                                      1s 99ms
+average: 141.95 ms                                                       0.00 ms
+min: 138.91 ms
+max: 146.23 ms
+
+All cores usage, % of 12 cores                                            75.0 %
+│                                                                              │
+│                                                                              │
+│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+0ms                                                                      1s 99ms
+average: 8.7 %                                                             0.0 %
+min: 8.0 %
+max: 9.7 %
+
+webp q80 (default) async                                           10.94× slower
+mean      116ms                         median    114ms
+p99       128ms                         p99.9     128ms
+ops/s     8.63                          runs      36
+stddev    3.61ms                        off graph 0%
+overhead  68.0ns (subtracted)
+! 36 runs: a rough distribution; raise time for more
+
+Run time, % of runs                                                      100.0 %
+│                                                                              │
+│                                                                              │
+│          █                                                                   │
+│          █                                                                   │
+│          █                                                                   │
+│          █                                                                   │
+│          █                                                                   │
+│         ▄█                                                                   │
+│         ██▄                                                                  │
+9ms 595µs                                                            819ms 633µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          776.29 ms
+│                                                                              │
+│                                                                              │
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
+0ms                                                                      1s 43ms
+average: 115.92 ms                                                       0.00 ms
+min: 113.42 ms
+max: 119.11 ms
+
+All cores usage, % of 12 cores                                            75.0 %
+│                                                                              │
+│                                                                              │
+│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+0ms                                                                      1s 43ms
+average: 8.8 %                                                             0.0 %
+min: 8.1 %
+max: 9.9 %
+
+avif q60 (default) async                                           71.62× slower
+mean      758ms                         median    758ms
+p99       820ms                         p99.9     820ms
+ops/s     1.32                          runs      21
+stddev    24.8ms                        off graph 0%
+overhead  69.2ns (subtracted)
+! 21 runs: a rough distribution; raise time for more
 
 Run time, % of runs                                                      100.0 %
 │                                                                              │
@@ -201,41 +199,41 @@ Run time, % of runs                                                      100.0 %
 │                                                                              │
 │                                                                              │
 │                                                                              │
-│                                                                    ▃         │
-│                                                                    █        ▂│
-│                                                                 ▁  █▁   ▁   █│
-│                                                                 █  ██   █   █│
-9ms 695µs                                                             865ms 36µs
+│                                                                              │
+│                                                                        ▁     │
+│                                                                     ▆ ▆█▂    │
+│                                                                    ▇█ ███ ▃▃▃│
+9ms 595µs                                                            819ms 633µs
                                                                            0.0 %
 
-Mean run time over the sample                                          802.34 ms
-│▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇█████████████████████████████████████████│
+Mean run time over the sample                                          776.29 ms
+│█████████████▇▇▇█████████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇█▇▇▇████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇│
 │██████████████████████████████████████████████████████████████████████████████│
 │██████████████████████████████████████████████████████████████████████████████│
-0ms                                                                     1s 578ms
-average: 789.69 ms                                                       0.00 ms
-min: 780.10 ms
-max: 802.34 ms
+0ms                                                                     3s 982ms
+average: 759.33 ms                                                       0.00 ms
+min: 744.01 ms
+max: 776.29 ms
 
-All cores usage, % of 12 cores                                            73.7 %
+All cores usage, % of 12 cores                                            75.0 %
+│▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇██▇▇▇▇▇▇▇▇▇▇▇▇▇▇█████████████│
 │██████████████████████████████████████████████████████████████████████████████│
 │██████████████████████████████████████████████████████████████████████████████│
-│██████████████████████████████████████████████████████████████████████████████│
-0ms                                                                     1s 578ms
-average: 73.5 %                                                            0.0 %
-min: 72.7 %
-max: 73.7 %
+0ms                                                                     3s 982ms
+average: 72.7 %                                                            0.0 %
+min: 71.6 %
+max: 75.0 %
 
-png zlib 6 async                                                    6.28× slower
-mean      66.5ms                        median    65.8ms
-p99       86.9ms                        p99.9     86.9ms
-ops/s     15.0                          runs      92
-stddev    2.92ms                        off graph 0%
-overhead  67.6ns (subtracted)
-! 92 runs: a rough distribution; raise time for more
+png zlib 6 async                                                    6.33× slower
+mean      67.0ms                        median    66.5ms
+p99       74.5ms                        p99.9     74.5ms
+ops/s     14.9                          runs      60
+stddev    2.16ms                        off graph 0%
+overhead  109ns (subtracted)
+! 60 runs: a rough distribution; raise time for more
 
 Run time, % of runs                                                      100.0 %
-│                                                                              │
+│     ▆                                                                        │
 │     █                                                                        │
 │     █                                                                        │
 │     █                                                                        │
@@ -243,72 +241,72 @@ Run time, % of runs                                                      100.0 %
 │     █                                                                        │
 │     █                                                                        │
 │     █                                                                        │
-│    ▆█▁▁                                                                      │
-9ms 695µs                                                             865ms 36µs
+│     █▂                                                                       │
+9ms 595µs                                                            819ms 633µs
                                                                            0.0 %
 
-Mean run time over the sample                                          802.34 ms
+Mean run time over the sample                                          776.29 ms
 │                                                                              │
 │                                                                              │
 │▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂│
-0ms                                                                     1s 531ms
-average: 66.63 ms                                                        0.00 ms
-min: 64.79 ms
-max: 71.41 ms
+0ms                                                                       1s 6ms
+average: 67.11 ms                                                        0.00 ms
+min: 65.55 ms
+max: 68.81 ms
 
-All cores usage, % of 12 cores                                            73.7 %
+All cores usage, % of 12 cores                                            75.0 %
 │                                                                              │
 │                                                                              │
-│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
-0ms                                                                     1s 531ms
-average: 8.9 %                                                             0.0 %
+│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▂▂▂▂▂▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+0ms                                                                       1s 6ms
+average: 8.8 %                                                             0.0 %
 min: 7.8 %
-max: 11.3 %
+max: 10.2 %
 
-png zlib 9 (default) async                                          9.74× slower
+png zlib 9 (default) async                                          9.68× slower
 mean      103ms                         median    101ms
-p99       139ms                         p99.9     139ms
-ops/s     9.69                          runs      59
-stddev    7.26ms                        off graph 0%
-overhead  66.7ns (subtracted)
-! 59 runs: a rough distribution; raise time for more
+p99       113ms                         p99.9     113ms
+ops/s     9.75                          runs      40
+stddev    2.59ms                        off graph 0%
+overhead  67.1ns (subtracted)
+! 40 runs: a rough distribution; raise time for more
 
 Run time, % of runs                                                      100.0 %
-│        ▂                                                                     │
+│                                                                              │
+│                                                                              │
+│        ▄                                                                     │
 │        █                                                                     │
 │        █                                                                     │
 │        █                                                                     │
-│        █                                                                     │
-│        █                                                                     │
-│        █                                                                     │
-│        █                                                                     │
-│       ▁█▂ ▂                                                                  │
-9ms 695µs                                                             865ms 36µs
+│        █▄                                                                    │
+│        ██                                                                    │
+│        ██                                                                    │
+9ms 595µs                                                            819ms 633µs
                                                                            0.0 %
 
-Mean run time over the sample                                          802.34 ms
+Mean run time over the sample                                          776.29 ms
 │                                                                              │
 │                                                                              │
 │▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
-0ms                                                                     1s 524ms
-average: 103.68 ms                                                       0.00 ms
-min: 98.89 ms
-max: 109.80 ms
+0ms                                                                      1s 26ms
+average: 102.59 ms                                                       0.00 ms
+min: 100.95 ms
+max: 105.22 ms
 
-All cores usage, % of 12 cores                                            73.7 %
+All cores usage, % of 12 cores                                            75.0 %
 │                                                                              │
 │                                                                              │
 │▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
-0ms                                                                     1s 524ms
-average: 8.7 %                                                             0.0 %
-min: 7.7 %
-max: 9.9 %
+0ms                                                                      1s 26ms
+average: 8.5 %                                                             0.0 %
+min: 7.9 %
+max: 10.0 %
 
-case                          |   mean | median |    p99 | ops/s | vs fastest
-jpeg q80 baseline             | 10.6ms | 10.4ms | 13.1ms |  94.3 | fastest
-jpeg q80 progressive (defaul… | 26.3ms | 26.1ms | 30.4ms |  38.0 | 2.48× slower
-jpeg q86 mozjpeg              |  150ms |  142ms |  211ms |  6.68 | 14.12× slower
-webp q80 (default)            |  117ms |  115ms |  145ms |  8.56 | 11.02× slower
-avif q60 (default)            |  789ms |  762ms |  865ms |  1.27 | 74.44× slower
-png zlib 6                    | 66.5ms | 65.8ms | 86.9ms |  15.0 | 6.28× slower
-png zlib 9 (default)          |  103ms |  101ms |  139ms |  9.69 | 9.74× slower
+case                   |   mean | median |    p99 | ops/s | vs fastest    | runs
+jpeg q80 baseline      | 10.6ms | 10.3ms | 13.4ms |  94.4 | fastest       |  378
+jpeg q80 progressive … | 26.6ms | 26.2ms | 38.6ms |  37.6 | 2.51× slower  |  153
+jpeg q86 mozjpeg       |  142ms |  140ms |  157ms |  7.05 | 13.39× slower |   31
+webp q80 (default)     |  116ms |  114ms |  128ms |  8.63 | 10.94× slower |   36
+avif q60 (default)     |  758ms |  758ms |  820ms |  1.32 | 71.62× slower |   21
+png zlib 6             | 67.0ms | 66.5ms | 74.5ms |  14.9 | 6.33× slower  |   60
+png zlib 9 (default)   |  103ms |  101ms |  113ms |  9.75 | 9.68× slower  |   40

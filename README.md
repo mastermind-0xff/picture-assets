@@ -26,7 +26,7 @@ await imageResize(
   stripped.
 - **Fast**: the source is read once, each size resized from the previous
   one, formats encoded in parallel, batches processed several sources at a
-  time. It takes 45% of the time of one sharp call per file, and 75% of
+  time. It takes 45% of the time of one sharp call per file, and 74% of
   the time of resizing each size once with sharp (see
   [bench/](bench/README.md)).
 - **Directory trees**: a directory, a glob or a single file; the tree is
@@ -117,7 +117,7 @@ machine's parallelism; or a number.
 
 The pool is the batch's bottleneck: set `UV_THREADPOOL_SIZE` to the number
 of cores before the process starts (`UV_THREADPOOL_SIZE=12 node build.js`).
-On a 12 thread laptop, it cut a 10 photo batch from 1.38s to 904ms.
+On a 12 thread laptop, it cut a 10 photo batch from 1.32s to 885ms.
 
 ## Results
 
@@ -172,7 +172,7 @@ JPEG at quality 80 is the usual web baseline. Measured on three photos at
 | AVIF   | quality 60              | 53%                    | 0.9716                 |
 | PNG    | lossless, zlib level 9  | 1098%                  | 1                      |
 
-mozjpeg was not smaller at the same SSIM and encodes about 6 times slower: opt in
+mozjpeg was not smaller at the same SSIM and encodes about 5 times slower: opt in
 with `{ jpg: { mozjpeg: true } }`. Every option is in
 `DEFAULT_FORMAT_OPTIONS` and can be changed per call or with
 `formatOptions`.

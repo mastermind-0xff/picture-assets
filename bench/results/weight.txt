@@ -1,13 +1,13 @@
-07:55:34 [i]   info    3 photos at 1280w, 11 settings: averages
+14:41:05 [i]   info    3 photos at 1280w, 11 settings: averages
 format | setting                   | kB     | vs baseline | SSIM   | encode ms
 jpeg   | q80 baseline              |  300.1 | 100%        | 0.9735 |        17
-jpeg   | q80 progressive (default) |  289.7 | 97%         | 0.9735 |        48
-jpeg   | q80 mozjpeg               |  244.1 | 81%         |  0.966 |       188
-jpeg   | q86 mozjpeg               |  302.8 | 101%        | 0.9742 |       215
-webp   | q80 (default)             |  219.1 | 73%         | 0.9753 |       169
-webp   | q75                       |  179.4 | 60%         | 0.9686 |       162
-avif   | q65                       |  181.3 | 60%         | 0.9754 |      1238
-avif   | q60 (default)             |  159.8 | 53%         | 0.9716 |      1163
-avif   | q50                       |  109.9 | 37%         | 0.9575 |       950
-png    | zlib 6                    | 3436.7 | 1145%       |      1 |        95
-png    | zlib 9 (default)          | 3294.8 | 1098%       |      1 |       165
+jpeg   | q80 progressive (default) |  289.7 | 97%         | 0.9735 |        40
+jpeg   | q80 mozjpeg               |  244.1 | 81%         |  0.966 |       180
+jpeg   | q86 mozjpeg               |  302.8 | 101%        | 0.9742 |       218
+webp   | q80 (default)             |  219.1 | 73%         | 0.9753 |       173
+webp   | q75                       |  179.4 | 60%         | 0.9686 |       165
+avif   | q65                       |  181.3 | 60%         | 0.9754 |      1264
+avif   | q60 (default)             |  159.8 | 53%         | 0.9716 |      1101
+avif   | q50                       |  109.9 | 37%         | 0.9575 |       935
+png    | zlib 6                    | 3436.7 | 1145%       |      1 |        96
+png    | zlib 9 (default)          | 3294.8 | 1098%       |      1 |       163
