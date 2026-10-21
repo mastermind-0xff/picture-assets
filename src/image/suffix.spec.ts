@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { parseSuffix } from './suffix.js';
+import { findUnknownWildcard, parseSuffix } from './suffix.js';
 
 describe('parseSuffix', () => {
   test('without wildcards', () => {
@@ -9,7 +9,7 @@ describe('parseSuffix', () => {
 
   test('with every wildcard', () => {
     expect(
-      parseSuffix('@SomeSuffix_{w}_{h}_{wm}_{hm}_{sm}', {
+      parseSuffix('@SomeSuffix_{w}_{h}_{wx}_{hx}_{x}', {
         width: 1024,
         height: 768,
         widthMultiplier: 1,
@@ -20,14 +20,14 @@ describe('parseSuffix', () => {
   });
 
   test('missing values are blanks', () => {
-    expect(parseSuffix('@SomeSuffix_1{w}_2{h}_3{wm}_4{hm}_5{sm}')).toBe(
+    expect(parseSuffix('@SomeSuffix_1{w}_2{h}_3{wx}_4{hx}_5{x}')).toBe(
       '@SomeSuffix_1_2_3_4_5'
     );
   });
 
   test('unknown wildcards are kept', () => {
-    expect(parseSuffix('@SomeSuffix_{x}', { width: 1024 })).toBe(
-      '@SomeSuffix_{x}'
+    expect(parseSuffix('@SomeSuffix_{sm}', { width: 1024 })).toBe(
+      '@SomeSuffix_{sm}'
     );
   });
 
@@ -46,5 +46,18 @@ describe('parseSuffix', () => {
 
   test('characters Windows does not allow in file names are removed', () => {
     expect(parseSuffix('a<b>c:d"e|f?g*h\x01i', {})).toBe('abcdefghi');
+  });
+});
+
+describe('findUnknownWildcard', () => {
+  test('the first name in braces that is not a wildcard', () => {
+    expect(findUnknownWildcard('@{w}w_{x}x_{wx}_{hx}_{h}')).toBeUndefined();
+    expect(findUnknownWildcard('@2x')).toBeUndefined();
+    expect(findUnknownWildcard('@{w}w_{sm}_{wm}')).toBe('{sm}');
+    expect(findUnknownWildcard('{toString}')).toBe('{toString}');
+  });
+
+  test('braces without a name are not wildcards', () => {
+    expect(findUnknownWildcard('{}-{a b}')).toBeUndefined();
   });
 });

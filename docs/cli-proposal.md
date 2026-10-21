@@ -95,7 +95,7 @@ image-assets <input...> --output <dir> [options]
   -s, --sizes <sizes>         1920,1280,640 | x1,x2,x3 | responsive | retina   [responsive]
   -f, --formats <formats>     avif,webp,jpg | web | modern | lossless          [web]
   -q, --quality <f=q,...>     avif=55,webp=75: format options' quality
-      --suffix <pattern>      {w} {h} {sm} {wm} {hm}                          [@{w}w]
+      --suffix <pattern>      {w} {h} {x} {wx} {hx}                           [@{w}w]
       --strategy <hint>       downsample | upsample | x2 | 1024x768            [downsample]
       --on-error <scope>      none | source | batch                            [none]
   -j, --concurrency <n>       auto | max | a number                            [auto]
@@ -168,11 +168,16 @@ Breaking changes, cheapest now, while nothing is published:
    `'x2'`, or `{ width, height }`: what it sets, not how.
 3. **Statuses**: `'succeeded'`, `'failed'`, `'aborted'`, `'skipped'`;
    `outputsBySetting` → `sizes`; `fileData` → `info`.
-4. **Package name and license**: `image-assets-generator` and ISC today;
-   `@mmutils/image-assets` and MIT would match the other packages.
+4. **Package name**: `image-assets-generator` is taken on npm, by another
+   author's package (1.0.2, a tool that writes JSON files for asset
+   directories). `@mmutils/image-assets` would match the other packages.
+   The license is decided: MIT, as theirs.
 5. **Animated images**: GIF and WebP sources are read as their first frame
    only. Supporting animation is sharp's `animated: true` on input and
    output, with sizes resized frame by frame.
+
+Done since: the suffix wildcards `{sm}`, `{wm}` and `{hm}` are `{x}`,
+`{wx}` and `{hx}`, and unknown wildcards throw.
 
 ## 6. Order of work
 

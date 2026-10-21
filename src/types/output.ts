@@ -149,17 +149,17 @@ export type OutputSetting = (
    * File name suffix. Can contain wildcards. Default: the `suffix` option.
    *
    * - wildcards:\
-   * **`'{w}'`** for width;\
-   * **`'{h}'`** for height;\
-   * **`'{sm}'`** for size multiplier;\
-   * **`'{wm}'`** for width's multiplier;\
-   * **`'{hm}'`** for height's multiplier.
+   * **`'{w}'`** for width in pixels;\
+   * **`'{h}'`** for height in pixels;\
+   * **`'{x}'`** for the size's multiplier, the `2` of `2x`;\
+   * **`'{wx}'`** for the width's multiplier;\
+   * **`'{hx}'`** for the height's multiplier.
    *
    * - example:
    * ```
-   * // with source at x3 and width: 2048, height: 1536\
-   * // parsed as 'some-file@x2(1024x768).webp'
-   * '@x{sm}({w}x{h})'
+   * // { width: 'x2' } of a 3072x2304 source, the source being x3,
+   * // writes 'some-file@2x(2048x1536).webp'
+   * '@{x}x({w}x{h})'
    * ```
    */
   suffix?: string;

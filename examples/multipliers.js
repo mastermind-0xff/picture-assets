@@ -8,7 +8,8 @@
  *   and 1920 pixels wide, whatever the size of the photo.
  * - `'upsample'` or `'x1'`: the photo is `x1`; larger sizes are upscaled.
  *
- * Suffix wildcards: `{w}`, `{h}`, `{sm}` (size multiplier), `{wm}`, `{hm}`.
+ * Suffix wildcards: `{w}` and `{h}` (pixels), `{x}` (the multiplier, the
+ * `2` of `2x`), `{wx}` and `{hx}` (those of the width and the height).
  *
  * Run: npm run build && node examples/multipliers.js
  */
@@ -39,8 +40,8 @@ console.log(`downsample: ${sizes(downsampled)}`);
 const slot = await imageResize(
   source,
   path.join(output, 'slot', 'hero'),
-  // the suffix wildcards show what was computed: hero_x2_1280x960.webp
-  settings.map((setting) => ({ ...setting, suffix: '_x{sm}_{w}x{h}' })),
+  // the suffix wildcards show what was computed: hero@2x_1280x960.webp
+  settings.map((setting) => ({ ...setting, suffix: '@{x}x_{w}x{h}' })),
   ['webp'],
   { logger: 'warning', resizeStrategyHint: { width: 640, height: 480 } }
 );

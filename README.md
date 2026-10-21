@@ -177,8 +177,8 @@ another aspect ratio (cropped to fill, see `resizeOptions`).
 
 | Field                      | Meaning                                                                                  |
 | -------------------------- | ---------------------------------------------------------------------------------------- |
-| `width`, `height`          | Pixels, or a multiplier: `'x1'`, `'x2'`, `'x1.5'` (see `resizeStrategyHint`)             |
-| `suffix`                   | File name suffix, default `'@{w}w'`. Wildcards: `{w}` `{h}` `{sm}` `{wm}` `{hm}`         |
+| `width`, `height`          | Pixels, or a multiplier: `'x1'`, `'x2'`, `'x1.5'` (see [Multipliers](#multipliers))      |
+| `suffix`                   | File name suffix, default `'@{w}w'`, with wildcards (see [Suffix](#suffix))              |
 | `resizeOptions`            | sharp's resize options: `fit`, `position`, `background`, `kernel`, `withoutEnlargement`… |
 | `extractRegion`            | `{ left, top, width, height }` cut from the resized image                                |
 | `generateFromSource`       | Resize this size from the source instead of the previous size                            |
@@ -194,19 +194,68 @@ extension or the source's format is used. Formats: `avif`, `webp`, `jpeg`
 (`jpg`), `png`, `gif`, `tiff` (`tif`), `heif`; `jxl` and `jp2` with a
 custom libvips build.
 
+### Multipliers
+
+A multiplier size, `'x2'` or `'x1.5'`, is relative to `x1`, the size for
+screens with one device pixel per CSS pixel. The `resizeStrategyHint`
+option tells what `x1` is. For a 3000x2000 photo and the sizes `x1`, `x2`
+and `x3`:
+
+| `resizeStrategyHint`           | `x1` is                                                              | Widths of `x1`, `x2`, `x3` |
+| ------------------------------ | -------------------------------------------------------------------- | -------------------------- |
+| `'downsample'` (default)       | A third of the photo: the photo is the largest multiplier, `x3` here | 1000, 2000, 3000           |
+| `'upsample'`                   | The photo itself: larger sizes are enlarged                          | 3000, 6000, 9000           |
+| `'x2'` (any multiplier)        | Half the photo: the photo is `x2`, so `x3` is enlarged               | 1500, 3000, 4500           |
+| `{ width: 1200, height: 800 }` | That size, a slot in your layout, whatever the size of the photo     | 1200, 2400, 3600           |
+
+`{ width, height }` with another aspect ratio than the photo's gives the
+smallest size with the photo's aspect ratio that covers it:
+`{ width: 1200, height: 1200 }` makes `x1` 1800x1200.
+
+With `'downsample'` and sizes in pixels, the smallest pixel size is `x1`:
+sizes 1280 and 640 are `x2` and `x1` (for the `{x}` wildcard), and an
+`'x3'` next to them would be 1920 wide. When every pixel size is larger
+than the photo, the largest multiplier is the photo, as above.
+
+### Suffix
+
+Files are named `<name><suffix>.<format>`, the suffix being the setting's
+`suffix` or else the `suffix` option, `'@{w}w'` by default. Its wildcards,
+for `x2` of a 3000x2000 photo with `'downsample'` and sizes `x1` to `x3`
+(the file is 2000x1333):
+
+| Wildcard       | Replaced with                                  | Here     |
+| -------------- | ---------------------------------------------- | -------- |
+| `{w}`          | The width of the file, in pixels               | `2000`   |
+| `{h}`          | The height of the file, in pixels              | `1333`   |
+| `{x}`          | The multiplier of the size: the `2` of `2x`    | `2`      |
+| `{wx}`, `{hx}` | The multipliers of the width and of the height | `2`, `2` |
+
+So `'@{x}x'` writes `house@2x.webp`, and `'-{w}x{h}'` writes
+`house-2000x1333.webp`. Every size has a multiplier, sizes in pixels too
+(see [Multipliers](#multipliers)). `{wx}` and `{hx}` differ only for
+sizes with another aspect ratio than the source, `{x}` being their
+average: `{ width: 'x2', height: 'x1' }` has `{wx}` 2, `{hx}` 1 and `{x}`
+1.5.
+
+Characters not allowed in file names are removed. Any other name in braces
+throws, as it would end up in the file names: `{width}` is a typo for
+`{w}`. Two sizes with the same suffix fail instead of overwriting each
+other.
+
 ### Options
 
 Every option falls back to its environment variable, then to its default.
 Invalid values throw, naming the option or the variable.
 
-| Option               | Default        | Variable                              | Meaning                                                                                                                                                                 |
-| -------------------- | -------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `resizeStrategyHint` | `'downsample'` | `IMAGE_RESIZE_RESIZE_STRATEGY_HINT`   | What `x1` is: `'downsample'` (the source is the largest multiplier, or the smallest pixel size is `x1`), `'upsample'` (the source is `x1`), `'x2'`, `{ width, height }` |
-| `suffix`             | `'@{w}w'`      | `IMAGE_RESIZE_SUFFIX`                 | Suffix of settings without their own                                                                                                                                    |
-| `formatOptions`      | `{}`           | `IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS` | Options per format for every call, as JSON in the variable                                                                                                              |
-| `abortScope`         | `'none'`       | `IMAGE_RESIZE_ABORT_SCOPE`            | What a failure stops, see [Failures](#failures)                                                                                                                         |
-| `logger`             | `'info'`       | `IMAGE_RESIZE_LOG_LEVEL`              | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                |
-| `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                    |
+| Option               | Default        | Variable                              | Meaning                                                                                                                                                                                                                                   |
+| -------------------- | -------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resizeStrategyHint` | `'downsample'` | `IMAGE_RESIZE_RESIZE_STRATEGY_HINT`   | What `x1` is: `'downsample'` (the source is the largest multiplier), `'upsample'` (the source is `x1`), a multiplier like `'x2'` (the source is `x2`), or a size `{ width, height }` (`x1` is that size). See [Multipliers](#multipliers) |
+| `suffix`             | `'@{w}w'`      | `IMAGE_RESIZE_SUFFIX`                 | Suffix of settings without their own, see [Suffix](#suffix)                                                                                                                                                                               |
+| `formatOptions`      | `{}`           | `IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS` | Options per format for every call, as JSON in the variable                                                                                                                                                                                |
+| `abortScope`         | `'none'`       | `IMAGE_RESIZE_ABORT_SCOPE`            | What a failure stops, see [Failures](#failures)                                                                                                                                                                                           |
+| `logger`             | `'info'`       | `IMAGE_RESIZE_LOG_LEVEL`              | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                                                                                  |
+| `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                                                                                      |
 
 Load the variables from a file with `node --env-file=.env` (see
 [`.env.example`](.env.example)).
@@ -217,19 +266,51 @@ Load the variables from a file with `node --env-file=.env` (see
 batchImageResize(srcPath, destRoot, settings, formats?, options?): Promise<ResultBatch>
 ```
 
-`srcPath` is a directory (every image below it), a glob
-(`'photos/**/*.{jpg,png}'`), a file, or `{ root, pattern }`. The tree below
-the root (the directory, or the glob's part before its first wildcard) is
-mirrored in `destRoot`. Files sharp can't read are skipped; outputs inside
-the source tree are never picked up again. Two sources that would write the
-same files (`a.jpg` and `a.png`) fail instead of overwriting each other.
+`srcPath` is a directory, a glob, a file, or `{ root, pattern }`. The tree
+below the root is mirrored in `destRoot`. For `photos/2024/beach.jpg`,
+`photos/2024/city.png` and `photos/hero.jpg`, with `destRoot` `'out'`:
+
+| `srcPath`                                   | Sources                 | Root          | `beach.jpg` gives           |
+| ------------------------------------------- | ----------------------- | ------------- | --------------------------- |
+| `'photos'`                                  | Every image below it    | `photos`      | `out/2024/beach@1280w.webp` |
+| `'photos/**/*.jpg'`                         | `beach.jpg`, `hero.jpg` | `photos`      | `out/2024/beach@1280w.webp` |
+| `'photos/2024/*.jpg'`                       | `beach.jpg`             | `photos/2024` | `out/beach@1280w.webp`      |
+| `{ root: 'photos', pattern: '2024/*.jpg' }` | `beach.jpg`             | `photos`      | `out/2024/beach@1280w.webp` |
+| `'photos/2024/beach.jpg'`                   | `beach.jpg`             | `photos/2024` | `out/beach@1280w.webp`      |
+
+A glob's root is its part before the first wildcard. `{ root, pattern }`
+chooses it: the pattern is a glob inside the root, and the root is a plain
+path, so a directory named `photos [2024]` works as a root, where a glob
+would read `[2024]` as a wildcard.
+
+Files sharp can't read are skipped; outputs inside the source tree are
+never picked up again. Two sources that would write the same files
+(`a.jpg` and `a.png`) fail instead of overwriting each other.
 
 `options` are `imageResize`'s, plus `concurrency`: sources processed at the
 same time. `'auto'` (default) is the libuv thread pool size
 (`UV_THREADPOOL_SIZE`, 4 by default), on which sharp runs; `'max'` the
-machine's parallelism; or a number. And `signal`: an `AbortSignal` that
-stops the batch like `abortScope: 'batch'` does, the batch being
-`'aborted'`.
+machine's parallelism; or a number.
+
+And `signal`: an `AbortSignal` that stops the batch. The files in progress
+are finished, so none is left half written, and nothing new starts. The
+call resolves (it doesn't reject) with the batch `'aborted'`: the sources
+done have `'succeed'`, the others `'aborted'`. To stop on Ctrl+C or after
+10 minutes:
+
+```ts
+const controller = new AbortController();
+process.once('SIGINT', () => controller.abort());
+
+const batch = await batchImageResize('photos', 'out', settings, formats, {
+  signal: AbortSignal.any([controller.signal, AbortSignal.timeout(600_000)]),
+});
+if (batch.status === 'aborted') console.log('Stopped before the end.');
+```
+
+`generateAssets` takes the same `signal`; with a manifest, the next run
+makes only what the stopped one didn't (see
+[`examples/abort.js`](examples/abort.js)).
 
 The pool is the batch's bottleneck: set `UV_THREADPOOL_SIZE` to the number
 of cores before the process starts (`UV_THREADPOOL_SIZE=12 node build.js`;
@@ -313,6 +394,7 @@ write to `examples/output`.
 | [`errors.js`](examples/errors.js)                 | `abortScope`, results and errors                    |
 | [`logging.js`](examples/logging.js)               | Log levels, graphs, JSON lines to a file            |
 | [`generate.js`](examples/generate.js)             | `generateAssets`, a manifest, an incremental run    |
+| [`abort.js`](examples/abort.js)                   | A run stopped by an `AbortSignal`, then finished    |
 | [`cli.js`](examples/cli.js)                       | The command with a config file, `--dry-run`         |
 
 ## Benchmarks
@@ -335,3 +417,16 @@ npm run bench      # build, then the pipeline benchmark
 
 How the command line and `generateAssets` came to be, and the decisions
 left before 1.0: [docs/cli-proposal.md](docs/cli-proposal.md).
+
+## AI use
+
+image-assets-generator is developed with AI assistance: since the 2026
+revamp (the toolchain, the fixes, the command line), most of the code,
+tests, benchmarks and documentation was written with AI. The author
+designs the features, makes the decisions and reviews the changes, and
+every change passes the same checks (formatting, lint, strict type
+checking and tests) before it is committed.
+
+## License
+
+[MIT](LICENSE)

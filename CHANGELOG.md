@@ -36,6 +36,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Changed
 
+- **License**: MIT (was ISC).
+- **Suffix wildcards** `{sm}`, `{wm}` and `{hm}` are `{x}` (the multiplier,
+  as in `@{x}x` for `@2x`), `{wx}` and `{hx}`. Any other name in braces
+  throws: it was written into the file names.
 - **Options object.** `imageResize(src, dest, settings, formats?, options?)`
   and `batchImageResize(src, destRoot, settings, formats?, options?)` take
   `resizeStrategyHint`, `suffix`, `formatOptions`, `abortScope`, `logger`

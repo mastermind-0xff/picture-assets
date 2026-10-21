@@ -5,6 +5,7 @@ import {
   parseAbortScope,
   parseFormatOptions,
   parseResizeStrategyHint,
+  parseSuffixOption,
 } from './validate.js';
 
 /**
@@ -18,7 +19,7 @@ export const ENV_VARIABLES = {
    * (`'x2'`) or what `'x1'` is as JSON (`'{"width":1024,"height":768}'`).
    */
   resizeStrategyHint: 'IMAGE_RESIZE_RESIZE_STRATEGY_HINT',
-  /** `suffix`, e.g. `'@x{sm}_{w}w'`. */
+  /** `suffix`, e.g. `'@{x}x_{w}w'`. */
   suffix: 'IMAGE_RESIZE_SUFFIX',
   /**
    * `formatOptions` as JSON, e.g.
@@ -84,7 +85,10 @@ export const readEnvOptions = (
     );
 
   const suffix = env[ENV_VARIABLES.suffix];
-  if (suffix !== undefined) options.suffix = suffix;
+  if (suffix !== undefined)
+    options.suffix = fromVariable(ENV_VARIABLES.suffix, () =>
+      parseSuffixOption(suffix)
+    );
 
   const formatOptions = read(ENV_VARIABLES.formatOptions);
   if (formatOptions !== undefined)

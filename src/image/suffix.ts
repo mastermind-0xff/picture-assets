@@ -8,6 +8,34 @@ export interface SuffixData {
 }
 
 /**
+ * The suffix wildcards and the values replacing them:
+ * - `{w}`, `{h}`: width and height of the file, in pixels;
+ * - `{x}`: the multiplier of the size, the `2` of `2x`: every size has one,
+ *   pixel sizes too (see `resizeStrategyHint`);
+ * - `{wx}`, `{hx}`: the multipliers of the width and of the height, which
+ *   differ only for sizes with another aspect ratio than the source; `{x}`
+ *   is then their average.
+ */
+export const SUFFIX_WILDCARDS = {
+  '{w}': 'width',
+  '{h}': 'height',
+  '{x}': 'sizeMultiplier',
+  '{wx}': 'widthMultiplier',
+  '{hx}': 'heightMultiplier',
+} as const satisfies Record<string, keyof SuffixData>;
+
+type SuffixWildcard = keyof typeof SUFFIX_WILDCARDS;
+
+const WILDCARD = /{\w+}/g;
+
+const isSuffixWildcard = (value: string): value is SuffixWildcard =>
+  Object.hasOwn(SUFFIX_WILDCARDS, value);
+
+/** The first `{name}` of the suffix that isn't a wildcard, if any. */
+export const findUnknownWildcard = (suffix: string): string | undefined =>
+  suffix.match(WILDCARD)?.find((match) => !isSuffixWildcard(match));
+
+/**
  * Path separators, characters Windows doesn't allow in file names and
  * control characters: removed from suffixes, so a suffix can never write
  * outside the destination or fail on one platform only.
@@ -16,48 +44,32 @@ export interface SuffixData {
 const UNSAFE_FILE_NAME_CHARACTERS = /[<>:"/\\|?*\x00-\x1F]+/g;
 
 /**
- * Replaces supported wildcards in the suffix with values from
- * `dimensionsData`; missing values are replaced with blanks, unknown
- * wildcards are kept. Path separators and characters not allowed in file
- * names are removed from the result. Trimmed.
+ * Replaces the wildcards in the suffix (see `SUFFIX_WILDCARDS`) with values
+ * from `dimensionsData`; missing values are replaced with blanks, unknown
+ * wildcards are kept (the options reject them). Path separators and
+ * characters not allowed in file names are removed from the result.
+ * Trimmed.
  *
  * **example:**
  * ```typescript
- * //returns '_@x2_2048w'
- * parseSuffix('_@x{sm}_{w}w', { sizeMultiplier: 2, width: 2048 });
+ * //returns '@2x_2048w'
+ * parseSuffix('@{x}x_{w}w', { sizeMultiplier: 2, width: 2048 });
  * ```
  * ---
- * @param suffix String to be attached to every output filename.
- * - *wildcards:*\
- * `'{w}'` - width in pixels;\
- * `'{h}'` - height in pixels;\
- * `'{sm}'` - size multiplier, the average of the width and height
- * multipliers;\
- * `'{wm}'` - width multiplier;\
- * `'{hm}'` - height multiplier.
- * - *example:*\
- * `_@x{sm}_{w}w` - can produce `'_@x2_2048w'`.
- *
+ * @param suffix String to be attached to every output filename, with the
+ * wildcards `{w}`, `{h}`, `{x}`, `{wx}` and `{hx}`.
  * @param dimensionsData Object providing replacement data for the wildcards.
  * @returns The new resolved string suffix.
  */
 export const parseSuffix = (
   suffix: string,
   dimensionsData: SuffixData = {}
-): string => {
-  const { width, height, sizeMultiplier, widthMultiplier, heightMultiplier } =
-    dimensionsData;
-  const wildcards: Record<string, number | undefined> = {
-    '{w}': width,
-    '{h}': height,
-    '{sm}': sizeMultiplier,
-    '{wm}': widthMultiplier,
-    '{hm}': heightMultiplier,
-  };
-  return suffix
-    .replace(/{\w+}/g, (match) =>
-      Object.hasOwn(wildcards, match) ? `${wildcards[match] ?? ''}` : match
+): string =>
+  suffix
+    .replace(WILDCARD, (match) =>
+      isSuffixWildcard(match) ?
+        `${dimensionsData[SUFFIX_WILDCARDS[match]] ?? ''}`
+      : match
     )
     .replace(UNSAFE_FILE_NAME_CHARACTERS, '')
     .trim();
-};

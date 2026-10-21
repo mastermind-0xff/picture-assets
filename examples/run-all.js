@@ -16,6 +16,7 @@ const EXAMPLES = [
   'errors.js',
   'logging.js',
   'generate.js',
+  'abort.js',
   'cli.js',
 ];
 

@@ -188,9 +188,14 @@ Options:
                            for transparent sources), or a preset: web,
                            modern, lossless                    [web]
   -q, --quality <q>        75 for every lossy format, or avif=55,webp=75
-      --suffix <pattern>   File name suffix: {w} {h} {sm} {wm} {hm}  [@{w}w]
-                           (starting with a dash: --suffix=-{w})
-      --strategy <hint>    What x1 is: downsample, upsample, x2, or a size
+      --suffix <pattern>   File name suffix, with {w} {h} the width and
+                           height in pixels, {x} the multiplier (@{x}x
+                           gives @2x), {wx} {hx} those of the width and
+                           height. Starting with a dash: --suffix=-{w}
+                                                               [@{w}w]
+      --strategy <hint>    What x1 is: downsample (the source is the
+                           largest multiplier), upsample (the source is
+                           x1), x2 (the source is x2), or the size of x1
                            like 1024x768                       [downsample]
       --[no-]upscale       Make sizes larger than the source   [no with a
                            sizes preset, yes with sizes]

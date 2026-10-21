@@ -9,6 +9,7 @@ import {
   toSharpFormat,
 } from '../image/formats.js';
 import { isSizeMultiplier } from '../image/size-multiplier.js';
+import { findUnknownWildcard, SUFFIX_WILDCARDS } from '../image/suffix.js';
 import type { ImageAssetsLogger } from '../log/logger.js';
 import type {
   AbortScope,
@@ -125,10 +126,27 @@ export const parseBoolean = (name: string, value: unknown): boolean => {
   throw new TypeError(`${name} must be true or false, got ${describe(value)}.`);
 };
 
-/** @throws TypeError for anything but a string. */
+/**
+ * Why the suffix is invalid: a name in braces that isn't a wildcard, which
+ * would end up in the file names (a typo, or a wildcard renamed).
+ */
+const suffixProblem = (suffix: string): string | undefined => {
+  const unknown = findUnknownWildcard(suffix);
+  if (unknown === undefined) return undefined;
+  const wildcards = Object.keys(SUFFIX_WILDCARDS);
+  return `unknown wildcard ${unknown} in ${describe(suffix)}: the wildcards are ${wildcards.slice(0, -1).join(', ')} and ${wildcards.at(-1) ?? ''}.`;
+};
+
+/**
+ * @throws TypeError for anything but a string, RangeError for a suffix with
+ * an unknown wildcard.
+ */
 export const parseSuffixOption = (value: unknown): string => {
-  if (typeof value === 'string') return value;
-  throw new TypeError(`Suffix must be a string, got ${describe(value)}.`);
+  if (typeof value !== 'string')
+    throw new TypeError(`Suffix must be a string, got ${describe(value)}.`);
+  const problem = suffixProblem(value);
+  if (problem !== undefined) throw new RangeError(`Suffix: ${problem}`);
+  return value;
 };
 
 /** @throws TypeError or RangeError for anything but a concurrency. */
@@ -211,6 +229,9 @@ export function assertSettings(
     }
     if (suffix !== undefined && typeof suffix !== 'string')
       fail('suffix must be a string.');
+    const problem =
+      typeof suffix === 'string' ? suffixProblem(suffix) : undefined;
+    if (problem !== undefined) fail(`suffix has an ${problem}`);
     for (const flag of ['generateFromSource', 'useAsNextResizeIteration'])
       if (setting[flag] !== undefined && typeof setting[flag] !== 'boolean')
         fail(`${flag} must be a boolean.`);

@@ -67,6 +67,10 @@ describe('assertSettings', () => {
     ],
     [[{ width: 1, extractRegion: [0, 0, 1, 1] }], /extractRegion/],
     [[{ width: 1, suffix: 2 }], /suffix must be a string/],
+    [
+      [{ width: 'x2', suffix: '@{sm}x' }],
+      /suffix has an unknown wildcard \{sm\} in '@\{sm\}x': the wildcards are \{w\}, \{h\}, \{x\}, \{wx\} and \{hx\}\./,
+    ],
     [[{ width: 1, generateFromSource: 'yes' }], /generateFromSource/],
   ])('%j throws', (settings, message) => {
     expect(() => {
@@ -175,7 +179,13 @@ describe('option parsers', () => {
 
   test('parseSuffixOption', () => {
     expect(parseSuffixOption('')).toBe('');
+    expect(parseSuffixOption('@{x}x_{w}x{h}')).toBe('@{x}x_{w}x{h}');
     expect(() => parseSuffixOption(1)).toThrow(TypeError);
+    expect(() => parseSuffixOption('_{wm}')).toThrow(
+      new RangeError(
+        "Suffix: unknown wildcard {wm} in '_{wm}': the wildcards are {w}, {h}, {x}, {wx} and {hx}."
+      )
+    );
   });
 
   test('parseConcurrency', () => {

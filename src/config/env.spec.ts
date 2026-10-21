@@ -63,6 +63,7 @@ describe('readEnvOptions', () => {
     ['IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS', '123', TypeError],
     ['IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS', '{noQuotes:123}', SyntaxError],
     ['IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS', '{"bmp":{}}', RangeError],
+    ['IMAGE_RESIZE_SUFFIX', '@{sm}x', RangeError],
   ])('%s=%s throws, naming the variable', (name, value, ErrorClass) => {
     expect(() => readEnvOptions({ [name]: value })).toThrow(ErrorClass);
     expect(() => readEnvOptions({ [name]: value })).toThrow(name);
