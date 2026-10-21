@@ -7,7 +7,7 @@
     "clean:dist": "rimraf --glob dist/*",
     "clean:docs": "rimraf --glob docs/*",
     "clean:bundle": "npm run clean:dist && npm run clean:docs",
-    "clean:output.tests": "rimraf --glob __tests__/e2e/assets/optimized-images/*",
+    "clean:tests": "rimraf --glob __tests__/e2e/assets/optimized-images/*",
     "/** [ Build commands ]====================================== */": "exit 0",
     "lint": "eslint . && prettier . --check",
     "lint:debug:commit-ok": "git status | grep -q 'nothing to commit",
@@ -22,10 +22,10 @@
     "build:clean-bundle": "npm run clean:bundle && npm run build:bundle",
     "build:complete": "npm run format && npm run build:clean-bundle",
     "/** [ Test commands ]======================================= */": "exit 0",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "test:e2e": "jest __tests__",
-    "test:specs": "jest src"
+    "test": "npm run clean:tests && jest",
+    "test:coverage": "npm run clean:tests && jest --coverage",
+    "test:e2e": "npm run clean:tests && jest __tests__",
+    "test:specs": "npm run clean:tests && jest src"
   },
   "keywords": [],
   "author": "Tihomir Trifonov aka Mastermind",
@@ -53,7 +53,6 @@
     "rollup": "^4.52.0",
     "rollup-plugin-dts": "^6.2.3",
     "ts-jest": "^29.4.4",
-    "tsx": "^4.20.5",
     "typedoc": "^0.25.13",
     "typedoc-plugin-markdown": "^3.17.1",
     "typescript": "^5.4.5"

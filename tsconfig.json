@@ -6,7 +6,7 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "noImplicitOverride": true,
-    "noUncheckedIndexedAccess": true  ,
+    "noUncheckedIndexedAccess": true,
 
     // "declarationDir": "./dist/types",
     "sourceMap": true,
@@ -16,7 +16,7 @@
     // "declarationMap": false,
     // "emitDeclarationOnly": true,
 
-    "target": "ESNext",
+    "target": "es2019",
     "module": "ESNext",
     "moduleResolution": "Node",
     // "resolvePackageJsonExports": true,

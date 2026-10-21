@@ -1,132 +1,82 @@
-import { OutputFormatsOptions, SizeMultiplier } from '../lib/image-resize';
+import type { ResizeStrategyHint } from '../types/size';
+import type { LogLevel } from '../types/log';
+import type { OutputFormatsOptions } from '../types/output';
 
-/**
- * Multiplier behavior allowed values.
- */
-export type SourceMultiplierBehavior =
-  | 'auto'
-  | 'downsample'
-  | 'upscale'
-  | SizeMultiplier;
+import { outputFormatsOptions } from './output-formats';
+import { resizeStrategyHint } from './resize-strategy';
+import { abortScope } from './abort-strategy';
+import { suffix } from './suffix';
+import { LOG_LEVEL } from './logging';
+import { ExecutionScope } from '../types/execution';
 
-/**
- * Configuration object type.
- */
 export type ImageResizeOptions = {
   /**
-   * Default options for each filetype.
+   * Default format output options for each filetype.
+   *
+   * Can be overridden by the environment variable
+   * `IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS` at runtime initialization.
+   *
+   * @default `outputFormatsOptionsDefault`
    */
-  readonly OUTPUT_FORMATS_OPTIONS_DEFAULT: OutputFormatsOptions;
-  /**
-   * When using size multiplier for output image width or height **downsample**
-   * means the source is considered the highest resolution image and all other
-   * sizes are downsampled. With **upscale** source is considered the lowest
-   * resolution image and all other sizes are scaled up. When source multiplier
-   * is hardcoded all other sizes are calculated accordingly.
-   *
-   * **default:** 'downsample'
-   *
-   * **examples**
-   * ```typescript
-   * // source @ 300x300px
-   * console.log(imageResizeAsync(
-   *  'image.jpg',
-   *  './dest/',
-   *  [
-   *    { width: 'x3', suffix: '@3x({w}w)' },
-   *    { width: 'x2', suffix: '@2x({w}w)' },
-   *    { width: 'x1', suffix: '@1x({w}w)' },
-   *  ],
-   *  ['webp']))
-   * // downsample will output
-   * // {in:'image.jpg',
-   * //  out:[
-   * //   './dest/image@3x(300w).webp',
-   * //   './dest/image@2x(200w).webp',
-   * //   './dest/image@1x(100w).webp'
-   * //  ]}
-   *
-   * // upscale will output
-   * // {in:'image.jpg',
-   * //  out:[
-   * //   './dest/image@3x(900w).webp',
-   * //   './dest/image@2x(600w).webp',
-   * //   './dest/image@1x(300w).webp'
-   * //  ]}
-   *
-   * // x2 will output
-   * // {in:'image.jpg',
-   * //  out:[
-   * //   './dest/image@3x(450w).webp',
-   * //   './dest/image@2x(300w).webp',
-   * //   './dest/image@1x(150w).webp'
-   * //  ]}
-   * ```
-   *
-   */
-  readonly SOURCE_MULTIPLIER_BEHAVIOR: SourceMultiplierBehavior;
+  readonly outputFormatsOptions: OutputFormatsOptions;
 
   /**
-   * Default suffix for all outputted file names. Use '{w}' for output width and
-   * '{h}' for output height. Strips slashes. Accounts for '0' and empty input.
-   * @default string '@{w}w'
+   * Default resize strategy for all images.
+   *
+   * Can be overridden by the environment variable
+   * `IMAGE_RESIZE_RESIZE_STRATEGY_HINT` at runtime initialization.
+   *
+   * @default 'downsample'
    */
-  readonly SUFFIX_DEFAULT: string;
+  readonly resizeStrategyHint: ResizeStrategyHint;
+
   /**
-   * Enable or disable console messages. Provide truthful value to enable.
+   * Default abort execution level in case of an error.
+   *
+   * Can be overridden by the environment variable
+   * `IMAGE_RESIZE_ABORT_SCOPE` at runtime initialization.
+   *
+   * @default 'format'
    */
-  readonly DEBUG: boolean;
+  readonly abortScope: ExecutionScope;
+
+  /**
+   * Default suffix for all outputted file names.
+   *
+   * Can be overridden by the environment variable `IMAGE_RESIZE_SUFFIX_DEFAULT`
+   * at runtime initialization.
+   *
+   * @default '@{w}w'
+   */
+  readonly suffix: string;
+
+  /**
+   * Default log level. Controls what level and above will be emitted to the
+   * output.
+   *
+   * Can be overridden by the environment variable`IMAGE_RESIZE_LOG_LEVEL` at
+   * runtime initialization.
+   *
+   * @default string 'info'
+   */
+  readonly logLevel: LogLevel;
 };
 
-/** Configuration object. */
+const logLevel = LOG_LEVEL;
+
+/**
+ * Read only defaults configuration object. Default values can be alter at
+ * runtime initialization via environment variables.
+ *
+ * - Provides default output format options for all images;
+ * - Provides default suffix for all images;
+ * - Provides default resize strategy hint for all images;
+ * - Provides default logging level.
+ */
 export const ImageResizeConfig: ImageResizeOptions = {
-  OUTPUT_FORMATS_OPTIONS_DEFAULT: {
-    avif: { quality: 80 },
-    gif: { colors: 256 },
-    heif: { quality: 80 },
-    jpeg: { quality: 80 },
-    jpg: { quality: 80 },
-    jp2: { quality: 80 },
-    jxl: { quality: 80 },
-    png: { quality: 80 },
-    tiff: { quality: 80 },
-    tif: { quality: 80 },
-    webp: { quality: 80 },
-    dz: {},
-    fits: {},
-    input: {},
-    magick: {},
-    openslide: {},
-    pdf: {},
-    ppm: {},
-    raw: {},
-    svg: {},
-    v: {},
-  },
-
-  SOURCE_MULTIPLIER_BEHAVIOR: (() => {
-    switch (process.env.SIZE_MULTIPLIER_BEHAVIOR) {
-      case 'x1':
-      case 'x2':
-      case 'x3':
-      case 'x4':
-      case 'x5':
-      case 'upscale':
-        return process.env.SIZE_MULTIPLIER_BEHAVIOR;
-      default:
-        return 'downsample';
-    }
-  })(),
-  SUFFIX_DEFAULT:
-    typeof process.env.IMAGE_RESIZE_SUFFIX_DEFAULT !== 'undefined' ?
-      process.env.IMAGE_RESIZE_SUFFIX_DEFAULT.replace(/[/\\]+/g, '')
-    : '@{w}w',
-
-  DEBUG:
-    (
-      process.env.IMAGE_RESIZE_DEBUG === '1' ||
-      process.env.IMAGE_RESIZE_DEBUG === 'true'
-    ) ?
-      true
-    : false,
+  outputFormatsOptions,
+  suffix,
+  resizeStrategyHint,
+  abortScope,
+  logLevel,
 };
