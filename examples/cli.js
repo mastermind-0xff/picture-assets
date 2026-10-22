@@ -1,7 +1,7 @@
 /**
- * The `image-assets` command, run from this folder: it finds
- * image-assets.config.json here, whose paths are relative to it, and flags
- * win over it. Once the package is installed, `npx image-assets` runs the
+ * The `picture-assets` command, run from this folder: it finds
+ * picture-assets.config.json here, whose paths are relative to it, and flags
+ * win over it. Once the package is installed, `npx picture-assets` runs the
  * same.
  *
  * 1. `-s 800,400 --dry-run`: what would be written with the file's config
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const command = fileURLToPath(new URL('../dist/esm/cli.js', import.meta.url));
 const run = (...args) => {
-  console.log(`\n$ image-assets ${args.join(' ')}`);
+  console.log(`\n$ picture-assets ${args.join(' ')}`);
   execFileSync(process.execPath, [command, ...args], {
     cwd: import.meta.dirname,
     stdio: 'inherit',

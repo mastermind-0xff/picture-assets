@@ -33,13 +33,13 @@ const write = async (name: string, text: string) => {
 describe('findConfigFile', () => {
   test('JSON first, then JS', async () => {
     const folder = path.join(dir, 'find');
-    await write('find/image-assets.config.mjs', 'export default {};');
+    await write('find/picture-assets.config.mjs', 'export default {};');
     expect(await findConfigFile(folder)).toBe(
-      path.join(folder, 'image-assets.config.mjs')
+      path.join(folder, 'picture-assets.config.mjs')
     );
-    await write('find/image-assets.config.json', '{}');
+    await write('find/picture-assets.config.json', '{}');
     expect(await findConfigFile(folder)).toBe(
-      path.join(folder, 'image-assets.config.json')
+      path.join(folder, 'picture-assets.config.json')
     );
     expect(
       await findConfigFile(path.join(dir, 'nothing-here'))
@@ -50,7 +50,7 @@ describe('findConfigFile', () => {
 describe('loadConfigFile', () => {
   test('JSON, paths relative to the file', async () => {
     const file = await write(
-      'site/image-assets.config.json',
+      'site/picture-assets.config.json',
       JSON.stringify({
         input: ['src/images', 'src/icons/*.png'],
         output: 'public/img',

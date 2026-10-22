@@ -1,8 +1,8 @@
 import type { ResultBatch, ResultSource } from '../types/output.js';
 
 /**
- * Thrown by `imageResize` with `abortScope: 'batch'` when the source fails.
- * Carries the result up to the failure.
+ * Thrown by `generateSingleSourceAssets` with `abortScope: 'batch'` when the
+ * source fails. Carries the result up to the failure.
  */
 export class ResultSourceError extends Error {
   override name = 'ResultSourceError';
@@ -19,7 +19,7 @@ export class ResultSourceError extends Error {
 }
 
 /**
- * Thrown by `batchImageResize` with `abortScope: 'batch'` when a source
+ * Thrown by `generateBatchAssets` with `abortScope: 'batch'` when a source
  * fails. Carries the result of every source: the failed one, those stopped
  * (`'aborted'`) and those finished before.
  */

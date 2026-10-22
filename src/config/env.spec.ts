@@ -19,12 +19,13 @@ describe('readEnvOptions', () => {
   test('every variable', () => {
     expect(
       readEnvOptions({
-        IMAGE_RESIZE_RESIZE_STRATEGY_HINT: 'upsample',
-        IMAGE_RESIZE_SUFFIX: '_{w}x{h}',
-        IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS:
+        PICTURE_ASSETS_RESIZE_STRATEGY_HINT: 'upsample',
+        PICTURE_ASSETS_SUFFIX: '_{w}x{h}',
+        PICTURE_ASSETS_FORMAT_OPTIONS:
           '{"jpg":{"quality":80,"progressive":true,"chromaSubsampling":"4:4:4"},"png":{"compressionLevel":6}}',
-        IMAGE_RESIZE_ABORT_SCOPE: ' source ',
-        IMAGE_RESIZE_LOG_LEVEL: 'silent',
+        PICTURE_ASSETS_ABORT_SCOPE: ' source ',
+        PICTURE_ASSETS_LOG_LEVEL: 'silent',
+        PICTURE_ASSETS_CONCURRENCY: ' 6 ',
       })
     ).toEqual({
       resizeStrategyHint: 'upsample',
@@ -35,35 +36,52 @@ describe('readEnvOptions', () => {
       },
       abortScope: 'source',
       logger: 'silent',
+      concurrency: 6,
     });
   });
 
+  test('concurrency: a number, auto or max', () => {
+    for (const [value, concurrency] of [
+      ['12', 12],
+      ['auto', 'auto'],
+      ['max', 'max'],
+    ] as const)
+      expect(readEnvOptions({ PICTURE_ASSETS_CONCURRENCY: value })).toEqual({
+        concurrency,
+      });
+  });
+
   test('an empty suffix is a suffix', () => {
-    expect(readEnvOptions({ IMAGE_RESIZE_SUFFIX: '' })).toEqual({ suffix: '' });
+    expect(readEnvOptions({ PICTURE_ASSETS_SUFFIX: '' })).toEqual({
+      suffix: '',
+    });
   });
 
   test('resize strategy hints: multiplier and x1 size as JSON', () => {
     expect(
-      readEnvOptions({ IMAGE_RESIZE_RESIZE_STRATEGY_HINT: 'x3.5' })
+      readEnvOptions({ PICTURE_ASSETS_RESIZE_STRATEGY_HINT: 'x3.5' })
     ).toEqual({ resizeStrategyHint: 'x3.5' });
     expect(
       readEnvOptions({
-        IMAGE_RESIZE_RESIZE_STRATEGY_HINT:
+        PICTURE_ASSETS_RESIZE_STRATEGY_HINT:
           '{"width":100, "height":200, "abc":123}',
       })
     ).toEqual({ resizeStrategyHint: { width: 100, height: 200 } });
   });
 
   test.each([
-    ['IMAGE_RESIZE_LOG_LEVEL', 'warn', RangeError],
-    ['IMAGE_RESIZE_ABORT_SCOPE', 'format', RangeError],
-    ['IMAGE_RESIZE_RESIZE_STRATEGY_HINT', '{"width":100}', TypeError],
-    ['IMAGE_RESIZE_RESIZE_STRATEGY_HINT', 'sideways', TypeError],
-    ['IMAGE_RESIZE_RESIZE_STRATEGY_HINT', '{width:100}', SyntaxError],
-    ['IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS', '123', TypeError],
-    ['IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS', '{noQuotes:123}', SyntaxError],
-    ['IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS', '{"bmp":{}}', RangeError],
-    ['IMAGE_RESIZE_SUFFIX', '@{sm}x', RangeError],
+    ['PICTURE_ASSETS_LOG_LEVEL', 'warn', RangeError],
+    ['PICTURE_ASSETS_ABORT_SCOPE', 'format', RangeError],
+    ['PICTURE_ASSETS_RESIZE_STRATEGY_HINT', '{"width":100}', TypeError],
+    ['PICTURE_ASSETS_RESIZE_STRATEGY_HINT', 'sideways', TypeError],
+    ['PICTURE_ASSETS_RESIZE_STRATEGY_HINT', '{width:100}', SyntaxError],
+    ['PICTURE_ASSETS_FORMAT_OPTIONS', '123', TypeError],
+    ['PICTURE_ASSETS_FORMAT_OPTIONS', '{noQuotes:123}', SyntaxError],
+    ['PICTURE_ASSETS_FORMAT_OPTIONS', '{"bmp":{}}', RangeError],
+    ['PICTURE_ASSETS_SUFFIX', '@{sm}x', RangeError],
+    ['PICTURE_ASSETS_CONCURRENCY', '0', RangeError],
+    ['PICTURE_ASSETS_CONCURRENCY', '1.5', RangeError],
+    ['PICTURE_ASSETS_CONCURRENCY', 'max_threads', RangeError],
   ])('%s=%s throws, naming the variable', (name, value, ErrorClass) => {
     expect(() => readEnvOptions({ [name]: value })).toThrow(ErrorClass);
     expect(() => readEnvOptions({ [name]: value })).toThrow(name);

@@ -310,15 +310,18 @@ describe('resolveOutputSettings', () => {
     ['upsample', [900, 600, 300]],
     ['x2', [450, 300, 150]],
     [{ width: 50, height: 50 }, [150, 100, 50]],
-  ] as const)("imageResize's documented example with %j", (hint, widths) => {
-    const resolved = resolveOutputSettings(
-      [{ width: 'x3' }, { width: 'x2' }, { width: 'x1' }],
-      { srcWidth: 300, srcHeight: 300 },
-      hint,
-      logger
-    );
-    expect(resolved.map(({ width }) => width)).toEqual(widths);
-  });
+  ] as const)(
+    "generateSingleSourceAssets's documented example with %j",
+    (hint, widths) => {
+      const resolved = resolveOutputSettings(
+        [{ width: 'x3' }, { width: 'x2' }, { width: 'x1' }],
+        { srcWidth: 300, srcHeight: 300 },
+        hint,
+        logger
+      );
+      expect(resolved.map(({ width }) => width)).toEqual(widths);
+    }
+  );
 });
 
 describe('limitToSource', () => {

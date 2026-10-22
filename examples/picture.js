@@ -9,10 +9,10 @@
  */
 import path from 'node:path';
 
-import { imageResize } from '@mmutils/image-assets';
+import { generateSingleSourceAssets } from 'picture-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'picture');
-const result = await imageResize(
+const result = await generateSingleSourceAssets(
   path.join(import.meta.dirname, 'images', 'house-02.jpg'),
   path.join(output, 'hero'),
   [{ width: 2560 }, { width: 1920 }, { width: 1280 }, { width: 640 }],

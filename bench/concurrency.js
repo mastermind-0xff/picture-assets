@@ -26,7 +26,7 @@ import {
   outputDir,
 } from './shared.js';
 
-const { batchImageResize } = await import(LIBRARY.href);
+const { generateBatchAssets } = await import(LIBRARY.href);
 
 const SOURCES = `${IMAGES.replaceAll(path.sep, '/')}/group-*/**/*.jpg`;
 const CONCURRENCY = [1, 2, 4, 'max'];
@@ -40,7 +40,7 @@ await compare(
   ...CONCURRENCY.map((concurrency) => {
     const dir = outputDir('concurrency', String(concurrency));
     return bench(`concurrency ${concurrency}`, () =>
-      batchImageResize(
+      generateBatchAssets(
         SOURCES,
         dir,
         [{ width: 1024 }, { width: 512 }],

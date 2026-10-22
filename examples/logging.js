@@ -4,7 +4,7 @@
  * - `logger: 'debug'`: the default logger at another level. `'info'` (the
  *   default) logs a line per source and the batch's summary, `'debug'` a
  *   line per file and, for batches, graphs of the CPU, the memory and the
- *   progress; `'silent'` nothing. `IMAGE_RESIZE_LOG_LEVEL` sets it too.
+ *   progress; `'silent'` nothing. `PICTURE_ASSETS_LOG_LEVEL` sets it too.
  * - `logger: yourLogger`: share your application's logger. Here one writing
  *   JSON lines (one object per log) to a log file, for CI or a collector.
  *   Any object with `error`, `warning`, `info`, `debug` and `verbose`
@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { batchImageResize } from '@mmutils/image-assets';
+import { generateBatchAssets } from 'picture-assets';
 import { jsonPlugin, Logger } from '@mmutils/logger';
 
 const images = path.join(import.meta.dirname, 'images', 'group-1');
@@ -23,7 +23,7 @@ const output = path.join(import.meta.dirname, 'output', 'logging');
 fs.mkdirSync(output, { recursive: true });
 
 // the default logger at debug level: files, then graphs
-await batchImageResize(
+await generateBatchAssets(
   images,
   path.join(output, 'debug'),
   [{ width: 640 }],
@@ -40,7 +40,7 @@ const jsonLogger = new Logger({
   level: 'debug',
   plugins: [jsonPlugin({ write: (line) => lines.push(line) })],
 });
-await batchImageResize(
+await generateBatchAssets(
   images,
   path.join(output, 'json'),
   [{ width: 640 }],

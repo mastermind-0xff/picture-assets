@@ -49,7 +49,7 @@ describe('runCli', () => {
   test('help and version on stdout', async () => {
     expect(await run(['--help'])).toMatchObject({
       code: 0,
-      stdout: expect.stringMatching(/^Usage: image-assets/) as unknown,
+      stdout: expect.stringMatching(/^Usage: picture-assets/) as unknown,
     });
     expect(await run(['--version'])).toEqual({
       code: 0,
@@ -172,7 +172,7 @@ describe('runCli', () => {
     await fs.mkdir(site);
     await fs.cp(file('tree'), path.join(site, 'images'), { recursive: true });
     await fs.writeFile(
-      path.join(site, 'image-assets.config.json'),
+      path.join(site, 'picture-assets.config.json'),
       JSON.stringify({
         input: 'images/sub',
         output: 'public',
@@ -197,7 +197,7 @@ describe('runCli', () => {
     expect(await run(['--sizes'])).toMatchObject({
       code: EXIT_CODES.usage,
       stderr: expect.stringMatching(
-        /^image-assets: .*\nRun image-assets --help for the options\.\n$/
+        /^picture-assets: .*\nRun picture-assets --help for the options\.\n$/
       ) as unknown,
     });
     expect(await run([file('tree')])).toMatchObject({
@@ -215,7 +215,7 @@ describe('runCli', () => {
     ).toMatchObject({
       code: EXIT_CODES.usage,
       stderr:
-        "image-assets: Unknown output format 'bmp': expected one of avif, gif, heif, jpeg, jpg, jp2, jxl, png, tiff, tif, webp, or 'fallback'.\n",
+        "picture-assets: Unknown output format 'bmp': expected one of avif, gif, heif, jpeg, jpg, jp2, jxl, png, tiff, tif, webp, or 'fallback'.\n",
     });
     expect(
       await run([file('tree'), '-o', outDir(), '-c', file('missing.json')])

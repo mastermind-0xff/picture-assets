@@ -29,9 +29,9 @@ describe('resolveOptions', () => {
     const resolved = resolveOptions(
       {},
       {
-        IMAGE_RESIZE_SUFFIX: '-{w}',
-        IMAGE_RESIZE_ABORT_SCOPE: 'batch',
-        IMAGE_RESIZE_LOG_LEVEL: 'error',
+        PICTURE_ASSETS_SUFFIX: '-{w}',
+        PICTURE_ASSETS_ABORT_SCOPE: 'batch',
+        PICTURE_ASSETS_LOG_LEVEL: 'error',
       }
     );
     expect(resolved).toMatchObject({ suffix: '-{w}', abortScope: 'batch' });
@@ -43,10 +43,10 @@ describe('resolveOptions', () => {
     const resolved = resolveOptions(
       { suffix: '', abortScope: 'source', resizeStrategyHint: 'x2', logger },
       {
-        IMAGE_RESIZE_SUFFIX: '-{w}',
-        IMAGE_RESIZE_ABORT_SCOPE: 'batch',
-        IMAGE_RESIZE_RESIZE_STRATEGY_HINT: 'upsample',
-        IMAGE_RESIZE_LOG_LEVEL: 'error',
+        PICTURE_ASSETS_SUFFIX: '-{w}',
+        PICTURE_ASSETS_ABORT_SCOPE: 'batch',
+        PICTURE_ASSETS_RESIZE_STRATEGY_HINT: 'upsample',
+        PICTURE_ASSETS_LOG_LEVEL: 'error',
       }
     );
     expect(resolved).toEqual({
@@ -64,7 +64,7 @@ describe('resolveOptions', () => {
       resolveOptions(
         { formatOptions: { jpeg: { mozjpeg: false }, avif: { quality: 40 } } },
         {
-          IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS:
+          PICTURE_ASSETS_FORMAT_OPTIONS:
             '{"jpeg":{"quality":70,"mozjpeg":true},"webp":{"quality":60}}',
         }
       ).formatOptions
@@ -76,7 +76,7 @@ describe('resolveOptions', () => {
   });
 
   test('reads process.env by default', () => {
-    vi.stubEnv('IMAGE_RESIZE_SUFFIX', '_env');
+    vi.stubEnv('PICTURE_ASSETS_SUFFIX', '_env');
     expect(resolveOptions().suffix).toBe('_env');
   });
 
@@ -95,15 +95,21 @@ describe('resolveOptions', () => {
 
   test('an invalid variable throws even when the call sets the option', () => {
     expect(() =>
-      resolveOptions({ logger: 'silent' }, { IMAGE_RESIZE_LOG_LEVEL: 'warn' })
-    ).toThrow('IMAGE_RESIZE_LOG_LEVEL');
+      resolveOptions({ logger: 'silent' }, { PICTURE_ASSETS_LOG_LEVEL: 'warn' })
+    ).toThrow('PICTURE_ASSETS_LOG_LEVEL');
   });
 });
 
 describe('resolveConcurrency', () => {
   test('auto by default', () => {
-    expect(resolveConcurrency(undefined)).toBe('auto');
-    expect(resolveConcurrency(2)).toBe(2);
-    expect(() => resolveConcurrency('max_threads')).toThrow(RangeError);
+    expect(resolveConcurrency(undefined, {})).toBe('auto');
+    expect(resolveConcurrency(2, {})).toBe(2);
+    expect(() => resolveConcurrency('max_threads', {})).toThrow(RangeError);
+  });
+
+  test('the call, then PICTURE_ASSETS_CONCURRENCY', () => {
+    const env = { PICTURE_ASSETS_CONCURRENCY: '6' };
+    expect(resolveConcurrency(undefined, env)).toBe(6);
+    expect(resolveConcurrency('max', env)).toBe('max');
   });
 });

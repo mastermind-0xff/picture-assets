@@ -1,4 +1,4 @@
-import type { ImageAssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 import type { OutputSetting } from '../types/output.js';
 import type { ResizeStrategyHint } from '../types/size.js';
 import { isMatchingAspectRatio } from '../utils/helpers.js';
@@ -120,7 +120,7 @@ export const getSourceMultiplier = (
   settings: readonly OutputSetting[],
   sourceDimensions: SourceDimensions,
   resizeStrategyHint: ResizeStrategyHint,
-  logger: ImageAssetsLogger
+  logger: AssetsLogger
 ): number => {
   if (isSizeMultiplier(resizeStrategyHint))
     return extractSizeMultiplier(resizeStrategyHint);
@@ -168,7 +168,7 @@ export const resolveOutputSettings = (
   settings: readonly OutputSetting[],
   sourceDimensions: SourceDimensions,
   resizeStrategyHint: ResizeStrategyHint,
-  logger: ImageAssetsLogger
+  logger: AssetsLogger
 ): ResolvedOutputSettings[] => {
   const { srcWidth, srcHeight } = sourceDimensions;
   const srcMultiplier = getSourceMultiplier(

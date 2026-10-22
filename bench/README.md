@@ -34,16 +34,18 @@ more during a case.
 
 From `results/*.txt`, on an Intel i7-9750H laptop (6 cores, 12 threads),
 Windows 11, Node 22.22, sharp 0.35.5 (libvips 8.18). Your numbers will
-differ; the ratios are what to look at.
+differ; the ratios are what to look at. `results/pipeline.txt` was
+recorded before the functions were renamed: its `imageResize` is
+`generateSingleSourceAssets`.
 
 **pipeline.js**: one 3901x2926 photo to 2048, 1024 and 512 pixels wide,
 WebP and JPEG, the same encoder options everywhere.
 
-| Case                                                   | Mean  | vs imageResize |
-| ------------------------------------------------------ | ----- | -------------- |
-| `imageResize`                                          | 741ms |                |
-| sharp, each size resized once, formats in parallel     | 997ms | 34.5% slower   |
-| sharp, one call per file (decode and resize each time) | 1.63s | 2.20× slower   |
+| Case                                                   | Mean  | vs generateSingleSourceAssets |
+| ------------------------------------------------------ | ----- | ----------------------------- |
+| `generateSingleSourceAssets`                           | 741ms |                               |
+| sharp, each size resized once, formats in parallel     | 997ms | 34.5% slower                  |
+| sharp, one call per file (decode and resize each time) | 1.63s | 2.20× slower                  |
 
 **chain.js**: the photo to 6 srcset widths (2560 to 320) in WebP.
 
@@ -66,8 +68,8 @@ JPEG shrink-on-load decodes the small sizes approximately. This
 benchmark also found a bug in the chain: each size was resized with
 sharp's default `fit: 'cover'`, which crops the fraction of a pixel by
 which a rounded size misses the aspect ratio, and the crops added up to a
-shift of up to a pixel: down to 0.905 at 320w on house-10. Sizes with the source's
-aspect ratio are now scaled to fill, which fixed it.
+shift of up to a pixel: down to 0.905 at 320w on house-10. Sizes with the
+source's aspect ratio are now scaled to fill, which fixed it.
 
 **concurrency.js**: the 10 photos of `examples/images/group-*` (12 to 40
 megapixels) to 1024 and 512 pixels wide in WebP.

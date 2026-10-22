@@ -39,7 +39,7 @@ export type FormatPreset = keyof typeof FORMAT_PRESETS;
 export type SizesInput =
   SizePreset | readonly (number | SizeMultiplier | OutputSetting)[];
 
-/** Formats: a preset, or formats as `imageResize` takes them. */
+/** Formats: a preset, or formats as `generateSingleSourceAssets` takes them. */
 export type FormatsInput = FormatPreset | OutputFormats;
 
 export const isSizePreset = (value: unknown): value is SizePreset =>
@@ -74,8 +74,8 @@ export const expandSizes = (sizes: unknown): OutputSetting[] => {
 };
 
 /**
- * Turns formats into what `imageResize` takes: presets expanded, the rest
- * as is (checked when used).
+ * Turns formats into what `generateSingleSourceAssets` takes: presets
+ * expanded, the rest as is (checked when used).
  *
  * @throws TypeError for unknown presets.
  */

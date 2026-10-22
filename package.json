@@ -1,5 +1,5 @@
 {
-  "name": "@mmutils/image-assets",
+  "name": "picture-assets",
   "version": "0.0.1",
   "description": "Turns source images into web-ready assets: every resolution (pixels or x2-style multipliers) and format you need, from a single image or a whole directory tree, with high quality, low weight defaults.",
   "keywords": [
@@ -16,15 +16,12 @@
   ],
   "author": "Tihomir Trifonov",
   "license": "MIT",
-  "publishConfig": {
-    "access": "public"
-  },
   "type": "module",
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "bin": {
-    "image-assets": "dist/esm/cli.js"
+    "picture-assets": "dist/esm/cli.js"
   },
   "exports": {
     ".": {

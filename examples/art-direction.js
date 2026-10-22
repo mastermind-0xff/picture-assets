@@ -15,9 +15,9 @@
  */
 import path from 'node:path';
 
-import { imageResize } from '@mmutils/image-assets';
+import { generateSingleSourceAssets } from 'picture-assets';
 
-const result = await imageResize(
+const result = await generateSingleSourceAssets(
   path.join(import.meta.dirname, 'images', 'house-01.jpg'),
   path.join(import.meta.dirname, 'output', 'art-direction', 'house'),
   [

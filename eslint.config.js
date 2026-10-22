@@ -11,6 +11,8 @@ export default tseslint.config(
       'coverage',
       'examples/output',
       'bench/output',
+      // local notes and scratch, git-ignored
+      '.claude',
     ],
   },
   js.configs.recommended,

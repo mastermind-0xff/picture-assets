@@ -13,11 +13,11 @@ import {
   createEncoders,
   parseFormats,
 } from '../config/validate.js';
-import { ResultBatchError } from '../errors/image-resize-errors.js';
+import { ResultBatchError } from '../errors/result-errors.js';
 import type { RunContext } from '../image/output.js';
 import type { FormatsMap } from '../image/output-paths.js';
-import { isLogging, type ImageAssetsLogger } from '../log/logger.js';
-import type { BatchImageResizeOptions, Concurrency } from '../types/options.js';
+import { isLogging, type AssetsLogger } from '../log/logger.js';
+import type { BatchAssetsOptions, Concurrency } from '../types/options.js';
 import type {
   OutputFormats,
   OutputSetting,
@@ -36,7 +36,7 @@ import {
   resolveTarget,
   sourceResult,
   type SourceTarget,
-} from './image-resize.js';
+} from './generate-single-source-assets.js';
 import {
   assertBatchSource,
   findSources,
@@ -53,7 +53,7 @@ const CASE_INSENSITIVE_FS =
 
 /**
  * Number of sources to process at the same time, see
- * `BatchImageResizeOptions.concurrency`.
+ * `BatchAssetsOptions.concurrency`.
  *
  * @param concurrency The option.
  * @param sources Number of sources: never more workers than sources.
@@ -80,7 +80,7 @@ export const computeConcurrency = (
  * ends, if the logger draws graphs at debug level.
  */
 const startProbes = (
-  logger: ImageAssetsLogger,
+  logger: AssetsLogger,
   totalSources: number,
   getProcessed: () => number
 ) => {
@@ -182,7 +182,7 @@ export interface BatchRun {
  * Runs a batch: plans every source's target (invalid targets and name
  * collisions fail before any file is written), then processes the sources
  * `concurrency` at a time. A source's failure never rejects, see
- * `batchImageResize`.
+ * `generateBatchAssets`.
  *
  * @returns The batch's result, and the targets by source index (undefined
  * for sources whose target is invalid).
@@ -327,15 +327,15 @@ export const runBatch = async (
  * mirrored in the destination, so files with the same name in different
  * directories never overwrite each other.
  *
- * Sources are processed `concurrency` at a time, each with `imageResize`'s
- * pipeline; the results are in path order. Outputs inside the source tree
+ * Sources are processed `concurrency` at a time, each with
+ * `generateSingleSourceAssets`'s pipeline; the results are in path order. Outputs inside the source tree
  * (a destination inside the root) are never picked up as sources.
  *
  * **example**:
  * ```js
  * // photos/a.jpg, photos/trips/b.jpg → public/img/a@1024w.webp, …,
  * // public/img/trips/b@1024w.webp, …
- * await batchImageResize(
+ * await generateBatchAssets(
  *   'photos/**\/*.jpg',
  *   'public/img/',
  *   [{ width: 2048 }, { width: 1024 }],
@@ -346,11 +346,11 @@ export const runBatch = async (
  * @param srcPath A file, a directory, a glob, or `{ root, pattern }`, see
  * `BatchSource`.
  * @param destRoot Directory to output all converted files.
- * @param settings Output sizes, see `imageResize`.
- * @param formats Output formats, see `imageResize`. Without formats, each
- * source is written in its own format.
- * @param options Options of `imageResize`, plus `concurrency` and `signal`.
- * With `abortScope: 'batch'`, the first failure stops the batch: sources in
+ * @param settings Output sizes, see `generateSingleSourceAssets`.
+ * @param formats Output formats, see `generateSingleSourceAssets`. Without
+ * formats, each source is written in its own format.
+ * @param options Options of `generateSingleSourceAssets`, plus `concurrency`
+ * and `signal`. With `abortScope: 'batch'`, the first failure stops the batch: sources in
  * progress finish their current size, the others are `'aborted'`. An
  * aborted `signal` stops it the same way, and the batch is `'aborted'`.
  * @returns The result of every source found, in path order. `'failed'` when
@@ -361,12 +361,12 @@ export const runBatch = async (
  * @throws `ResultBatchError` with `abortScope: 'batch'` when a source fails,
  * carrying the batch result.
  */
-export const batchImageResize = async (
+export const generateBatchAssets = async (
   srcPath: BatchSource,
   destRoot: string,
   settings: readonly OutputSetting[],
   formats?: OutputFormats,
-  options: BatchImageResizeOptions = {}
+  options: BatchAssetsOptions = {}
 ): Promise<ResultBatch> => {
   const input = assertBatchSource(srcPath);
   assertPath('Destination root', destRoot);

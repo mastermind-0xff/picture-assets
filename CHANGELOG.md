@@ -10,10 +10,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Added: the command line and `generateAssets`
 
-- **`image-assets`**: `image-assets <input...> -o <dir>`, with flags for
+- **`picture-assets`**: `picture-assets <input...> -o <dir>`, with flags for
   sizes, formats, quality, suffix, strategy, upscaling, failures,
   concurrency, a manifest, `--dry-run` and `--json`; a config file
-  (`image-assets.config.json`, `.js` or `.mjs`) under the flags. Logs on
+  (`picture-assets.config.json`, `.js` or `.mjs`) under the flags. Logs on
   stderr; exit codes 0, 1 (failures), 2 (usage), 130 (interrupted); Ctrl+C
   lets the files in progress finish. Without `UV_THREADPOOL_SIZE`, it runs
   itself again with the pool sized to the cores: a third less time per
@@ -36,16 +36,24 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Changed
 
-- **Package name**: `@mmutils/image-assets` (was `image-assets-generator`,
-  taken on npm by another package). The command is still `image-assets`.
+- **Package name**: `picture-assets` (was `image-assets-generator`, taken
+  on npm by another package), and so is the command.
+- **Functions**: `generateSingleSourceAssets` (was `imageResize`) and
+  `generateBatchAssets` (was `batchImageResizeAsync`), with
+  `AssetsOptions` and `BatchAssetsOptions`.
+- **Environment variables**: `PICTURE_ASSETS_` and the option's name (were
+  `IMAGE_RESIZE_*`): `PICTURE_ASSETS_RESIZE_STRATEGY_HINT`, `_SUFFIX`,
+  `_FORMAT_OPTIONS` (was `IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS`),
+  `_ABORT_SCOPE` and `_LOG_LEVEL`. New: `PICTURE_ASSETS_CONCURRENCY`.
 - **License**: MIT (was ISC).
 - **Suffix wildcards** `{sm}`, `{wm}` and `{hm}` are `{x}` (the multiplier,
   as in `@{x}x` for `@2x`), `{wx}` and `{hx}`. Any other name in braces
   throws: it was written into the file names.
-- **Options object.** `imageResize(src, dest, settings, formats?, options?)`
-  and `batchImageResize(src, destRoot, settings, formats?, options?)` take
-  `resizeStrategyHint`, `suffix`, `formatOptions`, `abortScope`, `logger`
-  and (batch) `concurrency`, instead of an `ExecutionContext` with a
+- **Options object.** `generateSingleSourceAssets(src, dest, settings,
+formats?, options?)` and `generateBatchAssets(src, destRoot, settings,
+formats?, options?)` take `resizeStrategyHint`, `suffix`,
+  `formatOptions`, `abortScope`, `logger` and (batch) `concurrency`,
+  instead of an `ExecutionContext` with a
   logger and an execution scope to build by hand. `numberOfWorkers` is now
   `concurrency` (`'max_threads'` is `'max'`).
 - **Options resolved per call**: the call, then the environment variable,
@@ -69,10 +77,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
   bench/weight.js. `png: { quality: 100 }` turned on a lossy palette.
 - `formats` accepts any list (`OutputFormat[]`), validated at runtime,
   instead of a non-empty tuple type.
-- Exports: `batchImageResize` (was `batchImageResizeAsync`), the types,
-  `DEFAULT_FORMAT_OPTIONS`, `DEFAULT_OPTIONS`, `ENV_VARIABLES`,
-  `resolveOptions`, `readEnvOptions`, `computeConcurrency`, `parseSuffix`,
-  `createLogger`, `OUTPUT_FORMATS`, `INPUT_EXTENSIONS`, `canWriteFormat`.
+- Exports: the types, `DEFAULT_FORMAT_OPTIONS`, `DEFAULT_OPTIONS`,
+  `ENV_VARIABLES`, `resolveOptions`, `readEnvOptions`,
+  `computeConcurrency`, `parseSuffix`, `createLogger`, `OUTPUT_FORMATS`,
+  `INPUT_EXTENSIONS`, `canWriteFormat`.
 
 ### Fixed
 

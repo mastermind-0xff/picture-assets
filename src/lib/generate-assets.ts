@@ -18,12 +18,12 @@ import {
   parseBoolean,
   parseFormats,
 } from '../config/validate.js';
-import { ResultBatchError } from '../errors/image-resize-errors.js';
+import { ResultBatchError } from '../errors/result-errors.js';
 import { planSource, plannedIdentifier } from '../image/output.js';
-import type { Concurrency, ImageResizeOptions } from '../types/options.js';
+import type { Concurrency, AssetsOptions } from '../types/options.js';
 import type { ResultBatch } from '../types/output.js';
-import { planTargets, runBatch } from './batch-image-resize.js';
-import { assertPath } from './image-resize.js';
+import { planTargets, runBatch } from './generate-batch-assets.js';
+import { assertPath } from './generate-single-source-assets.js';
 import {
   isUnchanged,
   manifestEntry,
@@ -42,7 +42,7 @@ import { findSources, type FoundSource } from './sources.js';
  * in a config file and from the command line. Only `input` and `output` are
  * required.
  */
-export interface AssetsConfig extends ImageResizeOptions {
+export interface AssetsConfig extends AssetsOptions {
   /**
    * Source images: a file, a directory (every image below it) or a glob, or
    * a list of them. The tree below each one's root is mirrored in `output`.
@@ -57,15 +57,16 @@ export interface AssetsConfig extends ImageResizeOptions {
   readonly sizes?: SizesInput;
   /**
    * A preset (`'web'`, `'modern'`, `'lossless'`), or formats as
-   * `imageResize` takes them. Default: `'web'`: AVIF, WebP, and JPEG or PNG.
+   * `generateSingleSourceAssets` takes them. Default: `'web'`: AVIF, WebP,
+   * and JPEG or PNG.
    */
   readonly formats?: FormatsInput;
   /**
-   * Whether sizes larger than the source are made, see `ImageResizeOptions`.
+   * Whether sizes larger than the source are made, see `AssetsOptions`.
    * Default: `false` with a sizes preset (or no sizes), `true` otherwise.
    */
   readonly upscale?: boolean;
-  /** Sources at the same time, see `BatchImageResizeOptions`. */
+  /** Sources at the same time, see `BatchAssetsOptions`. */
   readonly concurrency?: Concurrency;
   /**
    * A JSON file listing every source and its files, written after each run.
@@ -75,7 +76,7 @@ export interface AssetsConfig extends ImageResizeOptions {
   readonly manifest?: string;
   /** Processes every source, even unchanged ones. Default: `false`. */
   readonly force?: boolean;
-  /** Stops the run when aborted, see `BatchImageResizeOptions`. */
+  /** Stops the run when aborted, see `BatchAssetsOptions`. */
   readonly signal?: AbortSignal;
 }
 

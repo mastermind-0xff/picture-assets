@@ -172,13 +172,13 @@ export const parseCliArgs = (argv: readonly string[]): CliArgs => {
   };
 };
 
-export const HELP = `Usage: image-assets <input...> --output <dir> [options]
+export const HELP = `Usage: picture-assets <input...> --output <dir> [options]
 
 Turns images into web assets: every size in every format, the tree below
 each input mirrored in the output directory.
 
 Input: files, directories (every image below them) or globs. Quote globs
-so the shell leaves them to image-assets: 'photos/**/*.jpg'.
+so the shell leaves them to picture-assets: 'photos/**/*.jpg'.
 
 Options:
   -o, --output <dir>       Destination directory (required)
@@ -193,15 +193,16 @@ Options:
                            gives @2x), {wx} {hx} those of the width and
                            height. Starting with a dash: --suffix=-{w}
                                                                [@{w}w]
-      --strategy <hint>    What x1 is: downsample (the source is the
-                           largest multiplier), upsample (the source is
-                           x1), x2 (the source is x2), or the size of x1
-                           like 1024x768                       [downsample]
+      --strategy <hint>    What x1 is: downsample (the smallest width in
+                           pixels, else the source is the largest
+                           multiplier), upsample (the source is x1), x2
+                           (the source is x2), or the size of x1 like
+                           1024x768                            [downsample]
       --[no-]upscale       Make sizes larger than the source   [no with a
                            sizes preset, yes with sizes]
       --on-error <scope>   What a failure stops: none, source, batch  [none]
   -j, --concurrency <n>    Sources at a time: auto, max or a number  [auto]
-  -c, --config <file>      Config file   [image-assets.config.json, .js or
+  -c, --config <file>      Config file   [picture-assets.config.json, .js or
                            .mjs in the current directory]
       --manifest <file>    Write a manifest of the files; unchanged sources
                            are skipped by the next runs
@@ -219,11 +220,11 @@ arguments or config, 130 interrupted.
 A config file holds the options of generateAssets as JSON (or a .js module
 exporting them): { "input": "src/images", "output": "public/img",
 "formats": ["avif", "webp"] }. Its paths are relative to it; flags win over
-it, it wins over the IMAGE_RESIZE_* environment variables.
+it, it wins over the PICTURE_ASSETS_* environment variables.
 
 Examples:
-  image-assets src/images -o public/img
-  image-assets 'photos/**/*.jpg' -o dist/img -s 1920,1280,640 -f avif,webp,jpg
-  image-assets logo.png -o public -s x1,x2,x3 --strategy 160x40
-  image-assets src/images -o public/img --manifest public/img/assets.json
+  picture-assets src/images -o public/img
+  picture-assets 'photos/**/*.jpg' -o dist/img -s 1920,1280,640 -f avif,webp,jpg
+  picture-assets logo.png -o public -s x1,x2,x3 --strategy 160x40
+  picture-assets src/images -o public/img --manifest public/img/assets.json
 `;

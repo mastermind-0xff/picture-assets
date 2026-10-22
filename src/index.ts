@@ -26,15 +26,19 @@ export {
   type SizePreset,
   type SizesInput,
 } from './config/presets.js';
-export { imageResize } from './lib/image-resize.js';
+export { generateSingleSourceAssets } from './lib/generate-single-source-assets.js';
 export {
-  batchImageResize,
+  generateBatchAssets,
   computeConcurrency,
-} from './lib/batch-image-resize.js';
+} from './lib/generate-batch-assets.js';
 export type { BatchSource } from './lib/sources.js';
 
 export { DEFAULT_OPTIONS, resolveOptions } from './config/options.js';
-export { ENV_VARIABLES, readEnvOptions } from './config/env.js';
+export {
+  ENV_VARIABLES,
+  readEnvOptions,
+  type EnvOptions,
+} from './config/env.js';
 export {
   canWriteFormat,
   DEFAULT_FORMAT_OPTIONS,
@@ -42,17 +46,14 @@ export {
   OUTPUT_FORMATS,
 } from './image/formats.js';
 export { parseSuffix, type SuffixData } from './image/suffix.js';
-export { createLogger, type ImageAssetsLogger } from './log/logger.js';
-export {
-  ResultBatchError,
-  ResultSourceError,
-} from './errors/image-resize-errors.js';
+export { createLogger, type AssetsLogger } from './log/logger.js';
+export { ResultBatchError, ResultSourceError } from './errors/result-errors.js';
 
 export type {
   AbortScope,
-  BatchImageResizeOptions,
+  BatchAssetsOptions,
   Concurrency,
-  ImageResizeOptions,
+  AssetsOptions,
 } from './types/options.js';
 export type {
   FormatSelector,

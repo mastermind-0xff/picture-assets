@@ -13,7 +13,7 @@ import {
  * message plugin, or any object with these methods. Messages are strings or
  * plain objects (each property on its own line).
  */
-export interface ImageAssetsLogger {
+export interface AssetsLogger {
   error(data: string | object): void;
   warning(data: string | object): void;
   info(data: string | object): void;
@@ -39,12 +39,12 @@ export interface ImageAssetsLogger {
  *
  * @param level Lowest level to output, from `'silent'` to `'verbose'`.
  */
-export const createLogger = (level: LogLevel): ImageAssetsLogger =>
+export const createLogger = (level: LogLevel): AssetsLogger =>
   new Logger({ level, plugins: [messagePlugin(), graphPlugin()] });
 
 /**
  * Whether a log of the given type would be output. Loggers without a level
  * are assumed to output everything.
  */
-export const isLogging = (logger: ImageAssetsLogger, type: LogType) =>
+export const isLogging = (logger: AssetsLogger, type: LogType) =>
   logger.level === undefined || shouldLog(type, logger.level);

@@ -9,7 +9,7 @@ import type {
   OutputSetting,
   ResultSource,
 } from '../types/output.js';
-import type { SourceTarget } from './image-resize.js';
+import type { SourceTarget } from './generate-single-source-assets.js';
 
 /** Version of the manifest's shape: a manifest of another is ignored. */
 export const MANIFEST_VERSION = 1;

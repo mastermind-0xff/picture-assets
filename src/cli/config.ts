@@ -7,9 +7,9 @@ import type { CliConfig } from './args.js';
 
 /** Config files looked for in the current directory, in this order. */
 export const CONFIG_FILES = [
-  'image-assets.config.json',
-  'image-assets.config.js',
-  'image-assets.config.mjs',
+  'picture-assets.config.json',
+  'picture-assets.config.js',
+  'picture-assets.config.mjs',
 ];
 
 /** Config keys holding paths: relative to the config file. */

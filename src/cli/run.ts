@@ -8,14 +8,14 @@ import {
   type LogLevel,
 } from '@mmutils/logger';
 
-import { ResultBatchError } from '../errors/image-resize-errors.js';
+import { ResultBatchError } from '../errors/result-errors.js';
 import {
   generateAssets,
   planAssets,
   type AssetsConfig,
   type AssetsPlan,
 } from '../lib/generate-assets.js';
-import type { ImageAssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 import { HELP, parseCliArgs, UsageError, type CliArgs } from './args.js';
 import {
   findConfigFile,
@@ -51,7 +51,7 @@ export const createCliLogger = (
   level: LogLevel,
   write: (line: string) => void,
   colors: boolean
-): ImageAssetsLogger =>
+): AssetsLogger =>
   new Logger({
     level,
     useStyles: colors,
@@ -121,7 +121,7 @@ const readConfig = async (args: CliArgs, cwd: string) => {
 };
 
 /**
- * Runs the `image-assets` command.
+ * Runs the `picture-assets` command.
  *
  * @param argv Arguments after the command.
  * @param io Streams, directory, colors and stop signal.
@@ -134,7 +134,7 @@ export const runCli = async (
   version: string
 ): Promise<number> => {
   const fail = (message: string, hint = '') => {
-    io.stderr(`image-assets: ${message}\n${hint}`);
+    io.stderr(`picture-assets: ${message}\n${hint}`);
     return EXIT_CODES.usage;
   };
 
@@ -155,7 +155,7 @@ export const runCli = async (
     return fail(
       errorMessage(error),
       error instanceof UsageError ?
-        'Run image-assets --help for the options.\n'
+        'Run picture-assets --help for the options.\n'
       : ''
     );
   }

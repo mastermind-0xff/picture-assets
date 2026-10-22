@@ -34,13 +34,13 @@ import {
   table,
 } from './shared.js';
 
-const { imageResize } = await import(LIBRARY.href);
+const { generateSingleSourceAssets } = await import(LIBRARY.href);
 
 const WIDTHS = [2560, 1920, 1280, 960, 640, 320];
 const chainedDir = outputDir('chain', 'chained');
 const sourceDir = outputDir('chain', 'source');
 const run = (dir, generateFromSource) =>
-  imageResize(
+  generateSingleSourceAssets(
     PHOTO,
     dir,
     WIDTHS.map((width) => ({ width, generateFromSource })),
@@ -69,7 +69,7 @@ if (!isWorker()) {
     const name = path.basename(photo, '.jpg');
     // PNG: lossless, so only the resizing differs
     const write = (dir, generateFromSource) =>
-      imageResize(
+      generateSingleSourceAssets(
         photo,
         dir,
         widths.map((width) => ({ width, generateFromSource })),

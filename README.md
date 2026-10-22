@@ -1,4 +1,4 @@
-# @mmutils/image-assets
+# picture-assets
 
 Turns source images into web-ready assets: every resolution (pixels or
 `x2`-style multipliers) and format you need, from one image or a whole
@@ -7,11 +7,11 @@ library, built on [sharp](https://sharp.pixelplumbing.com/), logging with
 [@mmutils/logger](https://www.npmjs.com/package/@mmutils/logger).
 
 ```sh
-npx @mmutils/image-assets src/images -o public/img
+npx picture-assets src/images -o public/img
 ```
 
 ```ts
-import { generateAssets } from '@mmutils/image-assets';
+import { generateAssets } from 'picture-assets';
 
 await generateAssets({ input: 'src/images', output: 'public/img' });
 ```
@@ -45,30 +45,29 @@ for transparent images): `public/img/house@1280w.avif`, ….
 ## Install
 
 ```sh
-npm install @mmutils/image-assets
+npm install picture-assets
 ```
 
-Requires Node.js 22.17 or newer. The package installs the `image-assets`
-command: run it with `npx image-assets` or from your `package.json`
-scripts. Without installing, run `npx @mmutils/image-assets`:
-`npx image-assets` alone would fetch `image-assets`, another package.
+Requires Node.js 22.17 or newer. The package installs the `picture-assets`
+command: run it with `npx picture-assets`, installed or not, or from your
+`package.json` scripts.
 
-## Command line: `image-assets`
+## Command line: `picture-assets`
 
 ```text
-image-assets <input...> --output <dir> [options]
+picture-assets <input...> --output <dir> [options]
 ```
 
 ```sh
-image-assets src/images -o public/img
-image-assets 'photos/**/*.jpg' -o dist/img -s 1920,1280,640 -f avif,webp,jpg
-image-assets logo.png -o public -s x1,x2,x3 --strategy 160x40
-image-assets src/images -o public/img --manifest public/img/assets.json
-image-assets src/images -o public/img --dry-run
+picture-assets src/images -o public/img
+picture-assets 'photos/**/*.jpg' -o dist/img -s 1920,1280,640 -f avif,webp,jpg
+picture-assets logo.png -o public -s x1,x2,x3 --strategy 160x40
+picture-assets src/images -o public/img --manifest public/img/assets.json
+picture-assets src/images -o public/img --dry-run
 ```
 
 Inputs are files, directories or globs (quoted, so the shell leaves them
-alone). The main flags; `image-assets --help` has them all:
+alone). The main flags; `picture-assets --help` has them all:
 
 | Flag                  | Meaning                                                                   |
 | --------------------- | ------------------------------------------------------------------------- |
@@ -84,10 +83,10 @@ Logs go to stderr. Exit codes: 0 done, 1 some sources failed, 2 invalid
 arguments or config, 130 interrupted. Ctrl+C lets the files in progress
 finish, so none is left half written; a second Ctrl+C quits at once.
 
-**Config file.** `image-assets.config.json` (or `.js`, `.mjs` exporting
+**Config file.** `picture-assets.config.json` (or `.js`, `.mjs` exporting
 it) in the current directory, or `--config <file>`, holds the config of
 `generateAssets`; its paths are relative to it. Flags win over the file,
-which wins over the `IMAGE_RESIZE_*` variables:
+which wins over the `PICTURE_ASSETS_*` variables:
 
 ```json
 {
@@ -120,16 +119,17 @@ The command line's config, as plain data, so it can live in JSON. Only
 | `input`       |                | A file, directory or glob, or a list of them. Each tree is mirrored in `output`             |
 | `output`      |                | Destination directory                                                                       |
 | `sizes`       | `'responsive'` | A preset, or widths (`1280`), multipliers (`'x2'`, suffixed `@2x`) and settings (see below) |
-| `formats`     | `'web'`        | A preset, or formats as `imageResize` takes them, `'fallback'` included                     |
+| `formats`     | `'web'`        | A preset, or formats as `generateSingleSourceAssets` takes them, `'fallback'` included      |
 | `upscale`     | see meaning    | Sizes larger than the source: not made with a sizes preset, made otherwise                  |
 | `manifest`    |                | A JSON file listing every source and file; makes runs incremental                           |
 | `force`       | `false`        | Process every source, even unchanged ones                                                   |
-| `concurrency` | `'auto'`       | Sources at a time, see `batchImageResize`                                                   |
+| `concurrency` | `'auto'`       | Sources at a time, see `generateBatchAssets`                                                |
 | `signal`      |                | An `AbortSignal` stopping the run                                                           |
 
-Plus the [options](#options) of `imageResize`: `suffix`, `formatOptions`,
-`resizeStrategyHint`, `abortScope`, `logger`. Unknown keys throw: a typo
-in a config file is an error, not an option silently ignored.
+Plus the [options](#options) of `generateSingleSourceAssets`: `suffix`,
+`formatOptions`, `resizeStrategyHint`, `abortScope`, `logger`. Unknown
+keys throw: a typo in a config file is an error, not an option silently
+ignored.
 
 | Preset                | Gives                                                                   |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -160,10 +160,10 @@ anything: each source's size, its sizes in pixels (multipliers resolved)
 and its files, or why it is unchanged or would fail. It is the command's
 `--dry-run`.
 
-## Single image: `imageResize`
+## One source: `generateSingleSourceAssets`
 
 ```ts
-imageResize(srcPath, destPath, settings, formats?, options?): Promise<ResultSource>
+generateSingleSourceAssets(srcPath, destPath, settings, formats?, options?): Promise<ResultSource>
 ```
 
 **`destPath`** decides the file names:
@@ -251,22 +251,22 @@ other.
 Every option falls back to its environment variable, then to its default.
 Invalid values throw, naming the option or the variable.
 
-| Option               | Default        | Variable                              | Meaning                                                                                                                                                                                                                                   |
-| -------------------- | -------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `resizeStrategyHint` | `'downsample'` | `IMAGE_RESIZE_RESIZE_STRATEGY_HINT`   | What `x1` is: `'downsample'` (the source is the largest multiplier), `'upsample'` (the source is `x1`), a multiplier like `'x2'` (the source is `x2`), or a size `{ width, height }` (`x1` is that size). See [Multipliers](#multipliers) |
-| `suffix`             | `'@{w}w'`      | `IMAGE_RESIZE_SUFFIX`                 | Suffix of settings without their own, see [Suffix](#suffix)                                                                                                                                                                               |
-| `formatOptions`      | `{}`           | `IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS` | Options per format for every call, as JSON in the variable                                                                                                                                                                                |
-| `abortScope`         | `'none'`       | `IMAGE_RESIZE_ABORT_SCOPE`            | What a failure stops, see [Failures](#failures)                                                                                                                                                                                           |
-| `logger`             | `'info'`       | `IMAGE_RESIZE_LOG_LEVEL`              | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                                                                                  |
-| `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                                                                                      |
+| Option               | Default        | Variable                              | Meaning                                                                                                                                                                                                                                                                                                  |
+| -------------------- | -------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resizeStrategyHint` | `'downsample'` | `PICTURE_ASSETS_RESIZE_STRATEGY_HINT` | What `x1` is: `'downsample'` (inferred from the sizes: the smallest pixel size is `x1`, else the source is the largest multiplier), `'upsample'` (the source is `x1`), a multiplier like `'x2'` (the source is `x2`), or a size `{ width, height }` (`x1` is that size). See [Multipliers](#multipliers) |
+| `suffix`             | `'@{w}w'`      | `PICTURE_ASSETS_SUFFIX`               | Suffix of settings without their own, see [Suffix](#suffix)                                                                                                                                                                                                                                              |
+| `formatOptions`      | `{}`           | `PICTURE_ASSETS_FORMAT_OPTIONS`       | Options per format for every call, as JSON in the variable                                                                                                                                                                                                                                               |
+| `abortScope`         | `'none'`       | `PICTURE_ASSETS_ABORT_SCOPE`          | What a failure stops, see [Failures](#failures)                                                                                                                                                                                                                                                          |
+| `logger`             | `'info'`       | `PICTURE_ASSETS_LOG_LEVEL`            | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                                                                                                                                                 |
+| `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                                                                                                                                                     |
 
 Load the variables from a file with `node --env-file=.env` (see
 [`.env.example`](.env.example)).
 
-## Many images: `batchImageResize`
+## Many sources: `generateBatchAssets`
 
 ```ts
-batchImageResize(srcPath, destRoot, settings, formats?, options?): Promise<ResultBatch>
+generateBatchAssets(srcPath, destRoot, settings, formats?, options?): Promise<ResultBatch>
 ```
 
 `srcPath` is a directory, a glob, a file, or `{ root, pattern }`. The tree
@@ -290,10 +290,11 @@ Files sharp can't read are skipped; outputs inside the source tree are
 never picked up again. Two sources that would write the same files
 (`a.jpg` and `a.png`) fail instead of overwriting each other.
 
-`options` are `imageResize`'s, plus `concurrency`: sources processed at the
-same time. `'auto'` (default) is the libuv thread pool size
-(`UV_THREADPOOL_SIZE`, 4 by default), on which sharp runs; `'max'` the
-machine's parallelism; or a number.
+`options` are `generateSingleSourceAssets`'s, plus `concurrency`: sources
+processed at the same time. `'auto'` (default) is the libuv thread pool
+size (`UV_THREADPOOL_SIZE`, 4 by default), on which sharp runs; `'max'`
+the machine's parallelism; or a number. `PICTURE_ASSETS_CONCURRENCY` sets
+it for every call, as it depends on the machine more than on the project.
 
 And `signal`: an `AbortSignal` that stops the batch. The files in progress
 are finished, so none is left half written, and nothing new starts. The
@@ -305,7 +306,7 @@ done have `'succeed'`, the others `'aborted'`. To stop on Ctrl+C or after
 const controller = new AbortController();
 process.once('SIGINT', () => controller.abort());
 
-const batch = await batchImageResize('photos', 'out', settings, formats, {
+const batch = await generateBatchAssets('photos', 'out', settings, formats, {
   signal: AbortSignal.any([controller.signal, AbortSignal.timeout(600_000)]),
 });
 if (batch.status === 'aborted') console.log('Stopped before the end.');
@@ -375,8 +376,8 @@ JPEG at quality 80 is the usual web baseline. Measured on three photos at
 | AVIF   | quality 60              | 53%                    | 0.9716                 |
 | PNG    | lossless, zlib level 9  | 1098%                  | 1                      |
 
-mozjpeg was not smaller at the same SSIM and encodes about 5 times slower: opt in
-with `{ jpg: { mozjpeg: true } }`. Every option is in
+mozjpeg was not smaller at the same SSIM and encodes about 5 times slower:
+opt in with `{ jpg: { mozjpeg: true } }`. Every option is in
 `DEFAULT_FORMAT_OPTIONS` and can be changed per call or with
 `formatOptions`.
 
@@ -423,12 +424,12 @@ left before 1.0: [docs/cli-proposal.md](docs/cli-proposal.md).
 
 ## AI assistance
 
-@mmutils/image-assets core was manually build and since the 2026
-revamp (the toolchain, the fixes, the command line), most of the code,
-tests, benchmarks and documentation was modified or written by AI. The author
-designs the features, makes the decisions and reviews the changes and the code,
-and every change passes the same checks (formatting, lint, strict type
-checking and tests) before it is committed.
+picture-assets core was manually built and since the 2026 revamp (the
+toolchain, the fixes, the command line), most of the code, tests,
+benchmarks and documentation was modified or written by AI. The author
+designs the features, makes the decisions and reviews the changes and the
+code, and every change passes the same checks (formatting, lint, strict
+type checking and tests) before it is committed.
 
 ## License
 

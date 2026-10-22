@@ -1,5 +1,5 @@
 import type { LogLevel } from '@mmutils/logger';
-import type { ImageAssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 import type { OutputFormatsOptions } from './output.js';
 import type { ResizeStrategyHint } from './size.js';
 
@@ -17,22 +17,23 @@ export type AbortScope = 'none' | 'source' | 'batch';
 export type Concurrency = number | 'auto' | 'max';
 
 /**
- * Options of `imageResize`. Every option falls back to its environment
+ * Options of `generateSingleSourceAssets`, and of `generateBatchAssets` and
+ * `generateAssets` with theirs. Every option falls back to its environment
  * variable (see `ENV_VARIABLES`), then to its default.
  */
-export interface ImageResizeOptions {
+export interface AssetsOptions {
   /**
    * Tells what source image's multiplier is, or what `'x1'` resolution is,
    * so multipliers in the settings can be turned into pixels.
    *
-   * Default: `'downsample'` (`IMAGE_RESIZE_RESIZE_STRATEGY_HINT`).
+   * Default: `'downsample'` (`PICTURE_ASSETS_RESIZE_STRATEGY_HINT`).
    */
   readonly resizeStrategyHint?: ResizeStrategyHint;
 
   /**
    * Suffix of settings without their own, with the same wildcards.
    *
-   * Default: `'@{w}w'` (`IMAGE_RESIZE_SUFFIX`).
+   * Default: `'@{w}w'` (`PICTURE_ASSETS_SUFFIX`).
    */
   readonly suffix?: string;
 
@@ -41,7 +42,7 @@ export interface ImageResizeOptions {
    * `DEFAULT_FORMAT_OPTIONS`). Options given with the `formats` argument win
    * over these. `jpg` outputs use `jpeg`'s options too, `tif` `tiff`'s.
    *
-   * Default: `{}` (`IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS`, as JSON).
+   * Default: `{}` (`PICTURE_ASSETS_FORMAT_OPTIONS`, as JSON).
    */
   readonly formatOptions?: {
     readonly [F in keyof OutputFormatsOptions]?: OutputFormatsOptions[F];
@@ -61,7 +62,7 @@ export interface ImageResizeOptions {
   /**
    * What a failure stops, see `AbortScope`.
    *
-   * Default: `'none'` (`IMAGE_RESIZE_ABORT_SCOPE`).
+   * Default: `'none'` (`PICTURE_ASSETS_ABORT_SCOPE`).
    */
   readonly abortScope?: AbortScope;
 
@@ -70,13 +71,13 @@ export interface ImageResizeOptions {
    * `Logger` with the message plugin (and the graph plugin for the batch's
    * performance graphs at debug level), or any object with the same methods.
    *
-   * Default: `'info'` (`IMAGE_RESIZE_LOG_LEVEL`).
+   * Default: `'info'` (`PICTURE_ASSETS_LOG_LEVEL`).
    */
-  readonly logger?: LogLevel | ImageAssetsLogger;
+  readonly logger?: LogLevel | AssetsLogger;
 }
 
-/** Options of `batchImageResize`. */
-export interface BatchImageResizeOptions extends ImageResizeOptions {
+/** Options of `generateBatchAssets`. */
+export interface BatchAssetsOptions extends AssetsOptions {
   /**
    * Sources processed at the same time.
    * - `'auto'`: the libuv thread pool size (`UV_THREADPOOL_SIZE`, 4 by
@@ -86,7 +87,8 @@ export interface BatchImageResizeOptions extends ImageResizeOptions {
    *   before the process starts to benefit from it.
    * - a number: at least 1.
    *
-   * Never more than the number of sources. Default: `'auto'`.
+   * Never more than the number of sources. Default: `'auto'`
+   * (`PICTURE_ASSETS_CONCURRENCY`).
    */
   readonly concurrency?: Concurrency;
 

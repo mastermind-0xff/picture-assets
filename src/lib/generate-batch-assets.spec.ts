@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { ResultBatchError } from '../errors/image-resize-errors.js';
+import { ResultBatchError } from '../errors/result-errors.js';
 import {
   createTempDir,
   listFiles,
@@ -13,7 +13,10 @@ import {
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
 import type { ResultBatch } from '../types/output.js';
-import { batchImageResize, computeConcurrency } from './batch-image-resize.js';
+import {
+  generateBatchAssets,
+  computeConcurrency,
+} from './generate-batch-assets.js';
 
 let dir: string;
 let remove: () => Promise<void>;
@@ -60,11 +63,11 @@ describe('computeConcurrency', () => {
   });
 });
 
-describe('batchImageResize', () => {
+describe('generateBatchAssets', () => {
   test('a directory: the tree mirrored, results in path order', async () => {
     const out = outDir();
     const { logger, messages } = createRecordingLogger('info');
-    const batch = await batchImageResize(
+    const batch = await generateBatchAssets(
       file('tree'),
       out,
       [{ width: 200 }, { width: 100 }],
@@ -97,7 +100,7 @@ describe('batchImageResize', () => {
 
   test('without formats: each source in its own format', async () => {
     const out = outDir();
-    await batchImageResize(
+    await generateBatchAssets(
       file('tree'),
       out,
       [{ width: 50 }],
@@ -114,14 +117,14 @@ describe('batchImageResize', () => {
   test('a glob and a root with a pattern', async () => {
     const out = outDir();
     const glob = `${dir.replaceAll('\\', '/')}/tree/**/*.png`;
-    await batchImageResize(
+    await generateBatchAssets(
       glob,
       `${out}/glob`,
       [{ width: 50 }],
       ['png'],
       silent
     );
-    await batchImageResize(
+    await generateBatchAssets(
       { root: file('tree/sub'), pattern: '**/*.webp' },
       `${out}/root`,
       [{ width: 50 }],
@@ -140,7 +143,7 @@ describe('batchImageResize', () => {
     await fs.copyFile(file('tree/a.jpg'), path.join(root, 'a.jpg'));
     const out = path.join(root, 'out');
     for (let run = 0; run < 2; run++) {
-      const batch = await batchImageResize(
+      const batch = await generateBatchAssets(
         root,
         out,
         [{ width: 50 }],
@@ -156,7 +159,7 @@ describe('batchImageResize', () => {
     await fs.mkdir(root);
     await opaqueImage(100, 100).jpeg().toFile(path.join(root, 'x.jpg'));
     await opaqueImage(100, 100).png().toFile(path.join(root, 'x.png'));
-    const batch = await batchImageResize(
+    const batch = await generateBatchAssets(
       root,
       outDir(),
       [{ width: 50 }],
@@ -174,7 +177,7 @@ describe('batchImageResize', () => {
   });
 
   test("a broken source with 'none': the others go on", async () => {
-    const batch = await batchImageResize(
+    const batch = await generateBatchAssets(
       `${dir.replaceAll('\\', '/')}/*.jpg`,
       outDir(),
       [{ width: 50 }],
@@ -190,7 +193,7 @@ describe('batchImageResize', () => {
   });
 
   test("a broken source with 'batch': rejects, the rest aborted", async () => {
-    const promise = batchImageResize(
+    const promise = generateBatchAssets(
       `${dir.replaceAll('\\', '/')}/*.jpg`,
       outDir(),
       [{ width: 50 }],
@@ -213,7 +216,7 @@ describe('batchImageResize', () => {
 
   test('no sources: failed, with a warning', async () => {
     const { logger, messages } = createRecordingLogger();
-    const batch = await batchImageResize(
+    const batch = await generateBatchAssets(
       file('tree/**/*.gif'),
       outDir(),
       [{ width: 50 }],
@@ -232,7 +235,7 @@ describe('batchImageResize', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     try {
       const state = { settled: false };
-      const promise = batchImageResize(
+      const promise = generateBatchAssets(
         file('tree'),
         outDir(),
         [{ width: 400 }],
@@ -264,7 +267,7 @@ describe('batchImageResize', () => {
   test('no graphs for a logger without them', async () => {
     const { logger } = createRecordingLogger('debug');
     const { debugGraph, ...withoutGraphs } = logger;
-    const batch = await batchImageResize(
+    const batch = await generateBatchAssets(
       file('tree'),
       outDir(),
       [{ width: 50 }],
@@ -285,7 +288,7 @@ describe('batchImageResize', () => {
       if (typeof data === 'string' && data.includes('a.jpg: '))
         controller.abort();
     };
-    const batch = await batchImageResize(
+    const batch = await generateBatchAssets(
       file('tree'),
       outDir(),
       [{ width: 50 }],
@@ -302,20 +305,20 @@ describe('batchImageResize', () => {
 
   test('invalid arguments throw before any work', async () => {
     await expect(
-      batchImageResize(file('tree'), outDir(), [{ width: 1 }], ['webp'], {
+      generateBatchAssets(file('tree'), outDir(), [{ width: 1 }], ['webp'], {
         concurrency: 0,
       })
     ).rejects.toThrow(RangeError);
     await expect(
-      batchImageResize(file('tree'), outDir(), [{ width: 1 }], {
+      generateBatchAssets(file('tree'), outDir(), [{ width: 1 }], {
         webp: { quality: 101 },
       })
     ).rejects.toThrow(TypeError);
     await expect(
-      batchImageResize({ root: dir } as never, outDir(), [{ width: 1 }])
+      generateBatchAssets({ root: dir } as never, outDir(), [{ width: 1 }])
     ).rejects.toThrow(TypeError);
     await expect(
-      batchImageResize(file('tree'), '', [{ width: 1 }])
+      generateBatchAssets(file('tree'), '', [{ width: 1 }])
     ).rejects.toThrow(TypeError);
   });
 });

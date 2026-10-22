@@ -1,7 +1,7 @@
 import type { GraphSettings, LogLevel, LogType } from '@mmutils/logger';
 import { vi } from 'vitest';
 
-import type { ImageAssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 
 export interface LogRecord {
   type: LogType;
@@ -28,7 +28,7 @@ export const createRecordingLogger = (level: LogLevel = 'verbose') => {
     verbose: record('verbose'),
     debugGraph:
       vi.fn<(values: readonly number[], settings?: GraphSettings) => void>(),
-  } satisfies ImageAssetsLogger;
+  } satisfies AssetsLogger;
 
   /** Text logs of a type. */
   const messages = (type: LogType) =>

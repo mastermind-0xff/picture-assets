@@ -7,13 +7,13 @@ import {
   type FormatOptionsInput,
   type TargetEncoder,
 } from '../config/validate.js';
-import { ResultSourceError } from '../errors/image-resize-errors.js';
+import { ResultSourceError } from '../errors/result-errors.js';
 import { sourceToSettings, type RunContext } from '../image/output.js';
 import {
   resolvePathsAndFormats,
   type FormatsMap,
 } from '../image/output-paths.js';
-import type { ImageResizeOptions } from '../types/options.js';
+import type { AssetsOptions } from '../types/options.js';
 import type {
   OutputFormats,
   OutputSetting,
@@ -137,7 +137,7 @@ export const processSource = async (
  * **examples:**
  * ```typescript
  * // minimum config
- * const result = await imageResize(
+ * const result = await generateSingleSourceAssets(
  *  '/path/to/file.jpg',
  *  '/path/to/assets/new-name-prefix',
  *  [
@@ -224,7 +224,7 @@ export const processSource = async (
  * **example:**
  * ```typescript
  * // source @ 300x300px
- * await imageResize(
+ * await generateSingleSourceAssets(
  *  'image.jpg',
  *  './dest/',
  *  [
@@ -274,12 +274,12 @@ export const processSource = async (
  * @throws `ResultSourceError` with `abortScope: 'batch'` when the source
  * fails. The error contains the source result.
  */
-export const imageResize = async (
+export const generateSingleSourceAssets = async (
   srcPath: string,
   destPath: string,
   settings: readonly OutputSetting[],
   formats?: OutputFormats,
-  options?: ImageResizeOptions
+  options?: AssetsOptions
 ): Promise<ResultSource> => {
   assertPath('Source path', srcPath);
   assertPath('Destination path', destPath);

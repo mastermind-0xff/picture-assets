@@ -11,9 +11,9 @@
  */
 import path from 'node:path';
 
-import { imageResize } from '@mmutils/image-assets';
+import { generateSingleSourceAssets } from 'picture-assets';
 
-const result = await imageResize(
+const result = await generateSingleSourceAssets(
   path.join(import.meta.dirname, 'images', 'house-01.jpg'),
   // a trailing separator: a directory, files named after the source
   path.join(import.meta.dirname, 'output', 'quick-start') + path.sep,

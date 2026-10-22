@@ -1,9 +1,9 @@
 # Proposal: a CLI-ready 1.0
 
 Status: sections 1 to 4 are implemented (`generateAssets`, `planAssets`,
-presets, the manifest and the `image-assets` command; see the README).
-Section 5 is open: its decisions are the author's. Where the
-implementation differs from the plan below, a note says why.
+presets, the manifest and the `picture-assets` command; see the README).
+Section 5 lists what the author decided, rejected, left open and dropped.
+Where the implementation differs from the plan below, a note says why.
 
 The goal: one tool for code and for the command line, with very few
 settings and a great result every time. The revamp laid the groundwork a
@@ -11,8 +11,8 @@ CLI needs. Every argument is validated at runtime, with messages that name
 the field. Options are resolved per call from the call, then the
 environment, then the defaults. Failures are predictable (`abortScope`).
 Results are complete and serializable, and the logger can be replaced.
-What is missing is mostly a layer above `imageResize` and
-`batchImageResize`, plus a few decisions best taken before 1.0.
+What is missing is mostly a layer above `generateSingleSourceAssets` and
+`generateBatchAssets`, plus a few decisions best taken before 1.0.
 
 ## 1. One entry point, one config shape
 
@@ -20,7 +20,7 @@ A single function whose argument is plain JSON, so code, a config file and
 CLI flags all describe the same thing:
 
 ```ts
-import { generateAssets } from '@mmutils/image-assets';
+import { generateAssets } from 'picture-assets';
 
 const result = await generateAssets({
   input: 'src/images', // file, directory, glob, or a list of them
@@ -43,7 +43,8 @@ incremental run without the file it needs.
 
 - `generateAssets` is a batch: a single file is a batch of one, so there
   is one result shape (`ResultBatch`).
-- `imageResize` and `batchImageResize` stay, as the low-level API.
+- `generateSingleSourceAssets` and `generateBatchAssets` stay, as the
+  low-level API.
 - **Shorthands** keep configs short: `sizes: [1920, 1280, 640]` means
   widths, `sizes: ['x1', 'x2', 'x3']` multipliers with `@1x`-style
   suffixes.
@@ -89,7 +90,7 @@ changed since the last run.
 Built on `node:util` `parseArgs`: no dependency.
 
 ```text
-image-assets <input...> --output <dir> [options]
+picture-assets <input...> --output <dir> [options]
 
   -o, --output <dir>          Destination directory (required)
   -s, --sizes <sizes>         1920,1280,640 | x1,x2,x3 | responsive | retina   [responsive]
@@ -99,7 +100,7 @@ image-assets <input...> --output <dir> [options]
       --strategy <hint>       downsample | upsample | x2 | 1024x768            [downsample]
       --on-error <scope>      none | source | batch                            [none]
   -j, --concurrency <n>       auto | max | a number                            [auto]
-  -c, --config <file>         image-assets.config.json or .js                  [found in cwd]
+  -c, --config <file>         picture-assets.config.json or .js                [found in cwd]
       --manifest <file>       Write the manifest; enables incremental runs
       --force                 Process every source, even unchanged ones
       --dry-run               Print the plan (sources, sizes, files) and exit
@@ -147,7 +148,7 @@ src/cli/
   manifest.ts  read, compare, write
 ```
 
-`package.json` gets `"bin": { "image-assets": "./dist/esm/cli/main.js" }`.
+`package.json` gets `"bin": { "picture-assets": "./dist/esm/cli/main.js" }`.
 
 _Implemented as:_ `src/cli.ts` (the bin, `dist/esm/cli.js`: thread pool,
 signals, process streams), `src/cli/run.ts` (`runCli`, which takes its
@@ -158,33 +159,55 @@ are a library feature), `src/lib/generate-assets.ts` and
 
 ## 5. API decisions to take before 1.0
 
-Breaking changes, cheapest now, while nothing is published:
+Breaking changes, cheapest now, while nothing is published.
 
-1. **`resizeFrom: 'previous' | 'source'`** instead of `generateFromSource`
-   and `useAsNextResizeIteration`: one field, two flags that can
-   contradict each other today.
-2. **`sourceMultiplier`** instead of `resizeStrategyHint`, with
-   `'largest'` (today's `'downsample'`), `'x1'` (today's `'upsample'`),
-   `'x2'`, or `{ width, height }`: what it sets, not how.
-3. **Statuses**: `'succeeded'`, `'failed'`, `'aborted'`, `'skipped'`;
-   `outputsBySetting` → `sizes`; `fileData` → `info`.
-4. **Package name and license**: decided. `@mmutils/image-assets`, as
-   `image-assets-generator` is taken on npm by another author's package,
-   and MIT, as the other `@mmutils` packages. The command stays
-   `image-assets` (`image-assets` on npm is another package too: run
-   without installing, it is `npx @mmutils/image-assets`).
-5. **Animated images**: GIF and WebP sources are read as their first frame
-   only. Supporting animation is sharp's `animated: true` on input and
-   output, with sizes resized frame by frame.
+**Decided** (and done):
 
-Done since: the suffix wildcards `{sm}`, `{wm}` and `{hm}` are `{x}`,
-`{wx}` and `{hx}`, and unknown wildcards throw.
+1. **Package**: `picture-assets`, unscoped (`image-assets-generator` is
+   taken on npm), the name planned on npm and GitHub, and the command of
+   the same name, so `npx picture-assets` runs it without installing. MIT
+   license.
+2. **Functions**: `generateAssets`, `planAssets`,
+   `generateSingleSourceAssets` (was `imageResize`) and
+   `generateBatchAssets` (was `batchImageResize`): typing `generate` lists
+   them all. They may change again: `generateAssets` and
+   `generateBatchAssets` read alike, though one takes a config and the
+   other positional arguments, so the choice between them isn't obvious.
+3. **Environment variables**: `PICTURE_ASSETS_` and the option's name,
+   e.g. `PICTURE_ASSETS_FORMAT_OPTIONS`, and `PICTURE_ASSETS_CONCURRENCY`
+   for the machine's concurrency. The prefix is the package's name in
+   full: short prefixes collide (PortAudio reads `PA_*`), and the name
+   tells whoever reads a CI config what the variable belongs to.
+4. **Suffix wildcards**: `{x}`, `{wx}` and `{hx}` (were `{sm}`, `{wm}` and
+   `{hm}`); unknown wildcards throw.
+
+**Rejected**:
+
+- **`resizeFrom: 'previous' | 'source'`** instead of `generateFromSource`
+  and `useAsNextResizeIteration`. They are independent: one tells where
+  this size is resized from, the other whether the next sizes are resized
+  from this one. One size from the source and the others chained from it
+  needs both, and they never contradict each other.
+- **`sourceMultiplier`** with `'largest'` instead of `resizeStrategyHint`.
+  The hint infers the source's multiplier from the sizes, which
+  `'largest'` misnames: for a 300x300 source and the sizes 150, `x2` and
+  `x3`, 150 is `x1`, so the source is `x2` and `x3` is 450 pixels wide
+  (resized from the source).
+
+**Open**: statuses `'succeeded'`, `'failed'`, `'aborted'`, `'skipped'`;
+`outputsBySetting` → `sizes`; `fileData` → `info`.
+
+**Dropped for now**: animated images. GIF and WebP sources are read as
+their first frame. sharp resizes and crops animations frame by frame, but
+AVIF, PNG and JPEG would get every frame stacked into one tall image, the
+raw buffers between sizes lose the frames' timing, and rotation throws on
+animations: a feature of its own, not a priority.
 
 ## 6. Order of work
 
 1. Presets and shorthands (`presets.ts`), with the fallback format and
    `upscale`: they are library features too.
-2. `generateAssets` over `batchImageResize`, accepting a list of inputs.
+2. `generateAssets` over `generateBatchAssets`, accepting a list of inputs.
 3. The CLI: args, config file, exit codes, `--json`, `--dry-run`.
 4. Manifest and incremental runs.
-5. The API renames of section 5, in one breaking release before 1.0.
+5. The open renames of section 5, in one breaking release before 1.0.

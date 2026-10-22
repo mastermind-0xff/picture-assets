@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { createTempDir } from '../test-utils/fixtures.js';
-import type { SourceTarget } from './image-resize.js';
+import type { SourceTarget } from './generate-single-source-assets.js';
 import {
   isUnchanged,
   manifestPath,

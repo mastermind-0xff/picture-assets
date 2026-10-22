@@ -6,7 +6,7 @@
  *   and resized 6 times (the unoptimized case of the old min-max benchmark).
  * - `sharp, decode per size`: each size resized once to a raw buffer, its
  *   formats encoded from it in parallel (the old optimized case).
- * - `imageResize`: the photo read once, each size resized from the previous
+ * - `generateSingleSourceAssets`: the photo read once, each size resized from the previous
  *   one, formats in parallel.
  *
  * Run: npm run build && node bench/pipeline.js [--quick]
@@ -22,7 +22,9 @@ import {
   reporter,
 } from './shared.js';
 
-const { imageResize, DEFAULT_FORMAT_OPTIONS } = await import(LIBRARY.href);
+const { generateSingleSourceAssets, DEFAULT_FORMAT_OPTIONS } = await import(
+  LIBRARY.href
+);
 
 const WIDTHS = [2048, 1024, 512];
 const FORMATS = [
@@ -73,8 +75,8 @@ await compare(
     return files;
   }),
 
-  bench('imageResize', () =>
-    imageResize(
+  bench('generateSingleSourceAssets', () =>
+    generateSingleSourceAssets(
       PHOTO,
       libraryDir,
       WIDTHS.map((width) => ({ width })),

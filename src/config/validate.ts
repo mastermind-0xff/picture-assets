@@ -10,11 +10,11 @@ import {
 } from '../image/formats.js';
 import { isSizeMultiplier } from '../image/size-multiplier.js';
 import { findUnknownWildcard, SUFFIX_WILDCARDS } from '../image/suffix.js';
-import type { ImageAssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 import type {
   AbortScope,
   Concurrency,
-  ImageResizeOptions,
+  AssetsOptions,
 } from '../types/options.js';
 import type {
   FormatSelector,
@@ -25,9 +25,7 @@ import type {
 import type { ResizeStrategyHint } from '../types/size.js';
 
 /** Format options as given by the caller: any formats, any options. */
-export type FormatOptionsInput = NonNullable<
-  ImageResizeOptions['formatOptions']
->;
+export type FormatOptionsInput = NonNullable<AssetsOptions['formatOptions']>;
 
 /** Output format with its complete sharp options. */
 export interface Encoder {
@@ -164,7 +162,7 @@ export const parseConcurrency = (value: unknown): Concurrency => {
  *
  * @throws RangeError for unknown levels, TypeError for other values.
  */
-export const parseLogger = (value: unknown): LogLevel | ImageAssetsLogger => {
+export const parseLogger = (value: unknown): LogLevel | AssetsLogger => {
   if (typeof value === 'string') {
     assertLogLevel(value);
     return value;
@@ -173,7 +171,7 @@ export const parseLogger = (value: unknown): LogLevel | ImageAssetsLogger => {
     const missing = LOGGER_METHODS.filter(
       (method) => typeof value[method] !== 'function'
     );
-    if (missing.length === 0) return value as unknown as ImageAssetsLogger;
+    if (missing.length === 0) return value as unknown as AssetsLogger;
     throw new TypeError(`Logger is missing the methods ${missing.join(', ')}.`);
   }
   throw new TypeError(

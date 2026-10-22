@@ -12,7 +12,7 @@ import {
   vi,
 } from 'vitest';
 
-import { ResultSourceError } from '../errors/image-resize-errors.js';
+import { ResultSourceError } from '../errors/result-errors.js';
 import {
   createTempDir,
   detailedImage,
@@ -23,7 +23,7 @@ import { createRecordingLogger } from '../test-utils/logger.js';
 import { ssim } from '../test-utils/ssim.js';
 import type { OutputSetting, ResultSource } from '../types/output.js';
 import type { ResizeStrategyHint } from '../types/size.js';
-import { imageResize } from './image-resize.js';
+import { generateSingleSourceAssets } from './generate-single-source-assets.js';
 
 let dir: string;
 let remove: () => Promise<void>;
@@ -55,10 +55,10 @@ const pixel = async (image: string, x = 0, y = 0) => {
   return [...data.subarray(offset, offset + info.channels)];
 };
 
-describe('imageResize: destinations and formats', () => {
+describe('generateSingleSourceAssets: destinations and formats', () => {
   test('a directory: files named after the source, every size and format', async () => {
     const out = outDir();
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       out,
       [{ width: 200 }, { width: 400 }],
@@ -100,7 +100,7 @@ describe('imageResize: destinations and formats', () => {
 
   test('a file with a format extension: its name, its format added', async () => {
     const out = outDir();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('landscape.jpg'),
       `${out}new-name.tif`,
       [{ width: 100 }],
@@ -115,7 +115,7 @@ describe('imageResize: destinations and formats', () => {
 
   test("an identifier without formats: the source's format", async () => {
     const out = outDir();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('small.webp'),
       `${out}icon`,
       [{ width: 50 }],
@@ -130,14 +130,20 @@ describe('imageResize: destinations and formats', () => {
     const noExtension = path.join(dir, 'no-extension');
     await fs.copyFile(file('landscape.jpg'), noExtension);
     await expect(
-      imageResize(noExtension, `${out}x`, [{ width: 100 }], undefined, silent)
+      generateSingleSourceAssets(
+        noExtension,
+        `${out}x`,
+        [{ width: 100 }],
+        undefined,
+        silent
+      )
     ).rejects.toThrow(/No output format/);
     await expect(fs.access(out)).rejects.toThrow();
   });
 
   test('default format options are applied: JPEGs are progressive', async () => {
     const out = outDir();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('landscape.jpg'),
       out,
       [{ width: 100 }],
@@ -148,7 +154,7 @@ describe('imageResize: destinations and formats', () => {
       (await sharp(`${out}landscape@100w.jpg`).metadata()).isProgressive
     ).toBe(true);
 
-    await imageResize(
+    await generateSingleSourceAssets(
       file('landscape.jpg'),
       `${out}plain`,
       [{ width: 100 }],
@@ -162,7 +168,7 @@ describe('imageResize: destinations and formats', () => {
 
   test('format options from the options, the call wins', async () => {
     const out = outDir();
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       out,
       [
@@ -175,7 +181,7 @@ describe('imageResize: destinations and formats', () => {
     const low = result.outputsBySetting[0]?.files[0];
     expect(low?.status).toBe('succeed');
 
-    const high = await imageResize(
+    const high = await generateSingleSourceAssets(
       file('landscape.jpg'),
       `${out}call`,
       [{ width: 400 }],
@@ -190,9 +196,9 @@ describe('imageResize: destinations and formats', () => {
   });
 
   test('suffix from the environment', async () => {
-    vi.stubEnv('IMAGE_RESIZE_SUFFIX', '_{w}x{h}');
+    vi.stubEnv('PICTURE_ASSETS_SUFFIX', '_{w}x{h}');
     const out = outDir();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('landscape.jpg'),
       out,
       [{ width: 100 }],
@@ -203,7 +209,7 @@ describe('imageResize: destinations and formats', () => {
   });
 });
 
-describe('imageResize: sizes', () => {
+describe('generateSingleSourceAssets: sizes', () => {
   test.each<[ResizeStrategyHint, OutputSetting[], string[]]>([
     ['downsample', [{ height: 'x3' }, { width: 'x2' }], ['800x600', '533x400']],
     ['x3', [{ height: 'x3' }, { width: 'x2' }], ['800x600', '533x400']],
@@ -215,7 +221,7 @@ describe('imageResize: sizes', () => {
     ['x1', [{ height: 'x1' }, { width: 'x2' }], ['1600x1200', '800x600']],
     [{ width: 400, height: 300 }, [{ width: 'x1' }], ['400x300']],
   ])('multipliers with %j', async (resizeStrategyHint, settings, expected) => {
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       outDir(),
       settings,
@@ -227,7 +233,7 @@ describe('imageResize: sizes', () => {
 
   test('EXIF orientation is applied: phone photos stay upright', async () => {
     const out = outDir();
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('portrait-exif.jpg'),
       out,
       [{ width: 300 }],
@@ -248,7 +254,7 @@ describe('imageResize: sizes', () => {
 
   test('transparent sources: JPEG flattened on white, alpha kept elsewhere', async () => {
     const out = outDir();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('transparent.png'),
       out,
       [{ width: 200 }],
@@ -268,7 +274,7 @@ describe('imageResize: sizes', () => {
 
   test('colors converted to sRGB, profile and EXIF stripped', async () => {
     const out = outDir();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('display-p3.png'),
       out,
       [{ width: 32 }],
@@ -290,7 +296,7 @@ describe('imageResize: sizes', () => {
 
   test('a crop never leaks into the next size', async () => {
     const out = outDir();
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       out,
       [
@@ -317,7 +323,7 @@ describe('imageResize: sizes', () => {
     // 667 pixels high: every size's height is rounded
     await detailedImage(1000, 667).png().toFile(source);
     const widths = [800, 640, 480, 320, 160];
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       source,
       out,
       widths.map((width) => ({ width })),
@@ -341,7 +347,7 @@ describe('imageResize: sizes', () => {
 
   test('a size is resized from the last buffer only if it is large enough', async () => {
     const { logger, messages } = createRecordingLogger();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('landscape.jpg'),
       outDir(),
       [{ width: 400 }, { width: 600, height: 100 }, { width: 200 }],
@@ -360,7 +366,7 @@ describe('imageResize: sizes', () => {
   });
 
   test('two settings writing the same files: the second fails', async () => {
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       outDir(),
       [
@@ -381,7 +387,7 @@ describe('imageResize: sizes', () => {
   });
 });
 
-describe('imageResize: failures and abortScope', () => {
+describe('generateSingleSourceAssets: failures and abortScope', () => {
   /** An output whose path is a directory, so writing it fails. */
   const blockedOutput = async () => {
     const out = outDir();
@@ -401,7 +407,7 @@ describe('imageResize: failures and abortScope', () => {
 
   test("'none': every output is attempted, failures in the result", async () => {
     const { logger, logs } = createRecordingLogger();
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       await blockedOutput(),
       settings,
@@ -425,7 +431,7 @@ describe('imageResize: failures and abortScope', () => {
   });
 
   test("'source': stops at the first failed setting", async () => {
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
       await blockedOutput(),
       settings,
@@ -440,7 +446,7 @@ describe('imageResize: failures and abortScope', () => {
   });
 
   test("'batch': rejects with the result", async () => {
-    const promise = imageResize(
+    const promise = generateSingleSourceAssets(
       file('landscape.jpg'),
       await blockedOutput(),
       settings,
@@ -459,7 +465,7 @@ describe('imageResize: failures and abortScope', () => {
   });
 
   test('a source that is not an image', async () => {
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('corrupt.jpg'),
       outDir(),
       settings,
@@ -470,15 +476,21 @@ describe('imageResize: failures and abortScope', () => {
     expect(String(result.error)).toMatch(/unsupported image format/);
 
     await expect(
-      imageResize(file('corrupt.jpg'), outDir(), settings, ['webp'], {
-        ...silent,
-        abortScope: 'batch',
-      })
+      generateSingleSourceAssets(
+        file('corrupt.jpg'),
+        outDir(),
+        settings,
+        ['webp'],
+        {
+          ...silent,
+          abortScope: 'batch',
+        }
+      )
     ).rejects.toThrow(ResultSourceError);
   });
 
   test('a missing source', async () => {
-    const result = await imageResize(
+    const result = await generateSingleSourceAssets(
       file('missing.jpg'),
       outDir(),
       settings,
@@ -490,40 +502,60 @@ describe('imageResize: failures and abortScope', () => {
   });
 });
 
-describe('imageResize: invalid arguments throw before any work', () => {
+describe('generateSingleSourceAssets: invalid arguments throw before any work', () => {
   test.each([
-    ['settings', () => imageResize('a.jpg', 'out/', [], ['webp'])],
+    [
+      'settings',
+      () => generateSingleSourceAssets('a.jpg', 'out/', [], ['webp']),
+    ],
     [
       'setting',
-      () => imageResize('a.jpg', 'out/', [{ width: 'big' } as never]),
+      () =>
+        generateSingleSourceAssets('a.jpg', 'out/', [
+          { width: 'big' } as never,
+        ]),
     ],
     [
       'format',
-      () => imageResize('a.jpg', 'out/', [{ width: 1 }], ['bmp' as never]),
+      () =>
+        generateSingleSourceAssets(
+          'a.jpg',
+          'out/',
+          [{ width: 1 }],
+          ['bmp' as never]
+        ),
     ],
     [
       'format options',
       () =>
-        imageResize('a.jpg', 'out/', [{ width: 1 }], { avif: { quality: -1 } }),
+        generateSingleSourceAssets('a.jpg', 'out/', [{ width: 1 }], {
+          avif: { quality: -1 },
+        }),
     ],
     [
       'option',
       () =>
-        imageResize('a.jpg', 'out/', [{ width: 1 }], ['webp'], {
+        generateSingleSourceAssets('a.jpg', 'out/', [{ width: 1 }], ['webp'], {
           abortScope: 'format' as never,
         }),
     ],
-    ['source path', () => imageResize('', 'out/', [{ width: 1 }])],
-    ['destination', () => imageResize('a.jpg', 5 as never, [{ width: 1 }])],
+    [
+      'source path',
+      () => generateSingleSourceAssets('', 'out/', [{ width: 1 }]),
+    ],
+    [
+      'destination',
+      () => generateSingleSourceAssets('a.jpg', 5 as never, [{ width: 1 }]),
+    ],
   ])('invalid %s', async (_, call) => {
     await expect(call()).rejects.toThrow(/./);
   });
 });
 
-describe('imageResize: logs', () => {
+describe('generateSingleSourceAssets: logs', () => {
   test('a summary per source, a debug line per file', async () => {
     const { logger, messages } = createRecordingLogger();
-    await imageResize(
+    await generateSingleSourceAssets(
       file('landscape.jpg'),
       outDir(),
       [{ width: 100 }],

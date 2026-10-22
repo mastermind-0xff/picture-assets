@@ -10,7 +10,7 @@
  * With a manifest, the next run makes only what the stopped one didn't: the
  * photos done are `'skipped'`, unchanged.
  *
- * `batchImageResize` takes the same `signal`, and the command line stops
+ * `generateBatchAssets` takes the same `signal`, and the command line stops
  * the same way on Ctrl+C.
  *
  * Run: npm run build && node examples/abort.js
@@ -18,7 +18,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { generateAssets } from '@mmutils/image-assets';
+import { generateAssets } from 'picture-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'abort');
 // start from nothing, so the first run has work to stop

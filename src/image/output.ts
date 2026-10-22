@@ -9,7 +9,7 @@ import {
   type Encoder,
   type TargetEncoder,
 } from '../config/validate.js';
-import type { ImageAssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 import type {
   OutputSetting,
   ResultFormat,
@@ -151,7 +151,7 @@ export const settingToFormats = async (
   encoders: readonly Encoder[],
   outputIdentifier: string,
   hasAlpha: boolean,
-  logger: ImageAssetsLogger
+  logger: AssetsLogger
 ): Promise<ResultFormat[]> => {
   const results = await Promise.all(
     encoders.map((encoder) =>

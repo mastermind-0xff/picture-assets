@@ -1,36 +1,47 @@
 import { assertLogLevel } from '@mmutils/logger';
 
-import type { ImageResizeOptions } from '../types/options.js';
+import type { BatchAssetsOptions } from '../types/options.js';
 import {
   parseAbortScope,
+  parseConcurrency,
   parseFormatOptions,
   parseResizeStrategyHint,
   parseSuffixOption,
 } from './validate.js';
 
 /**
- * Environment variables read by `imageResize` and `batchImageResize`, for
- * options not given in the call. Invalid values throw, naming the variable,
- * instead of being silently replaced by defaults.
+ * Environment variables read by `generateAssets`,
+ * `generateSingleSourceAssets` and `generateBatchAssets`, for options not
+ * given in the call. Each is `PICTURE_ASSETS_` and the option's name, but
+ * the logger's: `PICTURE_ASSETS_LOG_LEVEL`, a level. Invalid values throw,
+ * naming the variable, instead of being silently replaced by defaults.
  */
 export const ENV_VARIABLES = {
   /**
    * `resizeStrategyHint`: `'downsample'`, `'upsample'`, a multiplier
    * (`'x2'`) or what `'x1'` is as JSON (`'{"width":1024,"height":768}'`).
    */
-  resizeStrategyHint: 'IMAGE_RESIZE_RESIZE_STRATEGY_HINT',
+  resizeStrategyHint: 'PICTURE_ASSETS_RESIZE_STRATEGY_HINT',
   /** `suffix`, e.g. `'@{x}x_{w}w'`. */
-  suffix: 'IMAGE_RESIZE_SUFFIX',
+  suffix: 'PICTURE_ASSETS_SUFFIX',
   /**
    * `formatOptions` as JSON, e.g.
    * `'{"jpeg":{"quality":75},"webp":{"quality":70}}'`.
    */
-  formatOptions: 'IMAGE_RESIZE_OUTPUT_FORMATS_OPTIONS',
+  formatOptions: 'PICTURE_ASSETS_FORMAT_OPTIONS',
   /** `abortScope`: `'none'`, `'source'` or `'batch'`. */
-  abortScope: 'IMAGE_RESIZE_ABORT_SCOPE',
+  abortScope: 'PICTURE_ASSETS_ABORT_SCOPE',
   /** Level of the default logger: `'silent'` to `'verbose'`. */
-  logLevel: 'IMAGE_RESIZE_LOG_LEVEL',
+  logLevel: 'PICTURE_ASSETS_LOG_LEVEL',
+  /**
+   * `concurrency` of batches: `'auto'`, `'max'` or a number. The machine's
+   * setting more than the project's, so a variable suits it.
+   */
+  concurrency: 'PICTURE_ASSETS_CONCURRENCY',
 } as const;
+
+/** Options an environment variable can set. */
+export type EnvOptions = Omit<BatchAssetsOptions, 'upscale' | 'signal'>;
 
 const parseJson = (name: string, value: string): unknown => {
   try {
@@ -63,13 +74,13 @@ const fromVariable = <T>(name: string, parse: () => T): T => {
  */
 export const readEnvOptions = (
   env: NodeJS.ProcessEnv = process.env
-): ImageResizeOptions => {
+): EnvOptions => {
   const read = (name: string) => {
     const value = env[name];
     return value === undefined || value.trim() === '' ? undefined : value;
   };
   const options: {
-    -readonly [K in keyof ImageResizeOptions]: ImageResizeOptions[K];
+    -readonly [K in keyof EnvOptions]: EnvOptions[K];
   } = {};
 
   const hint = read(ENV_VARIABLES.resizeStrategyHint);
@@ -108,6 +119,14 @@ export const readEnvOptions = (
       assertLogLevel(logLevel);
       return logLevel;
     });
+
+  const concurrency = read(ENV_VARIABLES.concurrency)?.trim();
+  if (concurrency !== undefined)
+    options.concurrency = fromVariable(ENV_VARIABLES.concurrency, () =>
+      parseConcurrency(
+        /^\d+$/.test(concurrency) ? Number(concurrency) : concurrency
+      )
+    );
 
   return options;
 };

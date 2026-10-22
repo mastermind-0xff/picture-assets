@@ -17,7 +17,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { batchImageResize, ResultBatchError } from '@mmutils/image-assets';
+import { generateBatchAssets, ResultBatchError } from 'picture-assets';
 
 const output = path.join(import.meta.dirname, 'output', 'errors');
 const sources = path.join(output, 'sources');
@@ -34,7 +34,7 @@ const summary = (batch) =>
     ({ source, status }) => `${path.basename(source)} ${status}`
   );
 
-const bestEffort = await batchImageResize(
+const bestEffort = await generateBatchAssets(
   sources,
   path.join(output, 'best-effort'),
   [{ width: 640 }],
@@ -44,7 +44,7 @@ const bestEffort = await batchImageResize(
 console.log(`'none': ${bestEffort.status}`, summary(bestEffort));
 
 try {
-  await batchImageResize(
+  await generateBatchAssets(
     sources,
     path.join(output, 'fail-fast'),
     [{ width: 640 }],
@@ -62,7 +62,7 @@ try {
 }
 
 try {
-  await batchImageResize(sources, output, [{ width: 'big' }]);
+  await generateBatchAssets(sources, output, [{ width: 'big' }]);
 } catch (error) {
   console.log(`invalid settings: ${error.message}`);
 }

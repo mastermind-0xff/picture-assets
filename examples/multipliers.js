@@ -15,7 +15,7 @@
  */
 import path from 'node:path';
 
-import { imageResize } from '@mmutils/image-assets';
+import { generateSingleSourceAssets } from 'picture-assets';
 
 const source = path.join(import.meta.dirname, 'images', 'house-01.jpg');
 const output = path.join(import.meta.dirname, 'output', 'multipliers');
@@ -28,7 +28,7 @@ const settings = [
 const sizes = (result) =>
   result.outputsBySetting.map(({ size }) => size).join(', ');
 
-const downsampled = await imageResize(
+const downsampled = await generateSingleSourceAssets(
   source,
   path.join(output, 'downsample', 'hero'),
   settings,
@@ -37,7 +37,7 @@ const downsampled = await imageResize(
 );
 console.log(`downsample: ${sizes(downsampled)}`);
 
-const slot = await imageResize(
+const slot = await generateSingleSourceAssets(
   source,
   path.join(output, 'slot', 'hero'),
   // the suffix wildcards show what was computed: hero@2x_1280x960.webp

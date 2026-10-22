@@ -16,12 +16,12 @@
  */
 import path from 'node:path';
 
-import { batchImageResize } from '@mmutils/image-assets';
+import { generateBatchAssets } from 'picture-assets';
 
 const images = path.join(import.meta.dirname, 'images');
 const output = path.join(import.meta.dirname, 'output');
 
-const batch = await batchImageResize(
+const batch = await generateBatchAssets(
   images,
   path.join(output, 'batch'),
   [{ width: 1280 }, { width: 640 }],
@@ -37,7 +37,7 @@ console.log(
 // only the photos in the sets, mirrored from images/: the glob
 // 'images/group-1/set-1/*.jpg' would be rooted at set-1, losing the
 // group-1/set-1 folders
-const sets = await batchImageResize(
+const sets = await generateBatchAssets(
   { root: images, pattern: 'group-*/set-*/*.jpg' },
   path.join(output, 'batch-sets'),
   [{ width: 640 }],

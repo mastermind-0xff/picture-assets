@@ -96,7 +96,7 @@ describe('parseCliArgs', () => {
   test('help and version', () => {
     expect(parseCliArgs(['-h']).help).toBe(true);
     expect(parseCliArgs(['--version']).version).toBe(true);
-    expect(HELP).toMatch(/^Usage: image-assets <input\.\.\.> --output <dir>/);
+    expect(HELP).toMatch(/^Usage: picture-assets <input\.\.\.> --output <dir>/);
   });
 
   test.each([

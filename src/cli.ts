@@ -1,5 +1,5 @@
 /**
- * The `image-assets` command.
+ * The `picture-assets` command.
  *
  * Sharp runs on libuv's thread pool, 4 threads unless `UV_THREADPOOL_SIZE`
  * says otherwise, and a pool as large as the machine's parallelism made
@@ -41,7 +41,7 @@ const runWithPool = () => {
   process.on('SIGINT', () => undefined);
   process.on('SIGTERM', () => child.kill('SIGTERM'));
   child.on('error', (error) => {
-    process.stderr.write(`image-assets: ${error.message}\n`);
+    process.stderr.write(`picture-assets: ${error.message}\n`);
     process.exitCode = 1;
   });
   child.on('exit', (code, signal) => {
@@ -80,7 +80,7 @@ const run = async () => {
     );
   } catch (error) {
     process.stderr.write(
-      `image-assets: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`
+      `picture-assets: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`
     );
     process.exitCode = 1;
   }

@@ -54,7 +54,7 @@ export const transparentImage = (size: number) => {
 };
 
 /** Creates a temporary directory, removed by the returned function. */
-export const createTempDir = async (prefix = 'image-assets-') => {
+export const createTempDir = async (prefix = 'picture-assets-') => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   return {
     dir,

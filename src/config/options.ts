@@ -1,8 +1,8 @@
-import { createLogger, type ImageAssetsLogger } from '../log/logger.js';
+import { createLogger, type AssetsLogger } from '../log/logger.js';
 import type {
   AbortScope,
   Concurrency,
-  ImageResizeOptions,
+  AssetsOptions,
 } from '../types/options.js';
 import type { ResizeStrategyHint } from '../types/size.js';
 import { readEnvOptions } from './env.js';
@@ -28,12 +28,12 @@ export const DEFAULT_OPTIONS = {
   upscale: true,
   concurrency: 'auto',
 } as const satisfies Required<
-  Omit<ImageResizeOptions, 'formatOptions'> & { concurrency: Concurrency }
+  Omit<AssetsOptions, 'formatOptions'> & { concurrency: Concurrency }
 >;
 
 /** Options with every value set and checked. */
 export interface ResolvedOptions {
-  readonly logger: ImageAssetsLogger;
+  readonly logger: AssetsLogger;
   readonly resizeStrategyHint: ResizeStrategyHint;
   readonly suffix: string;
   readonly formatOptions: FormatOptionsInput;
@@ -61,7 +61,7 @@ const mergeFormatOptions = (
  * @throws TypeError or RangeError for invalid options or variables.
  */
 export const resolveOptions = (
-  options: ImageResizeOptions = {},
+  options: AssetsOptions = {},
   env: NodeJS.ProcessEnv = process.env
 ): ResolvedOptions => {
   if (!isPlainObject(options))
@@ -95,6 +95,16 @@ export const resolveOptions = (
   };
 };
 
-/** Checks the batch's concurrency option, see `BatchImageResizeOptions`. */
-export const resolveConcurrency = (value: unknown): Concurrency =>
-  parseConcurrency(value ?? DEFAULT_OPTIONS.concurrency);
+/**
+ * Resolves the batch's concurrency, see `BatchAssetsOptions`: the call's,
+ * else its environment variable, else `'auto'`.
+ *
+ * @throws RangeError for an invalid concurrency or variable.
+ */
+export const resolveConcurrency = (
+  value: unknown,
+  env: NodeJS.ProcessEnv = process.env
+): Concurrency =>
+  parseConcurrency(
+    value ?? readEnvOptions(env).concurrency ?? DEFAULT_OPTIONS.concurrency
+  );
