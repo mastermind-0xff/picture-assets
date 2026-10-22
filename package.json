@@ -14,7 +14,7 @@
     "cli",
     "mmutils"
   ],
-  "author": "Tihomir Trifonov aka Mastermind",
+  "author": "Tihomir Trifonov",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

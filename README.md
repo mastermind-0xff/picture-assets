@@ -421,13 +421,13 @@ npm run bench      # build, then the pipeline benchmark
 How the command line and `generateAssets` came to be, and the decisions
 left before 1.0: [docs/cli-proposal.md](docs/cli-proposal.md).
 
-## AI use
+## AI assistance
 
-@mmutils/image-assets is developed with AI assistance: since the 2026
+@mmutils/image-assets core was manually build and since the 2026
 revamp (the toolchain, the fixes, the command line), most of the code,
-tests, benchmarks and documentation was written with AI. The author
-designs the features, makes the decisions and reviews the changes, and
-every change passes the same checks (formatting, lint, strict type
+tests, benchmarks and documentation was modified or written by AI. The author
+designs the features, makes the decisions and reviews the changes and the code,
+and every change passes the same checks (formatting, lint, strict type
 checking and tests) before it is committed.
 
 ## License
