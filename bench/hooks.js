@@ -7,7 +7,7 @@
  *   so nothing is baked: the cost of calling hooks (and their debug logs,
  *   filtered here).
  * - `source: modulate`: a color grade, baked once at the source's full
- *   size; the sizes are then resized from its pixels, not from the JPEG.
+ *   size.
  * - `source: pixels() loop`: the same place in JS: a copy of the decoded
  *   source (32.7 MB), a gain on every byte, the pixels returned as they are.
  * - `afterResize: sharpen`: baked once per size, before the next size.

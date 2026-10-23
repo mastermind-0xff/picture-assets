@@ -1,103 +1,105 @@
 mm-bench  node v22.22.2 · win32 x64 · Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz (12 cores) · timer step 100ns
 2 cases · 4 samples · 20 runs · 0 warm-up runs
-  sample 1/4  chained (default)  5 runs in 6.91s · mean 1.38s
-  sample 1/4  from the source  5 runs in 10.8s · mean 2.17s
-  sample 2/4  from the source  5 runs in 10.7s · mean 2.13s
-  sample 2/4  chained (default)  5 runs in 6.65s · mean 1.33s
-  sample 3/4  chained (default)  5 runs in 6.73s · mean 1.35s
-  sample 3/4  from the source  5 runs in 10.6s · mean 2.12s
-  sample 4/4  from the source  5 runs in 10.5s · mean 2.09s
-  sample 4/4  chained (default)  5 runs in 6.53s · mean 1.31s
+  sample 1/4  chained (default)  5 runs in 6.39s · mean 1.28s
+  sample 1/4  from the source  5 runs in 6.07s · mean 1.21s
+  sample 2/4  from the source  5 runs in 6.99s · mean 1.40s
+  sample 2/4  chained (default)  5 runs in 6.12s · mean 1.22s
+  sample 3/4  chained (default)  5 runs in 6.66s · mean 1.33s
+  sample 3/4  from the source  5 runs in 7.37s · mean 1.47s
+  sample 4/4  from the source  5 runs in 7.87s · mean 1.57s
+  sample 4/4  chained (default)  5 runs in 7.59s · mean 1.52s
 
 chained (default) async                                                  fastest
-mean      1.34s                         median    1.32s
-p99       1.42s                         p99.9     1.42s
+mean      1.34s                         median    1.29s
+p99       1.62s                         p99.9     1.62s
 ops/s     0.75                          runs      20
-stddev    40.9ms                        off graph 0%
-overhead  70.2ns (subtracted)
+stddev    168ms                         off graph 0%
+overhead  150ns (subtracted)
+! busy machine: other processes used 20% CPU
 ! 20 runs: a rough distribution
 
-Run time, % of runs                                                       25.0 %
-│ ██                                                                           │
-│ ██                                                                           │
-│ ██                                                                           │
-│ ██                                                                           │
-│ ██                                                                           │
-│ ██   ▅  ▅▅                                                                   │
-│ ██   █  ██                                                                   │
-│▆██▆ ▆█▆ ██                                                                   │
-│████ ███ ██                                                                   │
-1s 289ms                                                                2s 220ms
+Run time, % of runs                                                       10.0 %
+│█                                                                             │
+│█                                                                             │
+│█                                                                             │
+│█                                                                             │
+│█     ▄ ▄   ▄   ▄  ▄  ▄▄  ▄ ▄      ▄   ▄     ▄▄        ▄        ▄    ▄ ▄▄     │
+│█     █ █   █   █  █  ██  █ █      █   █     ██        █        █    █ ██     │
+│█     █ █   █   █  █  ██  █ █      █   █     ██        █        █    █ ██     │
+│█     █ █   █   █  █  ██  █ █      █   █     ██        █        █    █ ██     │
+│█     █ █   █   █  █  ██  █ █      █   █     ██        █        █    █ ██     │
+1s 98ms                                                                 1s 661ms
                                                                            0.0 %
 
-Mean run time over the sample                                             2.15 s
-│                                                                              │
-│▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇│
+Mean run time over the sample                                             1.47 s
+│▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆│
 │██████████████████████████████████████████████████████████████████████████████│
-0ms                                                                     6s 707ms
-average: 1.34 s                                                           0.00 s
-min: 1.32 s
-max: 1.36 s
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     6s 688ms
+average: 1.35 s                                                           0.00 s
+min: 1.27 s
+max: 1.43 s
 
-All cores usage, % of 12 cores                                             9.9 %
-│████████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
+All cores usage, % of 12 cores                                            13.4 %
+│▇▇▇▇▇▇▇▇▇▇▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▅▆▆▆▆▆▆▆▆▆▆▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
 │██████████████████████████████████████████████████████████████████████████████│
 │██████████████████████████████████████████████████████████████████████████████│
-0ms                                                                     6s 707ms
-average: 9.4 %                                                             0.0 %
-min: 8.8 %
-max: 9.9 %
+0ms                                                                     6s 688ms
+average: 12.2 %                                                            0.0 %
+min: 11.8 %
+max: 12.8 %
 
-from the source async                                               58.6% slower
-mean      2.13s                         median    2.11s
-p99       2.22s                         p99.9     2.22s
-ops/s     0.47                          runs      20
-stddev    43.2ms                        off graph 0%
-overhead  66.5ns (subtracted)
+from the source async                                                5.8% slower
+mean      1.41s                         median    1.38s
+p99       1.66s                         p99.9     1.66s
+ops/s     0.71                          runs      20
+stddev    176ms                         off graph 0%
+overhead  132ns (subtracted)
+! busy machine: other processes used 20% CPU
 ! 20 runs: a rough distribution
 
-Run time, % of runs                                                       25.0 %
-│                                                                              │
-│                                                                 ▂  ▂         │
-│                                                                 █  █         │
-│                                                                 █  █         │
-│                                                                 █  █         │
-│                                                                 █  █▅   ▅▅   │
-│                                                                 █  ██   ██   │
-│                                                                 █▆▆██ ▆▆██▆ ▆│
-│                                                                 █████ █████ █│
-1s 289ms                                                                2s 220ms
+Run time, % of runs                                                       10.0 %
+│       █                        █                                        █    │
+│       █                        █                                        █    │
+│       █                        █                                        █    │
+│       █                        █                                        █    │
+│       █ ▄     ▄       ▄▄   ▄   █     ▄        ▄ ▄   ▄           ▄   ▄▄  █  ▄▄│
+│       █ █     █       ██   █   █     █        █ █   █           █   ██  █  ██│
+│       █ █     █       ██   █   █     █        █ █   █           █   ██  █  ██│
+│       █ █     █       ██   █   █     █        █ █   █           █   ██  █  ██│
+│       █ █     █       ██   █   █     █        █ █   █           █   ██  █  ██│
+1s 98ms                                                                 1s 661ms
                                                                            0.0 %
 
-Mean run time over the sample                                             2.15 s
+Mean run time over the sample                                             1.47 s
+│▇▇▇▇▇▇▇▇▇▇▇▇▇████▇▆▆▆▆▆▆▆▆▆▆▇▇▇████████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇███████████████│
 │██████████████████████████████████████████████████████████████████████████████│
 │██████████████████████████████████████████████████████████████████████████████│
-│██████████████████████████████████████████████████████████████████████████████│
-0ms                                                                    10s 634ms
-average: 2.13 s                                                           0.00 s
-min: 2.11 s
-max: 2.15 s
+0ms                                                                      7s 76ms
+average: 1.42 s                                                           0.00 s
+min: 1.36 s
+max: 1.47 s
 
-All cores usage, % of 12 cores                                             9.9 %
-│▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
+All cores usage, % of 12 cores                                            13.4 %
+│████████████████████████████▇▇▇▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇████████████████│
 │██████████████████████████████████████████████████████████████████████████████│
 │██████████████████████████████████████████████████████████████████████████████│
-0ms                                                                    10s 634ms
-average: 8.7 %                                                             0.0 %
-min: 8.6 %
-max: 8.8 %
+0ms                                                                      7s 76ms
+average: 13.0 %                                                            0.0 %
+min: 12.3 %
+max: 13.4 %
 
-case              |  mean | median |   p99 | ops/s | vs fastest   | runs
-chained (default) | 1.34s |  1.32s | 1.42s |  0.75 | fastest      |   20
-from the source   | 2.13s |  2.11s | 2.22s |  0.47 | 58.6% slower |   20
-14:40:49 [i]   info    Quality: SSIM against one resize from the full resolution pixels
+case              |  mean | median |   p99 | ops/s | vs fastest  | runs
+chained (default) | 1.34s |  1.29s | 1.62s |  0.75 | fastest     |   20
+from the source   | 1.41s |  1.38s | 1.66s |  0.71 | 5.8% slower |   20
+15:56:59 [i]   info    Quality: SSIM against one resize from the full resolution pixels
 photo    | width | chained | from the source
 house-01 | 2560w |       1 |               1
 house-01 | 1920w |  0.9987 |               1
-house-01 | 1280w |  0.9987 |          0.9905
-house-01 | 960w  |  0.9979 |          0.9947
-house-01 | 640w  |  0.9976 |          0.9784
-house-01 | 320w  |   0.998 |          0.9563
+house-01 | 1280w |  0.9987 |               1
+house-01 | 960w  |  0.9979 |               1
+house-01 | 640w  |  0.9976 |               1
+house-01 | 320w  |   0.998 |               1
 house-10 | 1920w |  0.9959 |          0.9959
 house-10 | 1280w |  0.9969 |          0.9892
 house-10 | 960w  |  0.9973 |          0.9935
@@ -105,5 +107,5 @@ house-10 | 640w  |  0.9978 |          0.9683
 house-10 | 320w  |  0.9986 |          0.9888
 house-03 | 1600w |       1 |               1
 house-03 | 1200w |  0.9984 |               1
-house-03 | 800w  |  0.9984 |          0.9986
-house-03 | 400w  |  0.9982 |           0.998
+house-03 | 800w  |  0.9984 |               1
+house-03 | 400w  |  0.9982 |               1

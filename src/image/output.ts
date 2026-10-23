@@ -23,6 +23,7 @@ import {
 } from '../utils/helpers.js';
 import { supportsAlpha, toSharpFormat } from './formats.js';
 import {
+  bake,
   encodedInput,
   fromRaw,
   hasAlphaChannel,
@@ -66,14 +67,57 @@ export interface SourceInfo {
   readonly hasAlpha: boolean;
 }
 
-/** Reads a source's size, channels and transparency from its metadata. */
-export const readSourceInfo = async (source: Sharp): Promise<SourceInfo> => {
+/**
+ * Reads a source's size, channels, transparency and file format from its
+ * metadata.
+ */
+export const readSourceInfo = async (
+  source: Sharp
+): Promise<SourceInfo & { readonly format: string }> => {
   const {
     autoOrient: { width, height },
     channels,
     hasAlpha,
+    format,
   } = await source.metadata();
-  return { width, height, channels, hasAlpha };
+  return { width, height, channels, hasAlpha, format };
+};
+
+/**
+ * Formats without a scaled decode: a resize from the file decodes all of
+ * it and is slower than decoding it once, then resizing the pixels (PNG
+ * 2.4x, AVIF 1.4x slower at 2048 of 3901 pixels). WebP's scaled decode beats
+ * decoding first at any size; SVG and PDF render at the size asked.
+ */
+const DECODED_FORMATS: ReadonlySet<string> = new Set([
+  'png',
+  'heif',
+  'gif',
+  'tiff',
+]);
+
+/**
+ * Shrink from which sharp's JPEG shrink-on-load is as fast as decoding
+ * first, or faster. Below it, a resize from the file is 2.1 to 3.7x slower
+ * than a decode then a resize from the pixels, most of it the embedded ICC
+ * profile's transform (measured on 4 to 40 megapixel photos).
+ */
+const JPEG_SHRINK_ON_LOAD = 3;
+
+/**
+ * Whether a source is decoded once, so its sizes resize from its pixels
+ * instead of its file: when the largest size it makes (the first, the one
+ * resized from the source) gains nothing from a scaled decode.
+ */
+export const decodesFirst = (
+  format: string,
+  { width, height, settings }: SourcePlan
+): boolean => {
+  const first = settings.find(({ skipped }) => skipped !== true);
+  if (first === undefined) return false;
+  return format === 'jpeg' ?
+      Math.min(width / first.width, height / first.height) < JPEG_SHRINK_ON_LOAD
+    : DECODED_FORMATS.has(format);
 };
 
 /** Resolves what a source will give, without resizing anything. */
@@ -345,6 +389,11 @@ export const sourceToSettings = async (
   const plan = planSource(info, settings, targetEncoders, context);
   const { width: srcWidth, height: srcHeight, encoders } = plan;
   logger.verbose({ source: srcPath, settings: plan.settings });
+  const pixels =
+    sourcePixels ??
+    (decodesFirst(read.format, plan) ? await bake(source) : undefined);
+  if (pixels && !sourcePixels)
+    logger.verbose(`Decoded ${srcPath}: its sizes resize from its pixels`);
 
   /** Encoders of an image: `'fallback'` follows its transparency. */
   const encodersFor = (hasAlpha: boolean) =>
@@ -385,8 +434,8 @@ export const sourceToSettings = async (
   });
   const identifiers = new Set<string>();
   const sourceBase: ResizeBase = {
-    image: sourcePixels ? fromRaw(sourcePixels) : source,
-    pixels: sourcePixels,
+    image: pixels ? fromRaw(pixels) : source,
+    pixels,
     width: srcWidth,
     height: srcHeight,
     isBuffer: false,
@@ -440,10 +489,15 @@ export const sourceToSettings = async (
         (start.keepsAspectRatio && setting.isMatchingSourceAspectRatio ?
           'fill'
         : undefined);
-      // a fresh pipeline per setting: operations never leak to the next one
-      const pipeline = start.image
-        .clone()
-        .resize(width, height, { ...resizeOptions, ...(fit && { fit }) });
+      // a fresh pipeline per setting: operations never leak to the next one.
+      // Over pixels, a new sharp object shares them; clone() would copy them
+      const pipeline = (
+        start.pixels ?
+          fromRaw(start.pixels)
+        : start.image.clone()).resize(width, height, {
+        ...resizeOptions,
+        ...(fit && { fit }),
+      });
       if (extractRegion) pipeline.extract(extractRegion);
 
       const { data, info } = await pipeline

@@ -57,6 +57,15 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Changed
 
+- **Sources decoded once** when that's faster than resizing from the file:
+  a PNG, AVIF, GIF or TIFF, or a JPEG whose largest size is shrunk less
+  than 3 times (most of the cost was the ICC profile's transform during
+  the resize; from 3 times, shrink-on-load is as fast). Their sizes resize
+  from the pixels, each through a new sharp object over them instead of a
+  copy: 26% less time for one photo to 3 sizes, 28% for a PNG, 11% for a
+  batch, for 19MB more peak memory per photo (11% for the batch). Every
+  size from the source of a decoded JPEG is now exactly a resize of its
+  full pixels: no shrink-on-load approximation.
 - **Package name**: `picture-assets` (was `image-assets-generator`, taken
   on npm by another package), and so is the command.
 - **Functions**: `generateSingleSourceAssets` (was `imageResize`) and

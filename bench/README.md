@@ -35,37 +35,63 @@ more during a case.
 
 From `results/*.txt`, on an Intel i7-9750H laptop (6 cores, 12 threads),
 Windows 11, Node 22.22, sharp 0.35.5 (libvips 8.18). Your numbers will
-differ; the ratios are what to look at. `results/pipeline.txt` was
-recorded before the functions were renamed: its `imageResize` is
-`generateSingleSourceAssets`.
+differ; the ratios are what to look at. `pipeline.txt`, `chain.txt` and
+`hooks.txt` were recorded after sources were decoded first (see below),
+with 12 to 20% of the CPU used by other processes (mm-bench warns): take
+their small differences as noise.
 
 **pipeline.js**: one 3901x2926 photo to 2048, 1024 and 512 pixels wide,
 WebP and JPEG, the same encoder options everywhere.
 
 | Case                                                   | Mean  | vs generateSingleSourceAssets |
 | ------------------------------------------------------ | ----- | ----------------------------- |
-| `generateSingleSourceAssets`                           | 741ms |                               |
-| sharp, each size resized once, formats in parallel     | 997ms | 34.5% slower                  |
-| sharp, one call per file (decode and resize each time) | 1.63s | 2.20× slower                  |
+| `generateSingleSourceAssets`                           | 582ms |                               |
+| sharp, each size resized once, formats in parallel     | 1.04s | 78.6% slower                  |
+| sharp, one call per file (decode and resize each time) | 1.71s | 2.94× slower                  |
+
+**Sources decoded first.** Resizing straight from a JPEG with an ICC
+profile (most photos have one) costs more than decoding it, then resizing
+the pixels: 334ms against 15 + 138ms from house-01 to 2048 pixels, 1.1s
+against 0.5s from a 40 megapixel photo to 3890. Shrink-on-load only helps
+from a shrink of 3 and up. So a JPEG whose largest size is shrunk less
+than 3 times, and a PNG, AVIF, GIF or TIFF, is decoded once and its sizes
+resized from its pixels; a WebP's scaled decode beats that at any size.
+The library before and after, on a quiet machine:
+
+| Case                                   | Before | After           |
+| -------------------------------------- | ------ | --------------- |
+| pipeline.js's photo, sizes and formats | 728ms  | 537ms, 26% less |
+| chain.js's 6 widths, chained           | 1.29s  | 1.11s, 14% less |
+| the photo as a PNG, 3 widths, WebP     | 714ms  | 513ms, 28% less |
+| a batch: `group-2`, `responsive`, WebP | 3.15s  | 2.79s, 11% less |
+
+The decoded source is kept for the source's run: peak memory 179MB instead
+of 160MB for one photo, 788MB instead of 711MB for the 5 photos of
+`group-2` (12 to 40 megapixels) at once. A size resized from pixels gets a
+new sharp object over them: `clone()` would copy them (217MB and 998MB).
 
 **chain.js**: the photo to 6 srcset widths (2560 to 320) in WebP.
 
-| Case                             | Mean  |            |
-| -------------------------------- | ----- | ---------- |
-| chained: each size from the last | 1.34s |            |
-| every size from the source       | 2.13s | 59% slower |
+| Case                             | Mean  |             |
+| -------------------------------- | ----- | ----------- |
+| chained: each size from the last | 1.34s |             |
+| every size from the source       | 1.41s | 5.8% slower |
 
 Quality, on 3 photos: SSIM of each size against one resize from the
 photo's full resolution pixels (1 is identical). The lowest of each:
 
 | Photo               | Chained | From the source |
 | ------------------- | ------- | --------------- |
-| house-01, 3901x2926 | 0.9976  | 0.9563 (320w)   |
+| house-01, 3901x2926 | 0.9976  | 1               |
 | house-10, 7781x5190 | 0.9959  | 0.9683 (640w)   |
-| house-03, 3024x4032 | 0.9982  | 0.9980          |
+| house-03, 3024x4032 | 0.9982  | 1               |
 
-Chaining is faster and closer to the reference: from the source, sharp's
-JPEG shrink-on-load decodes the small sizes approximately. This
+house-01 (to 2560) and house-03 (to 1600) are decoded first: every size
+from the source is then exactly the reference, nearly as fast as
+chaining. house-10 (to 1920, a shrink of 4) is not: from the source,
+sharp's JPEG shrink-on-load decodes its small sizes approximately, and
+before sources were decoded first house-01 dipped to 0.9563 at 320w too,
+for 59% more time than chaining. This
 benchmark also found a bug in the chain: each size was resized with
 sharp's default `fit: 'cover'`, which crops the fraction of a pixel by
 which a rounded size misses the aspect ratio, and the crops added up to a
@@ -136,19 +162,19 @@ WebP and JPEG), with one hook per case.
 
 | Case                                  | Mean  | vs no hooks |
 | ------------------------------------- | ----- | ----------- |
-| no hooks                              | 748ms |             |
-| a hook at every point, no change      | 746ms | same        |
-| `source`: `modulate`                  | 738ms | same        |
-| `source`: `pixels()`, a gain in JS    | 667ms | 11% faster  |
-| `afterResize`: `sharpen`              | 875ms | 17% slower  |
-| `beforeEncode`: a translucent overlay | 775ms | 4% slower   |
-| `beforeFormat`: `sharpen`, WebP only  | 845ms | 13% slower  |
+| no hooks                              | 675ms |             |
+| a hook at every point, no change      | 716ms | 6% slower   |
+| `source`: `modulate`                  | 882ms | 31% slower  |
+| `source`: `pixels()`, a gain in JS    | 751ms | 11% slower  |
+| `afterResize`: `sharpen`              | 799ms | 18% slower  |
+| `beforeEncode`: a translucent overlay | 738ms | 9% slower   |
+| `beforeFormat`: `sharpen`, WebP only  | 776ms | 15% slower  |
 
-Hooks that change nothing cost nothing measurable, and no hooks is
-pipeline.js's 741ms. A `source` hook costs its work at the photo's full
-size, yet the run gets faster: the sizes are then resized from its
-decoded pixels, and decoding once then resizing pixels costs less than
-resizing from the JPEG (chain.js has no "from decoded pixels" case yet).
-A sharpen costs about as much baked per size (`afterResize`, for both
-formats) as run in the WebP encodes (`beforeFormat`): three sharpens
-either way, the bakes on top.
+Recorded with other processes busy: no hooks ran in 582ms in pipeline.js
+the same minutes, and before sources were decoded first, hooks that change
+nothing measured 746ms against 748ms without hooks. A `source` hook costs
+its work at the photo's full size (11.4 megapixels): a `modulate` and its
+bake about 200ms, a copy of the pixels and a loop over 34 million bytes
+about 80ms. A sharpen costs about as much baked per size (`afterResize`,
+for both formats) as run in the WebP encodes (`beforeFormat`): three
+sharpens either way, the bakes on top.

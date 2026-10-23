@@ -5,13 +5,15 @@
  * - `chained (default)`: each size is resized from the previous one, the
  *   largest from the photo.
  * - `from the source`: every size is resized from the photo
- *   (`generateFromSource: true`), decoding it each time; sharp's JPEG
- *   shrink-on-load makes the small sizes cheaper to decode.
+ *   (`generateFromSource: true`). The photo's largest size is shrunk less
+ *   than 3 times, so the library decodes it once and resizes every size
+ *   from its pixels; a photo shrunk more is resized from its file each
+ *   time, where sharp's JPEG shrink-on-load makes small sizes cheaper.
  *
  * After the timing, the main thread checks what each costs in quality, on 3
  * photos: the SSIM (1 is identical) of each size against a reference
  * resized once from the photo's full resolution pixels. Chaining resamples
- * small sizes more than once; from the source, sharp's JPEG shrink-on-load
+ * small sizes more than once; from the file, sharp's JPEG shrink-on-load
  * decodes small sizes approximately.
  *
  * Run: npm run build && node bench/chain.js [--quick]

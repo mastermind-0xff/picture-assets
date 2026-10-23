@@ -28,11 +28,11 @@ for transparent images): `public/img/house@1280w.avif`, ….
 - **Correct on real photos**: EXIF orientation applied, transparent images
   get PNG instead of JPEG (or a white background when JPEG is asked for),
   color profiles converted to sRGB, metadata stripped.
-- **Fast**: the source is read once, each size resized from the previous
-  one, formats encoded in parallel, batches processed several sources at a
-  time. It takes 45% of the time of one sharp call per file, and 74% of
-  the time of resizing each size once with sharp (see
-  [bench/](bench/README.md)).
+- **Fast**: the source is read once (and decoded once, where a scaled
+  decode wouldn't help), each size resized from the previous one, formats
+  encoded in parallel, batches processed several sources at a time. It
+  takes 34% of the time of one sharp call per file, and 56% of the time of
+  resizing each size once with sharp (see [bench/](bench/README.md)).
 - **Incremental**: with a manifest, unchanged images are skipped, and the
   manifest lists every file for your templates.
 - **Directory trees**: directories, globs or files; each tree is mirrored
@@ -192,7 +192,12 @@ another aspect ratio (cropped to fill, see `resizeOptions`).
 
 Sizes are processed from the largest. Each size is resized from the
 previous one when it has the source's aspect ratio and no crop, otherwise
-from the source: never from an image smaller than the size.
+from the source: never from an image smaller than the size. A source is
+decoded once, and its sizes resized from its pixels, when that's faster
+than resizing from its file: a PNG, AVIF, GIF or TIFF, or a JPEG whose
+largest size is shrunk less than 3 times (from 3 times, JPEG
+shrink-on-load is as fast). It costs memory: the decoded source, 34MB for
+an 11 megapixel photo, per source in progress.
 
 **`formats`**: `['avif', 'webp', 'jpg']`, or with options for this call:
 `{ webp: { quality: 70 }, jpg: {} }`. Without formats, the destination's
@@ -384,9 +389,8 @@ crops are, not stretched.
 
 **Cost.** A point without hooks does nothing: a run without hooks writes
 the same bytes in the same time. A hook costs its own work and, for a sharp
-object, one bake to pixels. A `source` hook can even make a run faster:
-the sizes are then resized from its pixels instead of the JPEG (see
-[bench/hooks.js](bench/README.md#results)).
+object, one bake to pixels, at the image's size: a `source` hook works on
+the whole source (see [bench/hooks.js](bench/README.md#results)).
 
 **Failures.** A hook that throws, or returns something else, fails with a
 `HookError` (its `hook`, its `point`, the hook's error as its `cause`): its
