@@ -1,0 +1,313 @@
+mm-bench  node v22.22.2 · win32 x64 · Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz (12 cores) · timer step 100ns
+7 cases · 4 samples · 20 runs · 0 warm-up runs
+  sample 1/4  no hooks  5 runs in 3.92s · mean 783ms
+  sample 1/4  every point, no change  5 runs in 3.85s · mean 770ms
+  sample 1/4  source: modulate  5 runs in 3.73s · mean 747ms
+  sample 1/4  source: pixels() loop  5 runs in 3.35s · mean 670ms
+  sample 1/4  afterResize: sharpen  5 runs in 4.35s · mean 870ms
+  sample 1/4  beforeEncode: overlay  5 runs in 3.87s · mean 774ms
+  sample 1/4  beforeFormat: sharpen WebP  5 runs in 4.20s · mean 840ms
+  sample 2/4  beforeFormat: sharpen WebP  5 runs in 4.20s · mean 840ms
+  sample 2/4  beforeEncode: overlay  5 runs in 3.81s · mean 761ms
+  sample 2/4  afterResize: sharpen  5 runs in 4.47s · mean 893ms
+  sample 2/4  source: pixels() loop  5 runs in 3.33s · mean 666ms
+  sample 2/4  source: modulate  5 runs in 3.79s · mean 757ms
+  sample 2/4  every point, no change  5 runs in 3.76s · mean 752ms
+  sample 2/4  no hooks  5 runs in 3.81s · mean 761ms
+  sample 3/4  no hooks  5 runs in 3.69s · mean 738ms
+  sample 3/4  every point, no change  5 runs in 3.64s · mean 728ms
+  sample 3/4  source: modulate  5 runs in 3.59s · mean 718ms
+  sample 3/4  source: pixels() loop  5 runs in 3.26s · mean 652ms
+  sample 3/4  afterResize: sharpen  5 runs in 4.24s · mean 847ms
+  sample 3/4  beforeEncode: overlay  5 runs in 4.02s · mean 803ms
+  sample 3/4  beforeFormat: sharpen WebP  5 runs in 4.25s · mean 850ms
+  sample 4/4  beforeFormat: sharpen WebP  5 runs in 4.26s · mean 851ms
+  sample 4/4  beforeEncode: overlay  5 runs in 3.82s · mean 763ms
+  sample 4/4  afterResize: sharpen  5 runs in 4.46s · mean 891ms
+  sample 4/4  source: pixels() loop  5 runs in 3.39s · mean 678ms
+  sample 4/4  source: modulate  5 runs in 3.65s · mean 730ms
+  sample 4/4  every point, no change  5 runs in 3.68s · mean 735ms
+  sample 4/4  no hooks  5 runs in 3.55s · mean 709ms
+
+no hooks async                                                      12.2% slower
+mean      748ms                         median    744ms
+p99       842ms                         p99.9     842ms
+ops/s     1.34                          runs      20
+stddev    33.3ms                        off graph 0%
+overhead  68.0ns (subtracted)
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                ▃        ▃                                                    │
+│                █        █                                                    │
+│                █        █  ▅     ▅                                           │
+│                █        █  █     █                                           │
+│               ▆█  ▆▆▆ ▆ █ ▆█ ▆ ▆▆█             ▆                             │
+│               ██  ███ █ █ ██ █ ███             █                             │
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 740ms
+average: 748.31 ms                                                       0.00 ms
+min: 740.44 ms
+max: 759.43 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│                                                                              │
+│                               ▁                ▁▁▁▁▁▁▁▁▁▁▁▁▁                 │
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 740ms
+average: 10.8 %                                                            0.0 %
+min: 10.5 %
+max: 11.1 %
+
+every point, no change async                                        12.0% slower
+mean      746ms                         median    740ms
+p99       784ms                         p99.9     784ms
+ops/s     1.34                          runs      20
+stddev    22.6ms                        off graph 0%
+overhead  65.6ns (subtracted)
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                    ▃         ▃                                               │
+│                    █         █                                               │
+│                    █ ▅ ▅     █ ▅                                             │
+│                    █ █ █     █ █                                             │
+│                ▆  ▆█▆█ █▆  ▆▆█ █▆▆                                           │
+│                █  ████ ██  ███ ███                                           │
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 733ms
+average: 746.78 ms                                                       0.00 ms
+min: 734.70 ms
+max: 760.36 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│                                                                              │
+│                                                                              │
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 733ms
+average: 10.7 %                                                            0.0 %
+min: 10.6 %
+max: 11.0 %
+
+source: modulate async                                              10.7% slower
+mean      738ms                         median    726ms
+p99       786ms                         p99.9     786ms
+ops/s     1.36                          runs      20
+stddev    24.9ms                        off graph 0%
+overhead  71.9ns (subtracted)
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                    █                                                         │
+│                    █                                                         │
+│                    █                                                         │
+│                    █   ▃                                                     │
+│                    █   █                                                     │
+│               ▅  ▅ █▅  █        ▅                                            │
+│               █  █ ██  █        █                                            │
+│               █  █ ██  █ ▆   ▆ ▆█ ▆                                          │
+│               █  █ ██  █ █   █ ██ █                                          │
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 690ms
+average: 738.49 ms                                                       0.00 ms
+min: 724.35 ms
+max: 765.48 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│████████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 690ms
+average: 30.0 %                                                            0.0 %
+min: 29.0 %
+max: 31.1 %
+
+source: pixels() loop async                                              fastest
+mean      667ms                         median    666ms
+p99       717ms                         p99.9     717ms
+ops/s     1.50                          runs      20
+stddev    17.8ms                        off graph 0%
+overhead  75.3ns (subtracted)
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│   ▃    ▃                                                                     │
+│   █    █                                                                     │
+│   █▅▅ ▅█                                                                     │
+│   ███ ██                                                                     │
+│▆ ▆███▆██▆▆▆ ▆     ▆                                                          │
+│█ ██████████ █     █                                                          │
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 334ms
+average: 666.92 ms                                                       0.00 ms
+min: 652.42 ms
+max: 679.99 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│                                                                              │
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▃▃▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 334ms
+average: 13.9 %                                                            0.0 %
+min: 11.8 %
+max: 15.4 %
+
+afterResize: sharpen async                                          31.3% slower
+mean      875ms                         median    873ms
+p99       951ms                         p99.9     951ms
+ops/s     1.14                          runs      20
+stddev    35.5ms                        off graph 0%
+overhead  66.1ns (subtracted)
+! busy machine: other processes used 11% CPU
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                ▃                             │
+│                                                █                             │
+│                                              ▅ █        ▅     ▅              │
+│                                              █ █        █     █              │
+│                                            ▆ █ █ ▆▆  ▆▆▆█▆  ▆ █     ▆▆   ▆   │
+│                                            █ █ █ ██  █████  █ █     ██   █   │
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇█▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇█████████████████▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     4s 378ms
+average: 876.34 ms                                                       0.00 ms
+min: 845.74 ms
+max: 905.40 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│                                                                              │
+│▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     4s 378ms
+average: 16.7 %                                                            0.0 %
+min: 15.7 %
+max: 17.4 %
+
+beforeEncode: overlay async                                         16.3% slower
+mean      775ms                         median    763ms
+p99       966ms                         p99.9     966ms
+ops/s     1.29                          runs      20
+stddev    45.1ms                        off graph 0%
+overhead  78.4ns (subtracted)
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                             █                                                │
+│                             █                                                │
+│                             █                                                │
+│                             █▃                                               │
+│                             ██                                               │
+│                          ▅▅ ██    ▅                                          │
+│                          ██ ██    █                                          │
+│                          ██▆██▆▆▆▆█                                         ▆│
+│                          ██████████                                         █│
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 878ms
+average: 777.60 ms                                                       0.00 ms
+min: 759.02 ms
+max: 818.21 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│                                                                              │
+│▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     3s 878ms
+average: 12.7 %                                                            0.0 %
+min: 11.6 %
+max: 13.4 %
+
+beforeFormat: sharpen WebP async                                    26.8% slower
+mean      845ms                         median    839ms
+p99       917ms                         p99.9     917ms
+ops/s     1.18                          runs      20
+stddev    25.2ms                        off graph 0%
+overhead  63.4ns (subtracted)
+! 20 runs: a rough distribution
+
+Run time, % of runs                                                       25.0 %
+│                                                                              │
+│                                               ▂                              │
+│                                               █                              │
+│                                               █                              │
+│                                               █                              │
+│                                          ▅▅   █▅       ▅                     │
+│                                          ██   ██       █                     │
+│                                          ██▆▆▆██▆ ▆ ▆  █ ▆       ▆           │
+│                                          ████████ █ █  █ █       █           │
+636ms 689µs                                                           966ms 13µs
+                                                                           0.0 %
+
+Mean run time over the sample                                          905.40 ms
+│▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆│
+│██████████████████████████████████████████████████████████████████████████████│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     4s 228ms
+average: 846.12 ms                                                       0.00 ms
+min: 828.42 ms
+max: 869.26 ms
+
+All cores usage, % of 12 cores                                            31.1 %
+│                                                                              │
+│▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅│
+│██████████████████████████████████████████████████████████████████████████████│
+0ms                                                                     4s 228ms
+average: 17.2 %                                                            0.0 %
+min: 16.3 %
+max: 17.9 %
+
+case                      |  mean | median |   p99 | ops/s | vs fastest   | runs
+no hooks                  | 748ms |  744ms | 842ms |  1.34 | 12.2% slower |   20
+every point, no change    | 746ms |  740ms | 784ms |  1.34 | 12.0% slower |   20
+source: modulate          | 738ms |  726ms | 786ms |  1.36 | 10.7% slower |   20
+source: pixels() loop     | 667ms |  666ms | 717ms |  1.50 | fastest      |   20
+afterResize: sharpen      | 875ms |  873ms | 951ms |  1.14 | 31.3% slower |   20
+beforeEncode: overlay     | 775ms |  763ms | 966ms |  1.29 | 16.3% slower |   20
+beforeFormat: sharpen We… | 845ms |  839ms | 917ms |  1.18 | 26.8% slower |   20

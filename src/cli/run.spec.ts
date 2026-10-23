@@ -167,6 +167,31 @@ describe('runCli', () => {
     ]);
   });
 
+  test('--dry-run with hooks from a .js config: a note, as they are not run', async () => {
+    const site = path.join(dir, `site-${++testIndex}`);
+    await fs.mkdir(site);
+    await fs.writeFile(
+      path.join(site, 'picture-assets.config.mjs'),
+      `export default {
+        output: 'public',
+        sizes: [200],
+        formats: ['webp'],
+        hooks: [{ name: 'grade', source: (image) => image.modulate({ saturation: 1.1 }) }],
+      };`
+    );
+    const { code, stdout, stderr } = await run(
+      [file('landscape.jpg'), '--dry-run'],
+      { cwd: site }
+    );
+    expect(code).toBe(EXIT_CODES.ok);
+    expect(stdout.split('\n').slice(-3)).toEqual([
+      '1 source(s), 1 file(s) to write.',
+      'Hooks not run by the plan: grade. They can change sizes, file names and formats.',
+      '',
+    ]);
+    expect(stderr).toMatch(/The plan doesn't run the hooks \(grade\)/);
+  });
+
   test('a config file, flags over it, paths relative to it', async () => {
     const site = path.join(dir, `site-${++testIndex}`);
     await fs.mkdir(site);

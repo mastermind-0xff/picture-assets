@@ -29,6 +29,7 @@ more during a case.
 | [`concurrency.js`](concurrency.js) | How many sources should a batch process at once?                     |
 | [`formats.js`](formats.js)         | What does each encoder cost?                                         |
 | [`weight.js`](weight.js)           | What does each format and quality give for its bytes? (not timed)    |
+| [`hooks.js`](hooks.js)             | What does a hook cost at each point?                                 |
 
 ## Results
 
@@ -129,3 +130,25 @@ softer.
 SSIM here is single scale, on luma: good to rank settings of the same
 image, not a perceptual metric for every kind of artifact (AVIF smooths
 fine texture, JPEG blocks).
+
+**hooks.js**: pipeline.js's photo, sizes and formats (2048, 1024, 512;
+WebP and JPEG), with one hook per case.
+
+| Case                                  | Mean  | vs no hooks |
+| ------------------------------------- | ----- | ----------- |
+| no hooks                              | 748ms |             |
+| a hook at every point, no change      | 746ms | same        |
+| `source`: `modulate`                  | 738ms | same        |
+| `source`: `pixels()`, a gain in JS    | 667ms | 11% faster  |
+| `afterResize`: `sharpen`              | 875ms | 17% slower  |
+| `beforeEncode`: a translucent overlay | 775ms | 4% slower   |
+| `beforeFormat`: `sharpen`, WebP only  | 845ms | 13% slower  |
+
+Hooks that change nothing cost nothing measurable, and no hooks is
+pipeline.js's 741ms. A `source` hook costs its work at the photo's full
+size, yet the run gets faster: the sizes are then resized from its
+decoded pixels, and decoding once then resizing pixels costs less than
+resizing from the JPEG (chain.js has no "from decoded pixels" case yet).
+A sharpen costs about as much baked per size (`afterResize`, for both
+formats) as run in the WebP encodes (`beforeFormat`): three sharpens
+either way, the bakes on top.

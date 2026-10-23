@@ -46,7 +46,10 @@ export interface CliIo {
   readonly signal?: AbortSignal;
 }
 
-/** The command's logger: `@mmutils/logger`, on stderr. */
+/**
+ * The command's logger: `@mmutils/logger`, on stderr, timestamps to the
+ * millisecond (a hook's start and end logs tell its time).
+ */
 export const createCliLogger = (
   level: LogLevel,
   write: (line: string) => void,
@@ -55,7 +58,7 @@ export const createCliLogger = (
   new Logger({
     level,
     useStyles: colors,
-    timestamp: 'HH:mm:ss',
+    timestamp: 'HH:mm:ss.SSS',
     plugins: [messagePlugin({ write }), graphPlugin({ write })],
   });
 
@@ -98,6 +101,10 @@ const formatPlan = (plan: AssetsPlan) => {
   lines.push(
     `${plan.sources.length} source(s), ${plan.files} file(s) to write.`
   );
+  if (plan.hooksNotRun.length > 0)
+    lines.push(
+      `Hooks not run by the plan: ${plan.hooksNotRun.join(', ')}. They can change sizes, file names and formats.`
+    );
   return `${lines.join('\n')}\n`;
 };
 

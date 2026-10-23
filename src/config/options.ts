@@ -1,3 +1,4 @@
+import { groupHooks, type ResolvedHooks } from '../image/hooks.js';
 import { createLogger, type AssetsLogger } from '../log/logger.js';
 import type {
   AbortScope,
@@ -13,6 +14,7 @@ import {
   parseBoolean,
   parseConcurrency,
   parseFormatOptions,
+  parseHooks,
   parseLogger,
   parseResizeStrategyHint,
   parseSuffixOption,
@@ -28,7 +30,7 @@ export const DEFAULT_OPTIONS = {
   upscale: true,
   concurrency: 'auto',
 } as const satisfies Required<
-  Omit<AssetsOptions, 'formatOptions'> & { concurrency: Concurrency }
+  Omit<AssetsOptions, 'formatOptions' | 'hooks'> & { concurrency: Concurrency }
 >;
 
 /** Options with every value set and checked. */
@@ -39,6 +41,7 @@ export interface ResolvedOptions {
   readonly formatOptions: FormatOptionsInput;
   readonly abortScope: AbortScope;
   readonly upscale: boolean;
+  readonly hooks: ResolvedHooks;
 }
 
 /** Merges format options per format, so each layer can set single fields. */
@@ -92,6 +95,7 @@ export const resolveOptions = (
       'upscale',
       options.upscale ?? DEFAULT_OPTIONS.upscale
     ),
+    hooks: groupHooks(parseHooks(options.hooks ?? [])),
   };
 };
 

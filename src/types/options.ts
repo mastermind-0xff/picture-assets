@@ -1,5 +1,6 @@
 import type { LogLevel } from '@mmutils/logger';
 import type { AssetsLogger } from '../log/logger.js';
+import type { Hook } from './hooks.js';
 import type { OutputFormatsOptions } from './output.js';
 import type { ResizeStrategyHint } from './size.js';
 
@@ -74,6 +75,15 @@ export interface AssetsOptions {
    * Default: `'info'` (`PICTURE_ASSETS_LOG_LEVEL`).
    */
   readonly logger?: LogLevel | AssetsLogger;
+
+  /**
+   * Functions run in the resize chain, see `Hook`. At each point, in the
+   * list's order, each on the image the previous one gave. Hooks come from
+   * code or a `.js` config file: there is no environment variable.
+   *
+   * Default: `[]`.
+   */
+  readonly hooks?: readonly Hook[];
 }
 
 /** Options of `generateBatchAssets`. */

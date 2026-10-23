@@ -10,6 +10,8 @@ const EXAMPLES = [
   'quick-start.js',
   'multipliers.js',
   'art-direction.js',
+  'hooks.js',
+  'hooks-pixels.js',
   'picture.js',
   'format-options.js',
   'batch.js',

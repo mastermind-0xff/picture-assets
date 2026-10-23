@@ -98,6 +98,9 @@ which wins over the `PICTURE_ASSETS_*` variables:
 }
 ```
 
+A `.js` config file can also set `hooks` (see [Hooks](#hooks)): they are
+functions, so JSON and flags can't.
+
 **Thread pool.** Sharp runs on libuv's thread pool, 4 threads by default,
 the bottleneck of batches (see [bench/](bench/README.md)). libuv sizes it
 when a process starts, so when `UV_THREADPOOL_SIZE` is not set, the command
@@ -259,6 +262,7 @@ Invalid values throw, naming the option or the variable.
 | `abortScope`         | `'none'`       | `PICTURE_ASSETS_ABORT_SCOPE`          | What a failure stops, see [Failures](#failures)                                                                                                                                                                                                                                                          |
 | `logger`             | `'info'`       | `PICTURE_ASSETS_LOG_LEVEL`            | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                                                                                                                                                 |
 | `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                                                                                                                                                     |
+| `hooks`              | `[]`           |                                       | Functions in the resize chain, see [Hooks](#hooks)                                                                                                                                                                                                                                                       |
 
 Load the variables from a file with `node --env-file=.env` (see
 [`.env.example`](.env.example)).
@@ -321,6 +325,92 @@ of cores before the process starts (`UV_THREADPOOL_SIZE=12 node build.js`;
 setting it from the script is too late). On a 12 thread laptop, it cut a
 10 photo batch from 1.32s to 885ms. The command line does it for you.
 
+## Hooks
+
+Functions in the resize chain: a color grade, a crop centered on the
+subject, an AI upscaler, a watermark. A hook is an object with a `name` and
+a function at one or more points. At each point the hooks run in the
+list's order, each on the image the previous one gave.
+
+```js
+await generateAssets({
+  input: 'src/images',
+  output: 'public/img',
+  hooks: [
+    {
+      name: 'grade',
+      key: 'warm-1',
+      source: (image) => image.modulate({ saturation: 1.1 }),
+    },
+    {
+      name: 'avifSharpen',
+      beforeFormat: (image, { format }) =>
+        format === 'avif' ? image.sharpen({ sigma: 0.5 }) : undefined,
+    },
+  ],
+});
+```
+
+| Point          | Runs                                                                            | Changes                                                                      |
+| -------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `source`       | Once per source, after it is read (EXIF orientation applied)                    | The source: the sizes are planned from what it gives                         |
+| `beforeResize` | Per size, on the image the size is resized from (the source or a previous size) | This size, and the sizes resized from it                                     |
+| `afterResize`  | Per size, after the resize                                                      | This size, and the sizes resized from it: effects add up down the chain      |
+| `beforeEncode` | Per size, once the next sizes took it                                           | Every file of this size, not the chain: a watermark at each size's own scale |
+| `beforeFormat` | Per file, before it is encoded                                                  | That file. The format is set after the hook: it can't change it              |
+
+Each function gets a new sharp object over the image, never one the run
+uses, and a context: the `source` path, the image's `width`, `height` and
+`channels`, `pixels()` (a copy of its pixels, 8 bits per channel, for JS
+or a model), the run's `signal` and `logger`. The size points add the
+`setting` (planned `width` and `height`, `sizeMultiplier`, `suffix`,
+`resizeOptions`, `extractRegion`), `beforeFormat` the `format`, its
+encoder `options` and the `file`. It returns, or resolves to:
+
+- `undefined`: no change.
+- a sharp object: baked to pixels before the next hook or step, so its
+  operations run once, and before what follows (sharp runs a pipeline's
+  operations in its own order, not in call order). At `beforeFormat` it is
+  encoded as it is.
+- pixels, `{ data, info: { width, height, channels } }`: used as they are.
+
+**What a point gives is the image from there on**, its size and
+transparency included. A `source` hook that upscales gets the larger sizes
+made where `upscale: false` would skip them; one that adds alpha makes
+`'fallback'` write PNG. A size whose hooks change its size names its files
+by the new size and hands it to the next sizes. An image of another aspect
+ratio (a hero crop at `beforeResize`) is cropped to the size, as built-in
+crops are, not stretched.
+
+**Cost.** A point without hooks does nothing: a run without hooks writes
+the same bytes in the same time. A hook costs its own work and, for a sharp
+object, one bake to pixels. A `source` hook can even make a run faster:
+the sizes are then resized from its pixels instead of the JPEG (see
+[bench/hooks.js](bench/README.md#results)).
+
+**Failures.** A hook that throws, or returns something else, fails with a
+`HookError` (its `hook`, its `point`, the hook's error as its `cause`): its
+size, its file at `beforeFormat`, its source at `source`, under
+`abortScope` as any failure.
+
+**Logs.** At `'debug'`, each hook call logs when it starts and when it
+ends, with its time, its bake included. The default logger and the
+command's have timestamps to the millisecond.
+
+**Manifest.** Functions can't be compared: a manifest's hash includes each
+hook's `name` and `key`. Change the `key` when a hook's work changes, or
+the next run skips its sources as unchanged.
+
+**Config.** Hooks come from code or a `.js` config file. `planAssets` and
+`--dry-run` don't run them: sizes are planned from the sources as read, so
+a run with hooks can differ from its plan. The plan names them
+(`hooksNotRun`, and a line in `--dry-run`'s output) and warns.
+
+[`examples/hooks.js`](examples/hooks.js) grades, crops around a focal
+point, watermarks and sharpens AVIF;
+[`examples/hooks-pixels.js`](examples/hooks-pixels.js) upscales and adds
+alpha through `pixels()`.
+
 ## Results
 
 Both functions resolve with a tree of results: batch → sources → settings
@@ -363,6 +453,9 @@ or your own logger: a `@mmutils/logger` `Logger` (with `jsonPlugin` for JSON
 lines, for example) or any object with `error`, `warning`, `info`, `debug`
 and `verbose` methods.
 
+Timestamps have milliseconds, so the debug lines around each hook (see
+[Hooks](#hooks)) and file tell where the time goes.
+
 ## Defaults
 
 JPEG at quality 80 is the usual web baseline. Measured on three photos at
@@ -392,6 +485,8 @@ write to `examples/output`.
 | [`quick-start.js`](examples/quick-start.js)       | One photo, 3 widths, AVIF, WebP and JPEG            |
 | [`multipliers.js`](examples/multipliers.js)       | `x1`/`x2`/`x3` sizes and `resizeStrategyHint`       |
 | [`art-direction.js`](examples/art-direction.js)   | Other aspect ratios, `position: 'attention'`, crops |
+| [`hooks.js`](examples/hooks.js)                   | A grade, a hero crop, a watermark, AVIF sharpening  |
+| [`hooks-pixels.js`](examples/hooks-pixels.js)     | Hooks on pixels: an upscaler, an alpha vignette     |
 | [`picture.js`](examples/picture.js)               | A `<picture>` element from the result               |
 | [`format-options.js`](examples/format-options.js) | Defaults, `formatOptions`, per call options         |
 | [`batch.js`](examples/batch.js)                   | A directory tree, mirrored                          |

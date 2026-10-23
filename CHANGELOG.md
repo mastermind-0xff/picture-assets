@@ -34,6 +34,27 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - **`signal`** for batches: an `AbortSignal` that stops them (`'aborted'`).
 - Sources report their `width` and `height`.
 
+### Added: hooks
+
+- **`hooks`**: functions in the resize chain, at five points: `source`
+  (once per source, before its sizes are planned), `beforeResize`,
+  `afterResize` (the image goes down the chain), `beforeEncode` (every
+  file of the size, not the chain) and `beforeFormat` (one file). Each gets
+  a new sharp object and a context (`setting`, `pixels()`, `signal`,
+  `logger`, …), and returns `undefined`, a sharp object (baked once) or
+  pixels. What a point gives is the image from there on: its size plans the
+  sizes and names the files, its alpha picks `'fallback'`.
+- Points without hooks do nothing: a run without hooks writes the same
+  bytes.
+- **`HookError`**, with the `hook` and the `point`: fails the size, the file
+  (`beforeFormat`) or the source (`source`), under `abortScope`.
+- Debug logs when each hook starts and ends, with its time; the default
+  logger's and the command's timestamps have milliseconds.
+- The manifest's hash includes each hook's `name` and `key`.
+- `planAssets` and `--dry-run` don't run hooks: the plan names them
+  (`hooksNotRun`) and warns, as the run can differ.
+- `examples/hooks.js`, `examples/hooks-pixels.js`, `bench/hooks.js`.
+
 ### Changed
 
 - **Package name**: `picture-assets` (was `image-assets-generator`, taken

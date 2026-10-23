@@ -48,6 +48,20 @@ export {
 export { parseSuffix, type SuffixData } from './image/suffix.js';
 export { createLogger, type AssetsLogger } from './log/logger.js';
 export { ResultBatchError, ResultSourceError } from './errors/result-errors.js';
+export { HookError } from './errors/hook-error.js';
+export { HOOK_POINTS } from './config/validate.js';
+
+export type {
+  FormatHookContext,
+  Hook,
+  HookContext,
+  HookPoint,
+  HookResult,
+  HookReturn,
+  HookSetting,
+  RawImage,
+  SizeHookContext,
+} from './types/hooks.js';
 
 export type {
   AbortScope,

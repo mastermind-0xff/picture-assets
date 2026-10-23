@@ -19,7 +19,11 @@ import {
   parseFormats,
 } from '../config/validate.js';
 import { ResultBatchError } from '../errors/result-errors.js';
-import { planSource, plannedIdentifier } from '../image/output.js';
+import {
+  planSource,
+  plannedIdentifier,
+  readSourceInfo,
+} from '../image/output.js';
 import type { Concurrency, AssetsOptions } from '../types/options.js';
 import type { ResultBatch } from '../types/output.js';
 import { planTargets, runBatch } from './generate-batch-assets.js';
@@ -96,6 +100,7 @@ export const CONFIG_KEYS = [
   'manifest',
   'force',
   'signal',
+  'hooks',
 ] as const satisfies readonly (keyof AssetsConfig)[];
 
 /** Defaults of `sizes` and `formats`. */
@@ -293,12 +298,21 @@ export interface AssetsPlan {
   readonly sources: readonly PlannedSource[];
   /** Files that would be written. */
   readonly files: number;
+  /**
+   * Names of the hooks the run would apply and the plan doesn't: what they
+   * change (a source's size, a size's size, transparency and with it
+   * `'fallback'`) is not in the plan.
+   */
+  readonly hooksNotRun: readonly string[];
 }
 
 /**
  * What `generateAssets` would do with a config, without writing anything:
  * the sources, their sizes resolved to pixels (multipliers included) and
- * their files. Sources are read for their size, not resized.
+ * their files. Sources are read for their size, not resized, and no hook
+ * runs: sizes are planned from the sources as read, even where hooks would
+ * change them. The plan lists those hooks (`hooksNotRun`) and logs a
+ * warning.
  *
  * @throws `TypeError | RangeError` for an invalid config.
  */
@@ -306,6 +320,11 @@ export const planAssets = async (config: AssetsConfig): Promise<AssetsPlan> => {
   const prepared = await prepare(config);
   const { sources, destRoot, settings, formats, options, manifest, force } =
     prepared;
+  const hooksNotRun = options.hooks.all.map(({ name }) => name);
+  if (hooksNotRun.length > 0)
+    options.logger.warning(
+      `The plan doesn't run the hooks (${hooksNotRun.join(', ')}): sizes, file names and formats are planned from the sources as read, and the run's can differ.`
+    );
   const previous = await loadManifest(prepared);
   const { targets, errors } = planTargets(
     sources,
@@ -336,8 +355,10 @@ export const planAssets = async (config: AssetsConfig): Promise<AssetsPlan> => {
           continue;
         }
       }
-      const plan = await planSource(
-        sharp(await fs.readFile(source), { autoOrient: true }),
+      const plan = planSource(
+        await readSourceInfo(
+          sharp(await fs.readFile(source), { autoOrient: true })
+        ),
         settings,
         target.encoders,
         options
@@ -375,5 +396,6 @@ export const planAssets = async (config: AssetsConfig): Promise<AssetsPlan> => {
         sum + sizes.reduce((count, { files }) => count + files.length, 0),
       0
     ),
+    hooksNotRun,
   };
 };

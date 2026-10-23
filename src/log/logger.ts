@@ -35,12 +35,17 @@ export interface AssetsLogger {
 
 /**
  * Creates the default logger: `@mmutils/logger` with the message and graph
- * plugins.
+ * plugins, timestamps to the millisecond: a hook's start and end logs tell
+ * its time.
  *
  * @param level Lowest level to output, from `'silent'` to `'verbose'`.
  */
 export const createLogger = (level: LogLevel): AssetsLogger =>
-  new Logger({ level, plugins: [messagePlugin(), graphPlugin()] });
+  new Logger({
+    level,
+    timestamp: 'YYYY/MM/DD HH:mm:ss.SSS',
+    plugins: [messagePlugin(), graphPlugin()],
+  });
 
 /**
  * Whether a log of the given type would be output. Loggers without a level

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import sharp, { type Sharp } from 'sharp';
+import sharp, { type Channels, type Sharp } from 'sharp';
 
 import type { ResolvedOptions } from '../config/options.js';
 import {
@@ -10,13 +10,27 @@ import {
   type TargetEncoder,
 } from '../config/validate.js';
 import type { AssetsLogger } from '../log/logger.js';
+import type { HookSetting, RawImage } from '../types/hooks.js';
 import type {
   OutputSetting,
   ResultFormat,
   ResultSetting,
 } from '../types/output.js';
-import { allResultsSucceeded, formatBytes } from '../utils/helpers.js';
+import {
+  allResultsSucceeded,
+  formatBytes,
+  isMatchingAspectRatio,
+} from '../utils/helpers.js';
 import { supportsAlpha, toSharpFormat } from './formats.js';
+import {
+  encodedInput,
+  fromRaw,
+  hasAlphaChannel,
+  rawInput,
+  runFormatHooks,
+  runHooks,
+  type HookInput,
+} from './hooks.js';
 import {
   limitToSource,
   resolveOutputSettings,
@@ -43,12 +57,28 @@ export interface SourcePlan {
   readonly encoders: Encoder[];
 }
 
-/**
- * Reads a source's metadata and resolves what it will give, without
- * resizing anything.
- */
-export const planSource = async (
-  source: Sharp,
+/** What a source is, as read or as its `source` hooks made it. */
+export interface SourceInfo {
+  /** Size as shown (auto-oriented). */
+  readonly width: number;
+  readonly height: number;
+  readonly channels: Channels;
+  readonly hasAlpha: boolean;
+}
+
+/** Reads a source's size, channels and transparency from its metadata. */
+export const readSourceInfo = async (source: Sharp): Promise<SourceInfo> => {
+  const {
+    autoOrient: { width, height },
+    channels,
+    hasAlpha,
+  } = await source.metadata();
+  return { width, height, channels, hasAlpha };
+};
+
+/** Resolves what a source will give, without resizing anything. */
+export const planSource = (
+  { width, height, hasAlpha }: SourceInfo,
   settings: readonly OutputSetting[],
   encoders: readonly TargetEncoder[],
   {
@@ -56,11 +86,7 @@ export const planSource = async (
     resizeStrategyHint,
     upscale,
   }: Pick<ResolvedOptions, 'logger' | 'resizeStrategyHint' | 'upscale'>
-): Promise<SourcePlan> => {
-  const {
-    autoOrient: { width, height },
-    hasAlpha,
-  } = await source.metadata();
+): SourcePlan => {
   const dimensions = { srcWidth: width, srcHeight: height };
   const resolved = resolveOutputSettings(
     settings,
@@ -132,6 +158,32 @@ export const sharpToFile = async (
 };
 
 /**
+ * Runs a file's `beforeFormat` hooks: the sharp object to encode, or
+ * undefined to encode the size's image.
+ */
+type FormatHooks = (
+  encoder: Encoder,
+  file: string
+) => Promise<Sharp | undefined>;
+
+/** Saves a file whose `beforeFormat` hooks may give the image to encode. */
+const hookedToFile = async (
+  image: Sharp,
+  file: string,
+  encoder: Encoder,
+  hasAlpha: boolean,
+  beforeFormat: FormatHooks
+): Promise<ResultFormat> => {
+  let pipeline: Sharp;
+  try {
+    pipeline = (await beforeFormat(encoder, file)) ?? image.clone();
+  } catch (error: unknown) {
+    return { status: 'failed', format: encoder.format, file, error };
+  }
+  return sharpToFile(pipeline, file, encoder, hasAlpha);
+};
+
+/**
  * Takes an image and saves it to a list of formats, all at the same time:
  * encoding from a decoded image is fast, so running the formats in parallel
  * helps single source speed when threads are available. Every format is
@@ -143,6 +195,8 @@ export const sharpToFile = async (
  * @param outputIdentifier Full path to the output file without the extension.
  * @param hasAlpha Whether the image is transparent, see `sharpToFile`.
  * @param logger Receives a debug log per file and an error per failure.
+ * @param beforeFormat The `beforeFormat` hooks, if any: a failure fails
+ * the file.
  * @returns Promise that fulfills with a list of objects containing metadata
  * about each format and the output file, in the order of the encoders.
  */
@@ -151,17 +205,16 @@ export const settingToFormats = async (
   encoders: readonly Encoder[],
   outputIdentifier: string,
   hasAlpha: boolean,
-  logger: AssetsLogger
+  logger: AssetsLogger,
+  beforeFormat?: FormatHooks
 ): Promise<ResultFormat[]> => {
   const results = await Promise.all(
-    encoders.map((encoder) =>
-      sharpToFile(
-        image.clone(),
-        `${outputIdentifier}.${encoder.format}`,
-        encoder,
-        hasAlpha
-      )
-    )
+    encoders.map((encoder) => {
+      const file = `${outputIdentifier}.${encoder.format}`;
+      return beforeFormat === undefined ?
+          sharpToFile(image.clone(), file, encoder, hasAlpha)
+        : hookedToFile(image, file, encoder, hasAlpha, beforeFormat);
+    })
   );
 
   for (const result of results) {
@@ -179,13 +232,33 @@ export const settingToFormats = async (
 /** Image the next sizes can be resized from, with its size. */
 interface ResizeBase {
   image: Sharp;
+  /** Its pixels: a size, or a source its hooks changed. */
+  pixels: RawImage | undefined;
   width: number;
   height: number;
   /** A baked buffer of an earlier size, not the source. */
   isBuffer: boolean;
   /** Has the source's aspect ratio, up to the rounding of its size. */
   keepsAspectRatio: boolean;
+  hasAlpha: boolean;
 }
+
+/** What hooks are told about a size. */
+const toHookSetting = ({
+  width,
+  height,
+  sizeMultiplier,
+  suffix,
+  resizeOptions,
+  extractRegion,
+}: ResolvedOutputSettings): HookSetting => ({
+  width,
+  height,
+  sizeMultiplier,
+  suffix,
+  resizeOptions,
+  extractRegion,
+});
 
 /**
  * Takes source image file path and manipulates it based on the settings list.
@@ -205,6 +278,12 @@ interface ResizeBase {
  * it are not processed. With `upscale: false`, settings larger than the
  * source are skipped, see `limitToSource`.
  *
+ * Hooks run at their points (see `HookPoint`), and the image each point's
+ * hooks give is the image from there on, with its size and transparency:
+ * a `source` hook's image is planned as the source; after `afterResize`, a
+ * size's image is what the next sizes resize from; after `beforeEncode`, it
+ * is only what this size's files encode. Points without hooks cost nothing.
+ *
  * @param srcPath Source's image full path.
  * @param settings Settings list to generate files.
  * @param encoders Formats to write and their options.
@@ -214,8 +293,8 @@ interface ResizeBase {
  * @returns Promise that resolves to a list of objects containing metadata about
  * each setting and its resulting files, whether the source stopped before
  * its last setting, and the source's size.
- * @throws When the source can't be read or the output directory can't be
- * created: nothing was processed.
+ * @throws When the source can't be read, a `source` hook fails or the output
+ * directory can't be created: nothing was processed.
  */
 export const sourceToSettings = async (
   srcPath: string,
@@ -229,16 +308,71 @@ export const sourceToSettings = async (
   width: number;
   height: number;
 }> => {
-  const { logger, suffix, abortScope, signal } = context;
+  const { logger, suffix, abortScope, signal, hooks } = context;
 
   // read once: every size sees the same file, and libvips' file cache never
   // keeps it open (Windows can't change or delete open files)
   const input = await fs.readFile(srcPath);
   // EXIF orientation applied: phone photos are often stored sideways
   const source = sharp(input, { autoOrient: true });
-  const plan = await planSource(source, settings, targetEncoders, context);
-  const { width: srcWidth, height: srcHeight, hasAlpha, encoders } = plan;
+  const read = await readSourceInfo(source);
+  // hooks get the file's bytes until a hook gives pixels, decoded at most
+  // once for all of them
+  let sourceInput: HookInput | undefined;
+  const encoded = () => (sourceInput ??= encodedInput(input, read));
+  const inputOf = (base: ResizeBase) =>
+    base.pixels ? rawInput(base.pixels) : encoded();
+
+  // the image a source hook gives is the source from now on: its size,
+  // channels and transparency plan the sizes
+  const sourcePixels =
+    hooks.source.length > 0 ?
+      await runHooks(
+        'source',
+        hooks.source,
+        encoded(),
+        { source: srcPath, signal, logger },
+        srcPath
+      )
+    : undefined;
+  const info =
+    sourcePixels ?
+      {
+        ...sourcePixels.info,
+        hasAlpha: hasAlphaChannel(sourcePixels.info.channels),
+      }
+    : read;
+  const plan = planSource(info, settings, targetEncoders, context);
+  const { width: srcWidth, height: srcHeight, encoders } = plan;
   logger.verbose({ source: srcPath, settings: plan.settings });
+
+  /** Encoders of an image: `'fallback'` follows its transparency. */
+  const encodersFor = (hasAlpha: boolean) =>
+    hasAlpha === plan.hasAlpha ?
+      encoders
+    : selectEncoders(targetEncoders, hasAlpha);
+  /** A hook's pixels as the image a size is resized from. */
+  const toBase = (pixels: RawImage, previous: ResizeBase): ResizeBase => {
+    const { width, height, channels } = pixels.info;
+    return {
+      image: fromRaw(pixels),
+      pixels,
+      width,
+      height,
+      isBuffer: true,
+      keepsAspectRatio:
+        width === previous.width && height === previous.height ?
+          previous.keepsAspectRatio
+        : isMatchingAspectRatio(width, height, srcWidth, srcHeight),
+      hasAlpha: hasAlphaChannel(channels),
+    };
+  };
+  const sizeContext = (setting: ResolvedOutputSettings) => ({
+    source: srcPath,
+    signal,
+    logger,
+    setting: toHookSetting(setting),
+  });
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
@@ -251,11 +385,13 @@ export const sourceToSettings = async (
   });
   const identifiers = new Set<string>();
   const sourceBase: ResizeBase = {
-    image: source,
+    image: sourcePixels ? fromRaw(sourcePixels) : source,
+    pixels: sourcePixels,
     width: srcWidth,
     height: srcHeight,
     isBuffer: false,
     keepsAspectRatio: true,
+    hasAlpha: plan.hasAlpha,
   };
   let base = sourceBase;
 
@@ -274,16 +410,28 @@ export const sourceToSettings = async (
       );
       continue;
     }
-    const start =
+    let start =
       setting.generateFromSource || base.width < width || base.height < height ?
         sourceBase
       : base;
     logger.verbose(
       `Resizing ${srcPath} to ${width}x${height} from ${start.isBuffer ? `the ${start.width}x${start.height} buffer` : 'the source'}`
     );
+    const label = `${srcPath} at ${width}x${height}`;
 
     let result: ResultSetting;
     try {
+      if (hooks.beforeResize.length > 0) {
+        const changed = await runHooks(
+          'beforeResize',
+          hooks.beforeResize,
+          inputOf(start),
+          sizeContext(setting),
+          label
+        );
+        if (changed) start = toBase(changed, start);
+      }
+
       // same aspect ratio up to rounding: 'cover' would crop a fraction of a
       // pixel, and each size resized from the previous one would add its
       // own, shifting the image (up to 0.1 SSIM lost after a few sizes)
@@ -301,19 +449,63 @@ export const sourceToSettings = async (
       const { data, info } = await pipeline
         .raw({ depth: 'uchar' })
         .toBuffer({ resolveWithObject: true });
-      const baked = sharp(data, {
-        raw: {
+      let resized: RawImage = {
+        data,
+        info: {
           width: info.width,
           height: info.height,
           channels: info.channels,
         },
-      });
+      };
+      let next: ResizeBase = {
+        image: fromRaw(resized),
+        pixels: resized,
+        width: info.width,
+        height: info.height,
+        isBuffer: true,
+        keepsAspectRatio:
+          setting.isMatchingSourceAspectRatio && extractRegion === undefined,
+        hasAlpha: start.hasAlpha,
+      };
+      if (hooks.afterResize.length > 0) {
+        const changed = await runHooks(
+          'afterResize',
+          hooks.afterResize,
+          rawInput(resized),
+          sizeContext(setting),
+          label
+        );
+        if (changed) {
+          resized = changed;
+          next = toBase(changed, next);
+        }
+      }
+
+      // the chain splits here: what follows changes this size's files only
+      let encoded = resized;
+      let image = next.image;
+      let hasAlpha = next.hasAlpha;
+      if (hooks.beforeEncode.length > 0) {
+        const changed = await runHooks(
+          'beforeEncode',
+          hooks.beforeEncode,
+          rawInput(resized),
+          sizeContext(setting),
+          label
+        );
+        if (changed) {
+          encoded = changed;
+          image = fromRaw(changed);
+          hasAlpha = hasAlphaChannel(changed.info.channels);
+        }
+      }
+      const { width: fileWidth, height: fileHeight } = encoded.info;
 
       const outputIdentifier = `${outputPath}${parseSuffix(
         setting.suffix ?? suffix,
         {
-          width: info.width,
-          height: info.height,
+          width: fileWidth,
+          height: fileHeight,
           widthMultiplier: setting.widthMultiplier,
           heightMultiplier: setting.heightMultiplier,
           sizeMultiplier: setting.sizeMultiplier,
@@ -326,27 +518,33 @@ export const sourceToSettings = async (
       identifiers.add(outputIdentifier);
 
       const files = await settingToFormats(
-        baked,
-        encoders,
+        image,
+        encodersFor(hasAlpha),
         outputIdentifier,
         hasAlpha,
-        logger
+        logger,
+        hooks.beforeFormat.length > 0 ?
+          (encoder, file) =>
+            runFormatHooks(
+              hooks.beforeFormat,
+              rawInput(encoded),
+              {
+                ...sizeContext(setting),
+                format: encoder.format,
+                options: encoder.options,
+                file,
+              },
+              file
+            )
+        : undefined
       );
       result = {
         status: allResultsSucceeded(files) ? 'succeed' : 'failed',
-        size: `${info.width}x${info.height}`,
+        size: `${fileWidth}x${fileHeight}`,
         files,
       };
 
-      if (setting.useAsNextResizeIteration)
-        base = {
-          image: baked,
-          width: info.width,
-          height: info.height,
-          isBuffer: true,
-          keepsAspectRatio:
-            setting.isMatchingSourceAspectRatio && extractRegion === undefined,
-        };
+      if (setting.useAsNextResizeIteration) base = next;
     } catch (error: unknown) {
       result = {
         status: 'failed',

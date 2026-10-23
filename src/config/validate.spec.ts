@@ -10,6 +10,7 @@ import {
   parseConcurrency,
   parseFormatOptions,
   parseFormats,
+  parseHooks,
   parseLogger,
   parseResizeStrategyHint,
   parseSuffixOption,
@@ -261,5 +262,52 @@ describe('parseBoolean', () => {
     expect(() => parseBoolean('upscale', 'no')).toThrow(
       "upscale must be true or false, got 'no'."
     );
+  });
+});
+
+describe('parseHooks', () => {
+  const source = () => undefined;
+
+  test('a copy of the list, the hooks as given', () => {
+    class Grade {
+      readonly name = 'grade';
+      readonly strength = 2;
+      source() {
+        return undefined;
+      }
+    }
+    const hooks = [{ name: 'a', key: '1', source }, new Grade()];
+    const parsed = parseHooks(hooks);
+    expect(parsed).toEqual(hooks);
+    expect(parsed).not.toBe(hooks);
+    expect(parsed[1]).toBe(hooks[1]);
+    expect(parseHooks([])).toEqual([]);
+  });
+
+  test('invalid hooks throw, naming the hook and why', () => {
+    expect(() => parseHooks({ name: 'a', source })).toThrow(
+      'Hooks must be a list of hook objects'
+    );
+    expect(() => parseHooks([source])).toThrow('Hook 0');
+    expect(() => parseHooks([{ source }])).toThrow('needs a name');
+    expect(() => parseHooks([{ name: ' ', source }])).toThrow('needs a name');
+    expect(() =>
+      parseHooks([
+        { name: 'a', source },
+        { name: 'a', beforeFormat: source },
+      ])
+    ).toThrow('Hook 1 {"name":"a"}: another hook is named \'a\'.');
+    expect(() => parseHooks([{ name: 'a', key: 2, source }])).toThrow(
+      'key must be a string.'
+    );
+    expect(() => parseHooks([{ name: 'a', afterResize: 'sharpen' }])).toThrow(
+      'afterResize must be a function.'
+    );
+    // a typo leaves no point
+    expect(() => parseHooks([{ name: 'a', beforeresize: source }])).toThrow(
+      'has no function at any point: source, beforeResize, afterResize, beforeEncode, beforeFormat.'
+    );
+    for (const hook of [null, 'a', []])
+      expect(() => parseHooks([hook])).toThrow(TypeError);
   });
 });

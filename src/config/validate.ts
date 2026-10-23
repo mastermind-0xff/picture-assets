@@ -11,6 +11,7 @@ import {
 import { isSizeMultiplier } from '../image/size-multiplier.js';
 import { findUnknownWildcard, SUFFIX_WILDCARDS } from '../image/suffix.js';
 import type { AssetsLogger } from '../log/logger.js';
+import type { Hook, HookPoint } from '../types/hooks.js';
 import type {
   AbortScope,
   Concurrency,
@@ -177,6 +178,52 @@ export const parseLogger = (value: unknown): LogLevel | AssetsLogger => {
   throw new TypeError(
     `Logger must be a log level or a logger object, got ${describe(value)}.`
   );
+};
+
+/** Points a hook can implement, in the order of a source's run. */
+export const HOOK_POINTS = [
+  'source',
+  'beforeResize',
+  'afterResize',
+  'beforeEncode',
+  'beforeFormat',
+] as const satisfies readonly HookPoint[];
+
+/**
+ * Checks the hooks: a list of objects, each with a unique name, a string
+ * key if any, and a function at one point at least. Other properties are
+ * the hook's own.
+ *
+ * @returns A copy of the list: changing it later doesn't change a run.
+ * @throws TypeError naming the first invalid hook and why.
+ */
+export const parseHooks = (value: unknown): readonly Hook[] => {
+  if (!Array.isArray(value))
+    throw new TypeError(
+      `Hooks must be a list of hook objects, got ${describe(value)}.`
+    );
+  const names = new Set<string>();
+  value.forEach((hook: unknown, index) => {
+    const fail = (reason: string): never => {
+      throw new TypeError(`Hook ${index} ${describe(hook)}: ${reason}`);
+    };
+    if (!isPlainObject(hook))
+      return fail('must be an object like { name, source: (image) => … }.');
+    const { name, key } = hook;
+    if (typeof name !== 'string' || name.trim() === '')
+      return fail('needs a name, for the logs, errors and the manifest.');
+    if (names.has(name)) fail(`another hook is named '${name}'.`);
+    names.add(name);
+    if (key !== undefined && typeof key !== 'string')
+      fail('key must be a string.');
+    const points = HOOK_POINTS.filter((point) => hook[point] !== undefined);
+    for (const point of points)
+      if (typeof hook[point] !== 'function')
+        fail(`${point} must be a function.`);
+    if (points.length === 0)
+      fail(`has no function at any point: ${HOOK_POINTS.join(', ')}.`);
+  });
+  return [...(value as Hook[])];
 };
 
 /**

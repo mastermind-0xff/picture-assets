@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import {
   createTempDir,
@@ -271,6 +271,7 @@ describe('planAssets', () => {
       ...silent,
     });
     expect(plan.files).toBe(6);
+    expect(plan.hooksNotRun).toEqual([]);
     expect(plan.sources[0]).toEqual({
       source: file('landscape.jpg'),
       status: 'planned',
@@ -310,6 +311,25 @@ describe('planAssets', () => {
       }) as unknown,
     });
     await expect(fs.access(output)).rejects.toThrow();
+  });
+
+  test('hooks are not run: listed in the plan, with a warning', async () => {
+    const { logger, messages } = createRecordingLogger('warning');
+    const source = vi.fn(() => undefined);
+    const plan = await planAssets({
+      input: file('landscape.jpg'),
+      output: outDir(),
+      sizes: [200],
+      formats: ['webp'],
+      logger,
+      hooks: [{ name: 'upscale', source }],
+    });
+    expect(source).not.toHaveBeenCalled();
+    expect(plan.hooksNotRun).toEqual(['upscale']);
+    expect(plan.sources[0]?.sizes[0]?.size).toBe('200x150');
+    expect(messages('warning')).toEqual([
+      expect.stringMatching(/^The plan doesn't run the hooks \(upscale\)/),
+    ]);
   });
 
   test('unchanged sources, from the manifest', async () => {

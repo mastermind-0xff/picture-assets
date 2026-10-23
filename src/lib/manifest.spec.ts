@@ -3,7 +3,9 @@ import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
+import { groupHooks, NO_HOOKS } from '../image/hooks.js';
 import { createTempDir } from '../test-utils/fixtures.js';
+import type { Hook } from '../types/hooks.js';
 import type { SourceTarget } from './generate-single-source-assets.js';
 import {
   isUnchanged,
@@ -30,6 +32,7 @@ const options = {
   suffix: '@{w}w',
   resizeStrategyHint: 'downsample',
   upscale: true,
+  hooks: NO_HOOKS,
 } as const;
 
 describe('manifestPath', () => {
@@ -84,6 +87,25 @@ describe('targetHash', () => {
         options
       )
     ).not.toBe(hash);
+  });
+
+  test('hooks: their names and keys, not their functions', () => {
+    const withHooks = (...hooks: Hook[]) =>
+      targetHash(manifest, target, [{ width: 100 }], {
+        ...options,
+        hooks: groupHooks(hooks),
+      });
+    const grade: Hook = { name: 'grade', source: () => undefined };
+    const hash = targetHash(manifest, target, [{ width: 100 }], options);
+
+    expect(withHooks()).toBe(hash);
+    expect(withHooks(grade)).not.toBe(hash);
+    expect(withHooks({ ...grade, key: '2' })).not.toBe(withHooks(grade));
+    expect(withHooks({ ...grade, name: 'grade2' })).not.toBe(withHooks(grade));
+    // a function's changes can't be told: that's what the key is for
+    expect(withHooks({ ...grade, source: (image) => image })).toBe(
+      withHooks(grade)
+    );
   });
 });
 

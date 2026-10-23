@@ -1,7 +1,9 @@
 import { Logger } from '@mmutils/logger';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import { NO_HOOKS } from '../image/hooks.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
+import type { Hook } from '../types/hooks.js';
 import {
   DEFAULT_OPTIONS,
   resolveConcurrency,
@@ -56,7 +58,29 @@ describe('resolveOptions', () => {
       formatOptions: {},
       logger,
       upscale: true,
+      hooks: NO_HOOKS,
     });
+  });
+
+  test('hooks: grouped by point, in the given order', () => {
+    const grade: Hook = { name: 'grade', source: () => undefined };
+    const crop: Hook = {
+      name: 'crop',
+      beforeResize: () => undefined,
+      beforeFormat: () => undefined,
+    };
+    const mark: Hook = { name: 'mark', beforeFormat: () => undefined };
+    const { hooks } = resolveOptions({ hooks: [grade, crop, mark] }, {});
+    expect(hooks).toEqual({
+      all: [grade, crop, mark],
+      source: [grade],
+      beforeResize: [crop],
+      afterResize: [],
+      beforeEncode: [],
+      beforeFormat: [crop, mark],
+    });
+    expect(resolveOptions({}, {}).hooks).toBe(NO_HOOKS);
+    expect(resolveOptions({ hooks: [] }, {}).hooks).toBe(NO_HOOKS);
   });
 
   test('format options are merged per field, the call last', () => {
@@ -91,6 +115,9 @@ describe('resolveOptions', () => {
     expect(() =>
       resolveOptions({ formatOptions: { webp: 'fast' as never } }, {})
     ).toThrow(TypeError);
+    expect(() => resolveOptions({ hooks: {} as never }, {})).toThrow(
+      'Hooks must be a list'
+    );
   });
 
   test('an invalid variable throws even when the call sets the option', () => {

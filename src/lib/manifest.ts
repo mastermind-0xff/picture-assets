@@ -31,7 +31,8 @@ export interface ManifestEntry {
   readonly mtimeMs: number;
   /**
    * Hash of everything that decides the files: settings, formats and their
-   * options, output path, suffix, resize strategy, upscaling.
+   * options, output path, suffix, resize strategy, upscaling, and the
+   * hooks' names and keys.
    */
   readonly hash: string;
   /** Size of the source, as shown. */
@@ -80,7 +81,11 @@ export const targetHash = (
     suffix,
     resizeStrategyHint,
     upscale,
-  }: Pick<ResolvedOptions, 'suffix' | 'resizeStrategyHint' | 'upscale'>
+    hooks,
+  }: Pick<
+    ResolvedOptions,
+    'suffix' | 'resizeStrategyHint' | 'upscale' | 'hooks'
+  >
 ) =>
   createHash('sha256')
     .update(
@@ -92,6 +97,11 @@ export const targetHash = (
         suffix,
         resizeStrategyHint,
         upscale,
+        // functions can't be hashed: a hook is its name and key. Left out
+        // without hooks, so their hashes stay those of earlier runs
+        ...(hooks.all.length > 0 && {
+          hooks: hooks.all.map(({ name, key }) => ({ name, key })),
+        }),
       })
     )
     .digest('hex')
