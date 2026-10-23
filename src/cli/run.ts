@@ -15,7 +15,7 @@ import {
   type AssetsConfig,
   type AssetsPlan,
 } from '../lib/generate-assets.js';
-import type { AssetsLogger } from '../log/logger.js';
+import { LOG_TIMESTAMP, type AssetsLogger } from '../log/logger.js';
 import { HELP, parseCliArgs, UsageError, type CliArgs } from './args.js';
 import {
   findConfigFile,
@@ -47,8 +47,8 @@ export interface CliIo {
 }
 
 /**
- * The command's logger: `@mmutils/logger`, on stderr, timestamps to the
- * millisecond (a hook's start and end logs tell its time).
+ * The command's logger: `@mmutils/logger`, on stderr, timestamps as the
+ * library's (the time since the command started).
  */
 export const createCliLogger = (
   level: LogLevel,
@@ -58,7 +58,7 @@ export const createCliLogger = (
   new Logger({
     level,
     useStyles: colors,
-    timestamp: 'HH:mm:ss.SSS',
+    timestamp: LOG_TIMESTAMP,
     plugins: [messagePlugin({ write }), graphPlugin({ write })],
   });
 
@@ -124,7 +124,7 @@ const readConfig = async (args: CliArgs, cwd: string) => {
     throw new UsageError(
       'No output: pass --output <dir>, or set output in a config file.'
     );
-  return config;
+  return { config, file };
 };
 
 /**
@@ -147,6 +147,7 @@ export const runCli = async (
 
   let args: CliArgs;
   let config;
+  let configFile;
   try {
     args = parseCliArgs(argv);
     if (args.help) {
@@ -157,7 +158,7 @@ export const runCli = async (
       io.stdout(`${version}\n`);
       return EXIT_CODES.ok;
     }
-    config = await readConfig(args, io.cwd);
+    ({ config, file: configFile } = await readConfig(args, io.cwd));
   } catch (error) {
     return fail(
       errorMessage(error),
@@ -170,7 +171,7 @@ export const runCli = async (
   // a level from the flags or a JSON file gets the command's logger; a JS
   // config file can bring its own
   const level = config.logger ?? 'info';
-  const logger =
+  const cliLogger =
     isLogLevel(level) ?
       createCliLogger(
         level,
@@ -179,7 +180,13 @@ export const runCli = async (
         },
         io.colors
       )
-    : level;
+    : undefined;
+  const logger = cliLogger ?? level;
+  // a JS config's own logger is checked by the library, before any log
+  if (configFile !== undefined)
+    cliLogger?.info(
+      `Config file: ${path.relative(io.cwd, configFile) || configFile}`
+    );
   const assetsConfig = {
     ...config,
     logger,

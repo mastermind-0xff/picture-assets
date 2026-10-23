@@ -48,8 +48,7 @@ toolchain, with its bugs fixed, every argument validated and logging with
   bytes.
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
   (`beforeFormat`) or the source (`source`), under `abortScope`.
-- Debug logs when each hook starts and ends, with its time; the default
-  logger's and the command's timestamps have milliseconds.
+- Debug logs when each hook starts and ends, with its time.
 - The manifest's hash includes each hook's `name` and `key`.
 - `planAssets` and `--dry-run` don't run hooks: the plan names them
   (`hooksNotRun`) and warns, as the run can differ.
@@ -57,6 +56,14 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Changed
 
+- **Logs by level**: `'info'` tells what a run does: its start (sources,
+  sizes, formats, output, concurrency), each source's start and end, the
+  manifest written, and the summary. `'debug'` adds the resolved settings,
+  a line per size (files, bytes, time), each hook's start and end, and
+  after the summary the files by format, the slowest source and the peak
+  memory, then the graphs. Lines per file moved to `'verbose'`. Timestamps
+  are the time since the logger was created (`+1s 241ms`); the command
+  logs the config file it read.
 - **Sources decoded once** when that's faster than resizing from the file:
   a PNG, AVIF, GIF or TIFF, or a JPEG whose largest size is shrunk less
   than 3 times (most of the cost was the ICC profile's transform during

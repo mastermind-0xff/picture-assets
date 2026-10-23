@@ -34,16 +34,22 @@ export interface AssetsLogger {
 }
 
 /**
+ * Timestamp of the library's loggers: the time since the logger was
+ * created, to the millisecond (`+1s 241ms`), so each log tells how far the
+ * run is and a hook's start and end logs tell its time.
+ */
+export const LOG_TIMESTAMP = 'E';
+
+/**
  * Creates the default logger: `@mmutils/logger` with the message and graph
- * plugins, timestamps to the millisecond: a hook's start and end logs tell
- * its time.
+ * plugins, timestamps as `LOG_TIMESTAMP`.
  *
  * @param level Lowest level to output, from `'silent'` to `'verbose'`.
  */
 export const createLogger = (level: LogLevel): AssetsLogger =>
   new Logger({
     level,
-    timestamp: 'YYYY/MM/DD HH:mm:ss.SSS',
+    timestamp: LOG_TIMESTAMP,
     plugins: [messagePlugin(), graphPlugin()],
   });
 

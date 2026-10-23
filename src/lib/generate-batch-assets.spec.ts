@@ -98,6 +98,59 @@ describe('generateBatchAssets', () => {
     expect(logger.debugGraph).not.toHaveBeenCalled();
   });
 
+  test('logs: the run and each source at info, settings and details at debug', async () => {
+    const { logger, logs, messages } = createRecordingLogger('debug');
+    await generateBatchAssets(
+      file('tree'),
+      outDir(),
+      [{ width: 200 }, { width: 100 }],
+      ['webp', 'fallback'],
+      { logger, concurrency: 1 }
+    );
+    const info = messages('info');
+    expect(info[0]).toMatch(
+      /^Found 3 source image\(s\) in .*tree: 2 size\(s\) each, in webp, fallback, into .*, 1 at a time\.$/
+    );
+    // each source starts and ends, one at a time here
+    expect(info.slice(1, -1)).toEqual([
+      expect.stringMatching(
+        /^Processing .*a\.jpg \(400x300\): 2 size\(s\) in 2 format\(s\)$/
+      ),
+      expect.stringMatching(/a\.jpg: 4 files, /),
+      expect.stringMatching(/^Processing .*b\.png/),
+      expect.stringMatching(/b\.png: 4 files, /),
+      expect.stringMatching(/^Processing .*c\.webp/),
+      expect.stringMatching(/c\.webp: 4 files, /),
+    ]);
+    expect(info.at(-1)).toMatch(/^Batch done: 3 of 3 sources, 12 files/);
+
+    const debug = logs.filter(({ type }) => type === 'debug');
+    expect(debug[0]?.data).toMatchObject({
+      sizes: [{ width: 200 }, { width: 100 }],
+      formats: 'webp, fallback',
+      'fallback options': {
+        jpg: { quality: 80 },
+        png: { compressionLevel: 9 },
+      },
+      concurrency: 1,
+    });
+    // after the summary, the details
+    const summary = logs.findIndex(
+      ({ data }) => typeof data === 'string' && data.startsWith('Batch done')
+    );
+    expect(
+      logs.slice(summary + 1).find(({ type }) => type === 'debug')?.data
+    ).toEqual({
+      sources: '3 done',
+      webp: expect.stringMatching(/^6 files, .*B$/) as unknown,
+      jpg: expect.stringMatching(/^6 files, /) as unknown,
+      'time per source': expect.stringMatching(
+        / on average, the slowest .* in \d/
+      ) as unknown,
+      'peak memory': expect.stringMatching(/MB$/) as unknown,
+    });
+  });
+
   test('without formats: each source in its own format', async () => {
     const out = outDir();
     await generateBatchAssets(

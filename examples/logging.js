@@ -2,9 +2,11 @@
  * Logging with @mmutils/logger.
  *
  * - `logger: 'debug'`: the default logger at another level. `'info'` (the
- *   default) logs a line per source and the batch's summary, `'debug'` a
- *   line per file and, for batches, graphs of the CPU, the memory and the
- *   progress; `'silent'` nothing. `PICTURE_ASSETS_LOG_LEVEL` sets it too.
+ *   default) logs the run's start, each source's start and end, and the
+ *   summary; `'debug'` adds the settings, a line per size and hook, the
+ *   details after the summary and, for batches, graphs of the CPU, the
+ *   memory and the progress; `'verbose'` a line per file; `'silent'`
+ *   nothing. `PICTURE_ASSETS_LOG_LEVEL` sets it too.
  * - `logger: yourLogger`: share your application's logger. Here one writing
  *   JSON lines (one object per log) to a log file, for CI or a collector.
  *   Any object with `error`, `warning`, `info`, `debug` and `verbose`

@@ -77,7 +77,7 @@ alone). The main flags; `picture-assets --help` has them all:
 | `-q, --quality`       | `75` for every lossy format, or `avif=55,webp=75`                         |
 | `--manifest <file>`   | Write a manifest; unchanged sources are skipped by the next runs          |
 | `--dry-run`, `--json` | Print the plan, or the result as JSON, on stdout                          |
-| `-v`, `--silent`      | More logs (every file, graphs), or none                                   |
+| `-v`, `--silent`      | Debug logs (settings, each size and hook, details, graphs), or none       |
 
 Logs go to stderr. Exit codes: 0 done, 1 some sources failed, 2 invalid
 arguments or config, 130 interrupted. Ctrl+C lets the files in progress
@@ -398,8 +398,7 @@ size, its file at `beforeFormat`, its source at `source`, under
 `abortScope` as any failure.
 
 **Logs.** At `'debug'`, each hook call logs when it starts and when it
-ends, with its time, its bake included. The default logger and the
-command's have timestamps to the millisecond.
+ends, with its time, its bake included; see [Logging](#logging).
 
 **Manifest.** Functions can't be compared: a manifest's hash includes each
 hook's `name` and `key`. Change the `key` when a hook's work changes, or
@@ -451,14 +450,25 @@ any work. Processing failures (a broken file, a full disk) follow
 ## Logging
 
 The default logger is `@mmutils/logger` with the message and graph
-plugins: a line per source and per batch at `'info'`, a line per file at
-`'debug'` plus graphs of a batch's CPU, memory and progress. Pass a level,
-or your own logger: a `@mmutils/logger` `Logger` (with `jsonPlugin` for JSON
-lines, for example) or any object with `error`, `warning`, `info`, `debug`
-and `verbose` methods.
+plugins, on the command line on stderr. The level decides how much you
+see:
 
-Timestamps have milliseconds, so the debug lines around each hook (see
-[Hooks](#hooks)) and file tell where the time goes.
+| Level       | Logs                                                                                                                                                                                                                                                                         |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `'error'`   | Failures: a source, a size or a file, with the error                                                                                                                                                                                                                         |
+| `'warning'` | Sources and batches with failures, an unusable manifest, a plan that can't run the hooks                                                                                                                                                                                     |
+| `'info'`    | The run: its sources, sizes, formats, output and concurrency when it starts; each source when it starts and when it ends; the manifest written; files, bytes, time and CPU at the end                                                                                        |
+| `'debug'`   | The settings, resolved (sizes, each format's options, hooks, threads); each size, with its files, bytes and time; each hook's start and end; after the summary, files and bytes by format, the slowest source, peak memory, and graphs of a batch's CPU, memory and progress |
+| `'verbose'` | Each file; what each size is resized from; whether a source is decoded first                                                                                                                                                                                                 |
+
+`'info'` (the default) tells what a run did; `--silent`, or the level
+`'error'`, leaves only the failures for a pipe or CI. Timestamps are the
+time since the logger was created (`+1s 241ms`): with the debug lines
+around each hook and size, they tell where the time goes.
+
+Pass a level, or your own logger: a `@mmutils/logger` `Logger` (with
+`jsonPlugin` for JSON lines, for example) or any object with `error`,
+`warning`, `info`, `debug` and `verbose` methods.
 
 ## Defaults
 

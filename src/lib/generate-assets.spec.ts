@@ -213,9 +213,12 @@ describe('generateAssets: manifest and incremental runs', () => {
       'skipped',
       'skipped',
     ]);
-    expect(messages('info').at(-1)).toMatch(
-      /0 of 3 sources \(3 unchanged\), 0 files/
-    );
+    expect(messages('info').slice(-2)).toEqual([
+      expect.stringMatching(/0 of 3 sources \(3 unchanged\), 0 files/),
+      expect.stringMatching(
+        /^Manifest written: .*assets\.json, 3 source\(s\)$/
+      ),
+    ]);
 
     // a newer source, a missing output
     const later = new Date(Date.now() + 60_000);

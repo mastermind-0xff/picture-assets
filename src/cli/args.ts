@@ -209,7 +209,7 @@ Options:
       --force              Process every source, even unchanged ones
       --dry-run            Print what would be written, write nothing
       --json               Print the result as JSON on stdout
-  -v, --verbose            Log every file, and the batch's graphs
+  -v, --verbose            Debug logs: settings, each size and hook, details
       --silent             Log nothing
   -h, --help               This help
       --version            The version

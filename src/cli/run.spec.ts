@@ -208,6 +208,9 @@ describe('runCli', () => {
     );
     const first = await run(['-s', '40'], { cwd: site });
     expect(first.code).toBe(EXIT_CODES.ok);
+    expect(first.stderr).toMatch(
+      /info +Config file: picture-assets\.config\.json\n/
+    );
     expect(await listFiles(path.join(site, 'public'))).toEqual([
       'assets.json',
       'b@40w.webp',

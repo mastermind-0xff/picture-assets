@@ -16,6 +16,11 @@ import {
 import { ResultBatchError } from '../errors/result-errors.js';
 import type { RunContext } from '../image/output.js';
 import type { FormatsMap } from '../image/output-paths.js';
+import {
+  describeFiles,
+  describeSettings,
+  tallyFiles,
+} from '../log/describe.js';
 import { isLogging, type AssetsLogger } from '../log/logger.js';
 import type { BatchAssetsOptions, Concurrency } from '../types/options.js';
 import type {
@@ -76,8 +81,8 @@ export const computeConcurrency = (
 };
 
 /**
- * Samples CPU, memory and progress during a batch and draws them when it
- * ends, if the logger draws graphs at debug level.
+ * Samples CPU, memory and progress during a batch, if the logger draws
+ * graphs at debug level: `stop` ends the sampling, `draw` draws them.
  */
 const startProbes = (
   logger: AssetsLogger,
@@ -89,6 +94,7 @@ const startProbes = (
   const memory: number[] = [];
   const processed: number[] = [];
   const start = performance.now();
+  let end = start;
   let sample = sampleCPUUsage();
   const timer = setInterval(() => {
     cpu.push(sampleCPUUsage(sample));
@@ -98,11 +104,14 @@ const startProbes = (
   }, PROBE_INTERVAL);
   timer.unref();
 
-  return () => {
+  const stop = () => {
     clearInterval(timer);
+    end = performance.now();
+  };
+  const draw = () => {
     if (cpu.length === 0) return;
-    const end = Math.round(performance.now() - start);
-    const axis = { start: 0, end, unit: 'ms', capTo: 'ms' } as const;
+    const elapsed = Math.round(end - start);
+    const axis = { start: 0, end: elapsed, unit: 'ms', capTo: 'ms' } as const;
     logger.debugGraph?.(cpu, { title: 'CPU usage', unit: '%', max: 100, axis });
     logger.debugGraph?.(memory, { title: 'Memory (RSS)', unit: 'MB', axis });
     logger.debugGraph?.(processed, {
@@ -111,6 +120,52 @@ const startProbes = (
       precision: 0,
       axis,
     });
+  };
+  return { stop, draw };
+};
+
+/** How a batch's summary names each source status. */
+const STATUS_NAMES: Record<ResultSource['status'], string> = {
+  succeed: 'done',
+  skipped: 'unchanged',
+  failed: 'failed',
+  aborted: 'aborted',
+};
+
+/** What a batch did beyond its summary, for a debug log. */
+const batchDetails = (
+  sources: readonly ResultSource[],
+  { byFormat, failed }: ReturnType<typeof tallyFiles>
+): Record<string, unknown> => {
+  const statuses = new Map<string, number>();
+  for (const { status } of sources)
+    statuses.set(
+      STATUS_NAMES[status],
+      (statuses.get(STATUS_NAMES[status]) ?? 0) + 1
+    );
+  const processed = sources.filter(({ status }) => status !== 'skipped');
+  const slowest = processed.reduce<ResultSource | undefined>(
+    (max, source) =>
+      max === undefined || source.duration > max.duration ? source : max,
+    undefined
+  );
+  const total = processed.reduce((sum, { duration }) => sum + duration, 0);
+  return {
+    sources: [...statuses]
+      .map(([status, count]) => `${count} ${status}`)
+      .join(', '),
+    ...Object.fromEntries(
+      [...byFormat].map(([format, { files, bytes }]) => [
+        format,
+        describeFiles(files, bytes),
+      ])
+    ),
+    ...(failed > 0 && { 'failed files': failed }),
+    ...(slowest && {
+      'time per source': `${formatDuration(Math.round(total / processed.length))} on average, the slowest ${slowest.source} in ${formatDuration(slowest.duration)}`,
+    }),
+    // the process's peak, the batch's included
+    'peak memory': formatBytes(process.resourceUsage().maxRSS * 1024),
   };
 };
 
@@ -207,15 +262,11 @@ export const runBatch = async (
   }
 
   const concurrency = computeConcurrency(run.concurrency, sources.length);
+  const formatNames =
+    formats.size > 0 ? [...formats.keys()].join(', ') : 'its own format';
   logger.info(
-    `Found ${sources.length} source image(s) in ${inputName}, processing ${concurrency} at a time.`
+    `Found ${sources.length} source image(s) in ${inputName}: ${settings.length} size(s) each, in ${formatNames}, into ${destRoot}, ${concurrency} at a time.`
   );
-  logger.debug({
-    UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE ?? '4 (default)',
-    availableParallelism: os.availableParallelism(),
-    sharpConcurrency: sharp.concurrency(),
-    concurrency,
-  });
 
   const controller = new AbortController();
   const context: RunContext = {
@@ -241,6 +292,17 @@ export const runBatch = async (
     formats,
     options.formatOptions
   );
+  logger.debug({
+    ...describeSettings(
+      settings,
+      formats.size > 0 ? targets.find(Boolean)?.encoders : undefined,
+      options
+    ),
+    concurrency,
+    UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE ?? '4 (default)',
+    availableParallelism: os.availableParallelism(),
+    sharpConcurrency: sharp.concurrency(),
+  });
   errors.forEach((error, index) => {
     const source = sources[index];
     if (source === undefined) return;
@@ -256,7 +318,7 @@ export const runBatch = async (
 
   let next = 0;
   let processed = results.filter(Boolean).length;
-  const stopProbes = startProbes(logger, sources.length, () => processed);
+  const probes = startProbes(logger, sources.length, () => processed);
   const worker = async () => {
     while (next < sources.length) {
       const index = next++;
@@ -280,7 +342,7 @@ export const runBatch = async (
   try {
     await Promise.all(Array.from({ length: concurrency }, worker));
   } finally {
-    stopProbes?.();
+    probes?.stop();
     signal?.removeEventListener('abort', stop);
   }
 
@@ -298,20 +360,18 @@ export const runBatch = async (
     duration: Math.round(performance.now() - timeStart),
   };
 
-  const written = resultSources.flatMap(({ outputsBySetting }) =>
-    outputsBySetting.flatMap(({ files }) =>
-      files.flatMap((file) =>
-        file.status === 'succeed' ? [file.fileData.size] : []
-      )
-    )
-  );
-  const bytes = written.reduce((sum, size) => sum + size, 0);
+  const tally = tallyFiles(resultSources);
+  const { written, bytes } = tally;
   const count = (status: ResultSource['status']) =>
     resultSources.filter((source) => source.status === status).length;
   const unchanged = count('skipped');
-  const summary = `Batch ${batch.status === 'aborted' ? 'stopped' : 'done'}: ${count('succeed')} of ${resultSources.length} sources${unchanged > 0 ? ` (${unchanged} unchanged)` : ''}, ${written.length} files, ${formatBytes(bytes)} in ${formatDuration(batch.duration)}, CPU ${sampleCPUUsage(cpuStart)}%.`;
+  const summary = `Batch ${batch.status === 'aborted' ? 'stopped' : 'done'}: ${count('succeed')} of ${resultSources.length} sources${unchanged > 0 ? ` (${unchanged} unchanged)` : ''}, ${written} files, ${formatBytes(bytes)} in ${formatDuration(batch.duration)}, CPU ${sampleCPUUsage(cpuStart)}%.`;
   if (batch.status === 'succeed') logger.info(summary);
   else logger.warning(summary);
+  if (isLogging(logger, 'debug')) {
+    logger.debug(batchDetails(resultSources, tally));
+    probes?.draw();
+  }
 
   if (options.abortScope === 'batch' && batch.status === 'failed')
     throw new ResultBatchError(`Batch ${inputName} aborted.`, batch, {

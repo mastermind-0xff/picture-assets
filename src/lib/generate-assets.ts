@@ -194,6 +194,12 @@ const loadManifest = async ({ manifest, options }: Prepared) => {
     options.logger.warning(
       `Ignoring the manifest ${manifest}: ${problem}. Every source is processed.`
     );
+  else
+    options.logger.debug(
+      previous ?
+        `Manifest read: ${manifest}, ${Object.keys(previous.sources).length} source(s)`
+      : `No manifest at ${manifest} yet: every source is processed.`
+    );
   return previous;
 };
 
@@ -255,7 +261,9 @@ export const generateAssets = async (
     }
     const next: Manifest = { version: MANIFEST_VERSION, sources: entries };
     await writeManifest(manifest, next);
-    options.logger.debug(`Manifest written: ${manifest}`);
+    options.logger.info(
+      `Manifest written: ${manifest}, ${Object.keys(entries).length} source(s)`
+    );
   };
 
   try {

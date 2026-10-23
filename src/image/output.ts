@@ -9,6 +9,7 @@ import {
   type Encoder,
   type TargetEncoder,
 } from '../config/validate.js';
+import { describeFiles, tallyFiles } from '../log/describe.js';
 import type { AssetsLogger } from '../log/logger.js';
 import type { HookSetting, RawImage } from '../types/hooks.js';
 import type {
@@ -19,6 +20,7 @@ import type {
 import {
   allResultsSucceeded,
   formatBytes,
+  formatDuration,
   isMatchingAspectRatio,
 } from '../utils/helpers.js';
 import { supportsAlpha, toSharpFormat } from './formats.js';
@@ -264,7 +266,7 @@ export const settingToFormats = async (
   for (const result of results) {
     if (result.status === 'succeed') {
       const { width, height, size } = result.fileData;
-      logger.debug(
+      logger.verbose(
         `Created ${result.file} (${width}x${height}, ${formatBytes(size)})`
       );
     } else logger.error({ file: result.file, error: result.error });
@@ -388,6 +390,11 @@ export const sourceToSettings = async (
     : read;
   const plan = planSource(info, settings, targetEncoders, context);
   const { width: srcWidth, height: srcHeight, encoders } = plan;
+  const made = plan.settings.filter(({ skipped }) => skipped !== true).length;
+  const skipped = plan.settings.length - made;
+  logger.info(
+    `Processing ${srcPath} (${srcWidth}x${srcHeight}): ${made} size(s) in ${encoders.length} format(s)${skipped > 0 ? `, ${skipped} skipped as larger than the source` : ''}`
+  );
   logger.verbose({ source: srcPath, settings: plan.settings });
   const pixels =
     sourcePixels ??
@@ -467,6 +474,7 @@ export const sourceToSettings = async (
       `Resizing ${srcPath} to ${width}x${height} from ${start.isBuffer ? `the ${start.width}x${start.height} buffer` : 'the source'}`
     );
     const label = `${srcPath} at ${width}x${height}`;
+    const sizeStart = performance.now();
 
     let result: ResultSetting;
     try {
@@ -597,6 +605,12 @@ export const sourceToSettings = async (
         size: `${fileWidth}x${fileHeight}`,
         files,
       };
+      const { written, bytes, failed } = tallyFiles([
+        { outputsBySetting: [result] },
+      ]);
+      logger.debug(
+        `${srcPath} at ${result.size}: ${describeFiles(written, bytes)}${failed > 0 ? `, ${failed} failed` : ''} in ${formatDuration(performance.now() - sizeStart)}`
+      );
 
       if (setting.useAsNextResizeIteration) base = next;
     } catch (error: unknown) {

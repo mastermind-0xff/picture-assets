@@ -553,25 +553,58 @@ describe('generateSingleSourceAssets: invalid arguments throw before any work', 
 });
 
 describe('generateSingleSourceAssets: logs', () => {
-  test('a summary per source, a debug line per file', async () => {
-    const { logger, messages } = createRecordingLogger();
+  test('info: the start and the end; debug: settings and sizes; verbose: files', async () => {
+    const { logger, logs, messages } = createRecordingLogger();
     await generateSingleSourceAssets(
       file('landscape.jpg'),
       outDir(),
-      [{ width: 100 }],
+      [{ width: 1600 }, { width: 100 }],
       ['webp', 'png'],
-      {
-        logger,
-      }
+      { logger, upscale: false }
     );
     expect(messages('info')).toEqual([
-      expect.stringMatching(/landscape\.jpg: 2 files, .* in \d/) as unknown,
+      expect.stringMatching(
+        /^Processing .*landscape\.jpg \(800x600\): 2 size\(s\) in 2 format\(s\)$/
+      ) as unknown,
+      expect.stringMatching(/landscape\.jpg: 4 files, .* in \d/) as unknown,
+    ]);
+    // the settings, once
+    expect(logs.find(({ type }) => type === 'debug')?.data).toMatchObject({
+      sizes: [{ width: 1600 }, { width: 100 }],
+      formats: 'webp, png',
+      'webp options': { quality: 80 },
+      upscale: false,
+      hooks: 'none',
+    });
+    expect(
+      messages('debug').filter((message) => message.includes(' at '))
+    ).toEqual([
+      expect.stringMatching(
+        /landscape\.jpg at 800x600: 2 files, .*B in \d+ms$/
+      ),
+      expect.stringMatching(/landscape\.jpg at 100x75: 2 files, .*B in \d+ms$/),
     ]);
     expect(
-      messages('debug').filter((message) => message.startsWith('Created'))
+      messages('verbose').filter((message) => message.startsWith('Created'))
     ).toEqual([
-      expect.stringMatching(/landscape@100w\.webp \(100x75, .*B\)$/) as unknown,
-      expect.stringMatching(/landscape@100w\.png \(100x75, .*B\)$/) as unknown,
+      expect.stringMatching(/landscape@800w\.webp \(800x600, .*B\)$/),
+      expect.stringMatching(/landscape@800w\.png \(800x600, .*B\)$/),
+      expect.stringMatching(/landscape@100w\.webp \(100x75, .*B\)$/),
+      expect.stringMatching(/landscape@100w\.png \(100x75, .*B\)$/),
     ]);
+  });
+
+  test('skipped sizes are counted at the start', async () => {
+    const { logger, messages } = createRecordingLogger('info');
+    await generateSingleSourceAssets(
+      file('small.webp'),
+      outDir(),
+      [{ width: 400 }, { width: 300 }, { width: 100 }],
+      ['webp'],
+      { logger, upscale: false }
+    );
+    expect(messages('info')[0]).toMatch(
+      /\(200x100\): 2 size\(s\) in 1 format\(s\), 1 skipped as larger than the source$/
+    );
   });
 });

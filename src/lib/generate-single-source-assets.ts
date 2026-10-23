@@ -13,6 +13,7 @@ import {
   resolvePathsAndFormats,
   type FormatsMap,
 } from '../image/output-paths.js';
+import { describeSettings, tallyFiles } from '../log/describe.js';
 import type { AssetsOptions } from '../types/options.js';
 import type {
   OutputFormats,
@@ -84,7 +85,6 @@ export const processSource = async (
   const { logger } = context;
   if (context.signal.aborted) return sourceResult(srcPath, 'aborted', start);
 
-  logger.debug(`Processing ${srcPath}`);
   try {
     const { outputsBySetting, stopped, width, height } = await sourceToSettings(
       srcPath,
@@ -106,15 +106,11 @@ export const processSource = async (
       duration: Math.round(performance.now() - start),
     };
 
-    const files = outputsBySetting.flatMap((setting) => setting.files);
-    const written = files.flatMap((file) =>
-      file.status === 'succeed' ? [file.fileData.size] : []
-    );
-    const bytes = written.reduce((sum, size) => sum + size, 0);
-    const summary = `${srcPath}: ${written.length} files, ${formatBytes(bytes)} in ${formatDuration(result.duration)}`;
+    const { written, bytes, failed } = tallyFiles([result]);
+    const summary = `${srcPath}: ${written} files, ${formatBytes(bytes)} in ${formatDuration(result.duration)}`;
     if (status === 'succeed') logger.info(summary);
     else if (status === 'failed')
-      logger.warning(`${summary}, ${files.length - written.length} failed`);
+      logger.warning(`${summary}, ${failed} failed`);
     else logger.warning(`${summary}, stopped by an abort`);
 
     return result;
@@ -291,11 +287,10 @@ export const generateSingleSourceAssets = async (
     parseFormats(formats),
     resolvedOptions.formatOptions
   );
-  resolvedOptions.logger.verbose({
-    srcPath,
-    destPath,
-    outputPath: target.outputPath,
-    encoders: target.encoders,
+  resolvedOptions.logger.debug({
+    source: srcPath,
+    output: target.outputPath,
+    ...describeSettings(settings, target.encoders, resolvedOptions),
   });
 
   const controller = new AbortController();
