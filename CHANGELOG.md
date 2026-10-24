@@ -62,8 +62,8 @@ toolchain, with its bugs fixed, every argument validated and logging with
   a line per size (files, bytes, time), each hook's start and end, and
   after the summary the files by format, the slowest source and the peak
   memory, then the graphs. Lines per file moved to `'verbose'`. Timestamps
-  are the time since the logger was created (`+1s 241ms`); the command
-  logs the config file it read.
+  have milliseconds (`HH:mm:ss.SSS` on the command line); the command logs
+  the config file it read.
 - **Sources decoded once** when that's faster than resizing from the file:
   a PNG, AVIF, GIF or TIFF, or a JPEG whose largest size is shrunk less
   than 3 times (most of the cost was the ICC profile's transform during

@@ -15,7 +15,7 @@ import {
   type AssetsConfig,
   type AssetsPlan,
 } from '../lib/generate-assets.js';
-import { LOG_TIMESTAMP, type AssetsLogger } from '../log/logger.js';
+import type { AssetsLogger } from '../log/logger.js';
 import { HELP, parseCliArgs, UsageError, type CliArgs } from './args.js';
 import {
   findConfigFile,
@@ -47,8 +47,8 @@ export interface CliIo {
 }
 
 /**
- * The command's logger: `@mmutils/logger`, on stderr, timestamps as the
- * library's (the time since the command started).
+ * The command's logger: `@mmutils/logger`, on stderr, timestamps to the
+ * millisecond, a fixed width (a hook's start and end logs tell its time).
  */
 export const createCliLogger = (
   level: LogLevel,
@@ -58,7 +58,7 @@ export const createCliLogger = (
   new Logger({
     level,
     useStyles: colors,
-    timestamp: LOG_TIMESTAMP,
+    timestamp: 'HH:mm:ss.SSS',
     plugins: [messagePlugin({ write }), graphPlugin({ write })],
   });
 

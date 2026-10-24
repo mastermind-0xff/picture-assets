@@ -462,9 +462,9 @@ see:
 | `'verbose'` | Each file; what each size is resized from; whether a source is decoded first                                                                                                                                                                                                 |
 
 `'info'` (the default) tells what a run did; `--silent`, or the level
-`'error'`, leaves only the failures for a pipe or CI. Timestamps are the
-time since the logger was created (`+1s 241ms`): with the debug lines
-around each hook and size, they tell where the time goes.
+`'error'`, leaves only the failures for a pipe or CI. Timestamps have
+milliseconds, at a fixed width (`HH:mm:ss.SSS` on the command line): with
+the debug lines around each hook and size, they tell where the time goes.
 
 Pass a level, or your own logger: a `@mmutils/logger` `Logger` (with
 `jsonPlugin` for JSON lines, for example) or any object with `error`,
