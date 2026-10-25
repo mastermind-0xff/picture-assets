@@ -418,9 +418,11 @@ size, its file at `beforeFormat`, its source at `source`, under
 **Logs.** At `'debug'`, each hook call logs when it starts and when it
 ends, with its time, its bake included; see [Logging](#logging).
 
-**Manifest.** Functions can't be compared: a manifest's hash includes each
-hook's `name` and `key`. Change the `key` when a hook's work changes, or
-the next run skips its sources as unchanged.
+**Manifest.** A manifest's hash includes each hook's `name`, and its `key`
+or, without one, its code: editing a hook remakes its sources on the next
+run. What a function closes over isn't in its code, a factory's options
+(`colorGrade({ saturation: 1.2 })`) or a model's version: give those hooks
+a `key`, and change it with them. With a `key`, the code is not hashed.
 
 **Config.** Hooks come from code or a `.js` config file. `planAssets` and
 `--dry-run` don't run them: sizes are planned from the sources as read, so

@@ -115,8 +115,10 @@ export interface Hook {
   readonly name: string;
   /**
    * Version of the hook's work, in the manifest's hash with the name:
-   * change it to remake the sources a manifest skips as unchanged. Hooks
-   * are functions, their changes can't be told otherwise.
+   * change it to remake the sources a manifest skips as unchanged. Without
+   * a key the hook's code is hashed instead, so editing it remakes them;
+   * settings it closes over (a factory's options) and external models are
+   * not in its code: give those a key, and change it with them.
    */
   readonly key?: string;
   /**

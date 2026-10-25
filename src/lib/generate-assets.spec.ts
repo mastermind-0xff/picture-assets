@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import type { Sharp } from 'sharp';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import {
@@ -178,6 +179,32 @@ describe('generateAssets: manifest and incremental runs', () => {
       ...silent,
       ...extra,
     });
+
+  test('hooks: an edit of a hook without a key remakes the sources', async () => {
+    const root = await copyTree();
+    const output = outDir();
+    const only = (batch: ResultBatch) =>
+      batch.sources.map(({ status }) => status);
+    await run(root, output, {
+      hooks: [{ name: 'grade', source: (image: Sharp) => image.negate() }],
+    });
+    // the same code: unchanged
+    expect(
+      only(
+        await run(root, output, {
+          hooks: [{ name: 'grade', source: (image: Sharp) => image.negate() }],
+        })
+      )
+    ).toEqual(['skipped', 'skipped', 'skipped']);
+    // other code under the same name: remade
+    expect(
+      only(
+        await run(root, output, {
+          hooks: [{ name: 'grade', source: (image: Sharp) => image.flop() }],
+        })
+      )
+    ).toEqual(['succeed', 'succeed', 'succeed']);
+  });
 
   test('the manifest lists every file', async () => {
     const root = await copyTree();

@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ResolvedOptions } from '../config/options.js';
-import { isPlainObject } from '../config/validate.js';
+import { HOOK_POINTS, isPlainObject } from '../config/validate.js';
+import type { Hook } from '../types/hooks.js';
 import type {
   OutputFormat,
   OutputSetting,
@@ -32,7 +33,7 @@ export interface ManifestEntry {
   /**
    * Hash of everything that decides the files: settings, formats and their
    * options, output path, suffix, resize strategy, upscaling, and the
-   * hooks' names and keys.
+   * hooks' names and keys (their code without a key).
    */
   readonly hash: string;
   /** Size of the source, as shown. */
@@ -72,6 +73,18 @@ const stableStringify = (value: unknown) =>
     : nested
   );
 
+/**
+ * What of a hook decides the files: its name, and its key, or without one
+ * its code, so an edit remakes the sources. Settings a function closes over
+ * (a factory's) and external models aren't in its code: they need a key.
+ */
+const hookIdentity = (hook: Hook) => ({
+  name: hook.name,
+  ...(hook.key !== undefined ?
+    { key: hook.key }
+  : { code: HOOK_POINTS.map((point) => hook[point]?.toString() ?? '') }),
+});
+
 /** Hash of what decides a source's files, see `ManifestEntry.hash`. */
 export const targetHash = (
   manifestFile: string,
@@ -97,11 +110,8 @@ export const targetHash = (
         suffix,
         resizeStrategyHint,
         upscale,
-        // functions can't be hashed: a hook is its name and key. Left out
-        // without hooks, so their hashes stay those of earlier runs
-        ...(hooks.all.length > 0 && {
-          hooks: hooks.all.map(({ name, key }) => ({ name, key })),
-        }),
+        // left out without hooks: their hashes stay those of earlier runs
+        ...(hooks.all.length > 0 && { hooks: hooks.all.map(hookIdentity) }),
       })
     )
     .digest('hex')
