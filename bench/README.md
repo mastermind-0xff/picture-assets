@@ -69,6 +69,8 @@ The decoded source is kept for the source's run: peak memory 179MB instead
 of 160MB for one photo, 788MB instead of 711MB for the 5 photos of
 `group-2` (12 to 40 megapixels) at once. A size resized from pixels gets a
 new sharp object over them: `clone()` would copy them (217MB and 998MB).
+Since, each format of a size gets a new sharp object over its pixels too,
+instead of a copy: the batch's peak is 704MB, below the 711MB of before.
 
 **chain.js**: the photo to 6 srcset widths (2560 to 320) in WebP.
 

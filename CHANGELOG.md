@@ -73,6 +73,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
   batch, for 19MB more peak memory per photo (11% for the batch). Every
   size from the source of a decoded JPEG is now exactly a resize of its
   full pixels: no shrink-on-load approximation.
+- **Formats share a size's pixels**: each format gets its own sharp object
+  over them, instead of a copy (`clone()`). The same files, as fast; the
+  batch's peak memory 790 -> 704MB.
 - **Package name**: `picture-assets` (was `image-assets-generator`, taken
   on npm by another package), and so is the command.
 - **Functions**: `generateSingleSourceAssets` (was `imageResize`) and

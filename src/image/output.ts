@@ -214,7 +214,7 @@ type FormatHooks = (
 
 /** Saves a file whose `beforeFormat` hooks may give the image to encode. */
 const hookedToFile = async (
-  image: Sharp,
+  pixels: RawImage,
   file: string,
   encoder: Encoder,
   hasAlpha: boolean,
@@ -222,7 +222,7 @@ const hookedToFile = async (
 ): Promise<ResultFormat> => {
   let pipeline: Sharp;
   try {
-    pipeline = (await beforeFormat(encoder, file)) ?? image.clone();
+    pipeline = (await beforeFormat(encoder, file)) ?? fromRaw(pixels);
   } catch (error: unknown) {
     return { status: 'failed', format: encoder.format, file, error };
   }
@@ -233,9 +233,11 @@ const hookedToFile = async (
  * Takes an image and saves it to a list of formats, all at the same time:
  * encoding from a decoded image is fast, so running the formats in parallel
  * helps single source speed when threads are available. Every format is
- * attempted and awaited, so no file is written after this resolves.
+ * attempted and awaited, so no file is written after this resolves. Each
+ * format gets its own sharp object over the same pixels, read only: none
+ * copies them.
  *
- * @param image The image, already resized.
+ * @param pixels The image, already resized.
  * @param encoders Formats to write and their options, `'fallback'` resolved
  * once the source tells if it is transparent.
  * @param outputIdentifier Full path to the output file without the extension.
@@ -247,7 +249,7 @@ const hookedToFile = async (
  * about each format and the output file, in the order of the encoders.
  */
 export const settingToFormats = async (
-  image: Sharp,
+  pixels: RawImage,
   encoders: readonly Encoder[],
   outputIdentifier: string,
   hasAlpha: boolean,
@@ -258,8 +260,8 @@ export const settingToFormats = async (
     encoders.map((encoder) => {
       const file = `${outputIdentifier}.${encoder.format}`;
       return beforeFormat === undefined ?
-          sharpToFile(image.clone(), file, encoder, hasAlpha)
-        : hookedToFile(image, file, encoder, hasAlpha, beforeFormat);
+          sharpToFile(fromRaw(pixels), file, encoder, hasAlpha)
+        : hookedToFile(pixels, file, encoder, hasAlpha, beforeFormat);
     })
   );
 
@@ -545,7 +547,6 @@ export const sourceToSettings = async (
 
       // the chain splits here: what follows changes this size's files only
       let encoded = resized;
-      let image = next.image;
       let hasAlpha = next.hasAlpha;
       if (hooks.beforeEncode.length > 0) {
         const changed = await runHooks(
@@ -557,7 +558,6 @@ export const sourceToSettings = async (
         );
         if (changed) {
           encoded = changed;
-          image = fromRaw(changed);
           hasAlpha = hasAlphaChannel(changed.info.channels);
         }
       }
@@ -580,7 +580,7 @@ export const sourceToSettings = async (
       identifiers.add(outputIdentifier);
 
       const files = await settingToFormats(
-        image,
+        encoded,
         encodersFor(hasAlpha),
         outputIdentifier,
         hasAlpha,
