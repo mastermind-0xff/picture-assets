@@ -73,6 +73,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
   batch, for 19MB more peak memory per photo (11% for the batch). Every
   size from the source of a decoded JPEG is now exactly a resize of its
   full pixels: no shrink-on-load approximation.
+- **A source hook's decode is reused**: when a `source` hook reads
+  `pixels()` and changes nothing, the sizes resize from those pixels
+  instead of decoding the source again.
 - **Formats share a size's pixels**: each format gets its own sharp object
   over them, instead of a copy (`clone()`). The same files, as fast; the
   batch's peak memory 790 -> 704MB.

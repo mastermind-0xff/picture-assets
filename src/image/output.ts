@@ -32,7 +32,7 @@ import {
   rawInput,
   runFormatHooks,
   runHooks,
-  type HookInput,
+  type EncodedInput,
 } from './hooks.js';
 import {
   limitToSource,
@@ -366,7 +366,7 @@ export const sourceToSettings = async (
   const read = await readSourceInfo(source);
   // hooks get the file's bytes until a hook gives pixels, decoded at most
   // once for all of them
-  let sourceInput: HookInput | undefined;
+  let sourceInput: EncodedInput | undefined;
   const encoded = () => (sourceInput ??= encodedInput(input, read));
   const inputOf = (base: ResizeBase) =>
     base.pixels ? rawInput(base.pixels) : encoded();
@@ -398,11 +398,18 @@ export const sourceToSettings = async (
     `Processing ${srcPath} (${srcWidth}x${srcHeight}): ${made} size(s) in ${encoders.length} format(s)${skipped > 0 ? `, ${skipped} skipped as larger than the source` : ''}`
   );
   logger.verbose({ source: srcPath, settings: plan.settings });
+  // the source's hooks may have had it decoded already: decoding is the
+  // cost, resizing its pixels is then faster than resizing its file
+  const decodedForHooks = sourceInput?.decoded();
   const pixels =
     sourcePixels ??
-    (decodesFirst(read.format, plan) ? await bake(source) : undefined);
+    (decodedForHooks ? await decodedForHooks
+    : decodesFirst(read.format, plan) ? await bake(source)
+    : undefined);
   if (pixels && !sourcePixels)
-    logger.verbose(`Decoded ${srcPath}: its sizes resize from its pixels`);
+    logger.verbose(
+      `Decoded ${srcPath}${decodedForHooks ? ' for its hooks' : ''}: its sizes resize from its pixels`
+    );
 
   /** Encoders of an image: `'fallback'` follows its transparency. */
   const encodersFor = (hasAlpha: boolean) =>

@@ -90,6 +90,15 @@ export const rawInput = (image: RawImage): HookInput => ({
   pixels: () => Promise.resolve(copy(image)),
 });
 
+/** An encoded source as a hook's input, see `encodedInput`. */
+export interface EncodedInput extends HookInput {
+  /**
+   * The source's pixels if a hook asked for them, decoded once: never
+   * changed, `pixels()` gives copies.
+   */
+  readonly decoded: () => Promise<RawImage> | undefined;
+}
+
 /**
  * An encoded source (the file's bytes) as a hook's input: auto-oriented,
  * decoded on the first call for its pixels.
@@ -97,7 +106,7 @@ export const rawInput = (image: RawImage): HookInput => ({
 export const encodedInput = (
   input: Buffer,
   { width, height, channels }: Omit<HookInput, 'create' | 'pixels'>
-): HookInput => {
+): EncodedInput => {
   const create = () => sharp(input, { autoOrient: true });
   let decoded: Promise<RawImage> | undefined;
   return {
@@ -106,6 +115,7 @@ export const encodedInput = (
     channels,
     create,
     pixels: async () => copy(await (decoded ??= bake(create()))),
+    decoded: () => decoded,
   };
 };
 

@@ -2,12 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import sharp from 'sharp';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { generateSingleSourceAssets } from '../lib/generate-single-source-assets.js';
 import { createTempDir, writeFixtures } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
 import { ssim } from '../test-utils/ssim.js';
+import type { Hook } from '../types/hooks.js';
 import type { OutputSetting } from '../types/output.js';
 import { decodesFirst, type SourcePlan } from './output.js';
 import type { ResolvedOutputSettings } from './resolve-settings.js';
@@ -126,6 +127,43 @@ describe('sources decoded first', () => {
         .toBuffer();
       expect(await ssim(written, fromFile)).toBeGreaterThan(0.99);
     }
+  });
+
+  test("a source hook's decode is reused: decoded once", async () => {
+    const readsPixels: Hook = {
+      name: 'detector',
+      source: async (_image, { pixels }) => {
+        await pixels();
+      },
+    };
+    const run = async (source: string, width: number) => {
+      const { logger, messages } = createRecordingLogger();
+      const raw = vi.spyOn(sharp.prototype, 'raw');
+      await generateSingleSourceAssets(
+        file(source),
+        outDir(),
+        [{ width }],
+        ['png'],
+        {
+          logger,
+          hooks: [readsPixels],
+        }
+      );
+      const calls = raw.mock.calls.length;
+      raw.mockRestore();
+      return {
+        calls,
+        reused: messages('verbose').some((message) =>
+          /^Decoded .* for its hooks: its sizes resize from its pixels$/.test(
+            message
+          )
+        ),
+      };
+    };
+    // decoded once for the hook, then one resize: no second decode
+    expect(await run('landscape.jpg', 400)).toEqual({ calls: 2, reused: true });
+    // a WebP is never decoded first, but once decoded, its pixels serve
+    expect(await run('small.webp', 150)).toEqual({ calls: 2, reused: true });
   });
 
   test('transparency kept', async () => {
