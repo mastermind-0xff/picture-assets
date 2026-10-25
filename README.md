@@ -200,7 +200,8 @@ decoded once, and its sizes resized from its pixels, when that's faster
 than resizing from its file: a PNG, AVIF, GIF or TIFF, or a JPEG whose
 largest size is shrunk less than 3 times (from 3 times, JPEG
 shrink-on-load is as fast). It costs memory: the decoded source, 34MB for
-an 11 megapixel photo, per source in progress.
+an 11 megapixel photo, per source in progress. `concurrency` bounds it:
+fewer sources at once, fewer decoded sources in memory.
 
 **`formats`**: `['avif', 'webp', 'jpg']`, or with options for this call:
 `{ webp: { quality: 70 }, jpg: {} }`. Without formats, the destination's

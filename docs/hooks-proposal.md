@@ -311,30 +311,60 @@ profile's transform); PNG/AVIF always; WebP never (scaled decode). Fresh
 pixels: +57MB / +40% batch peak memory -> +19MB / +11%). Releasing the
 decoded source after the first size didn't lower the peak.
 
-## 7. Not done, for the author's decision
+## 7. The rest of the list, decided (2026-10-24 and 25)
 
-1. Per-format clone (5.1, second half): `settingToFormats` clones the
-   size once per format: 3 copies of 14.1MB (~10ms each) at 2560w with
-   `web`, all in flight. Fix: `sharp(data, { raw })` per format; same
-   bytes. The resize half is done (perf commit).
-2. The hook-costs scripts: superseded by `bench/hooks.js` and the
-   decode-first measurements; the chain.js "from decoded pixels" case is
-   moot (the library decodes itself). DONE 2026-10-24: deleted.
-3. Plan with hooks: run `source` hooks in the plan (exact, but pays for
-   AI work), or hooks declare effects (`scale: 2`, `alpha: true`), or keep
-   the note. Size hooks can change files too.
-4. Per-hook concurrency (GPU, paid API): a `concurrency` on the hook, or
-   users wrap a limiter themselves.
-5. `afterFormat`: encoded bytes before writing (oxipng, jpegli, checks);
-   needs toBuffer + write.
-6. `beforeFormat` returning encoder options (quality by size).
-7. Results listing the hooks that ran per size.
-8. `key` optional (now) or required / warned with a manifest.
-9. CLI `--hook ./file.js` (now: `.js` config only).
-10. Reuse a source hook's `pixels()` decode for decode-first (now decoded
-    again when the hook returns undefined).
-11. Move this file to `docs/hooks-proposal.md`, or drop it (README has
-    the docs). DONE 2026-10-24: moved, to keep the decisions' history.
-12. Decode-first memory knob (off, or a pixel budget) for small machines.
-13. Debug detail objects show Windows paths with doubled backslashes (the
-    message plugin's JSON of strings).
+Each item was discussed with examples (plan mode), then decided:
+
+1. Per-format clone: each format copied the size's pixels (`clone()`).
+   DONE `8064717`: each format gets its own sharp object over the same
+   pixels; concurrency unchanged (each format keeps its pipeline, only the
+   read-only buffer is shared). Same bytes; the batch's peak memory 790 ->
+   704MB.
+2. The hook-costs scripts. DONE: deleted (superseded by `bench/hooks.js`
+   and the decode-first measurements).
+3. Plan with hooks: running `source` hooks makes it no dry run; not running
+   them makes it diverge from the run. DEFERRED to its own branch after this
+   list: the plan mode may be dropped altogether (the author tests it; it
+   matters most for huge batches). Today: `hooksNotRun`, a warning, a line
+   in `--dry-run`.
+4. Per-hook concurrency. DONE `e57e44e`: `concurrency` on a hook, one gate
+   per hook object shared by its points and every run in the process; a
+   waiting call logs it at debug and never starts once the run is stopped.
+5. `afterFormat` (encoded bytes before writing). SKIPPED. A prototype with
+   13 cases showed: the bytes a hook returns must be probed (0.28ms) or the
+   results and manifest lie about size and format; a "lossless" optimizer
+   can be silently lossy (sharp's png `effort` turns on a palette) and
+   passes every check; a lossy re-encoder makes a second generation the
+   format options don't describe; "upload instead of writing" has no
+   meaning; an external tool per file costs ~150ms of process start on
+   Windows (30 at once 767ms): one optimizer run over the output directory
+   after the run is far cheaper.
+6. `beforeFormat` returning encoder options (quality by size or by
+   content), and 7. results listing the hooks per size, or hooks returning
+   data for the results and manifest (dominant color, blurhash, focal
+   point). TO DO: a feature for its own branch; the two overlap. Note: a
+   `beforeFormat` hook can't change options today, the format and its
+   options are set after it; quality by size alone could also be a
+   declarative per-size `formatOptions`.
+7. `key`. DONE `528f89e`, option (e): without a key, the hook's code (each
+   point's function as text) is in the manifest's hash, so an edit remakes
+   the sources; a key replaces the code. What a function closes over (a
+   factory's options, a model's version) needs a key.
+8. CLI hooks. DONE `0526566`: `--hooks <file>` (plural: one module exports
+   all the hooks: a list, a hook, or a function returning them), over the
+   config file's.
+9. A source hook's decode. DONE `70333ff`: reused for the sizes, also
+   where decode-first alone would not decode (once the decode is paid,
+   resizing pixels is faster).
+10. This file. DONE: moved to `docs/`, to keep the decisions' history.
+11. Decode-first memory knob. NOT ADDED: `concurrency` already bounds the
+    decoded sources in memory (documented in the README).
+12. Paths. DONE `e06f7d1`: logs, messages and `--dry-run` show `/` on every
+    system (the manifest's form); results, `--json` and hook contexts keep
+    native paths.
+
+Also decided: elapsed timestamps (`+1s 241ms`) reverted to fixed width
+(`8d11d7e`); hooks typed TypeScript-side as returning `HookReturn`, so a
+hook function defined apart from its hook object and returning nothing
+needs a `Promise<undefined>` return type (`void` in the union is refused
+by the lint rules; inline functions are typed from the hook).
