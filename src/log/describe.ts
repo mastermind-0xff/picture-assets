@@ -47,7 +47,7 @@ export const describeSettings = (
       : hooks.all
           .map(
             (hook) =>
-              `${hook.name} (${HOOK_POINTS.filter((point) => hook[point] !== undefined).join(', ')})`
+              `${hook.name} (${HOOK_POINTS.filter((point) => hook[point] !== undefined).join(', ')}${hook.concurrency === undefined ? '' : `; ${hook.concurrency} at once`})`
           )
           .join(', '),
   };

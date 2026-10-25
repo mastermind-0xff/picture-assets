@@ -49,6 +49,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
   (`beforeFormat`) or the source (`source`), under `abortScope`.
 - Debug logs when each hook starts and ends, with its time.
+- **`concurrency`** on a hook: at most that many of its calls at once,
+  across its points and every run in the process (a GPU model, a rate
+  limited API); the others wait their turn, logged at debug.
 - The manifest's hash includes each hook's `name` and `key`.
 - `planAssets` and `--dry-run` don't run hooks: the plan names them
   (`hooksNotRun`) and warns, as the run can differ.

@@ -119,6 +119,14 @@ export interface Hook {
    * are functions, their changes can't be told otherwise.
    */
   readonly key?: string;
+  /**
+   * Calls of this hook running at once, at most: for a GPU model or a rate
+   * limited API. Counted across its points and every run in the process;
+   * the other calls wait their turn while the rest of the run goes on. A
+   * whole number from 1. Default: no limit (as many as the sources and
+   * formats in progress).
+   */
+  readonly concurrency?: number;
   readonly source?: (image: Sharp, context: HookContext) => HookReturn;
   readonly beforeResize?: (
     image: Sharp,

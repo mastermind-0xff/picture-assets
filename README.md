@@ -392,6 +392,24 @@ the same bytes in the same time. A hook costs its own work and, for a sharp
 object, one bake to pixels, at the image's size: a `source` hook works on
 the whole source (see [bench/hooks.js](bench/README.md#results)).
 
+**Concurrency.** A hook runs as many times at once as there are sources
+in progress (and formats, at `beforeFormat`): 4 by default, a thread per
+core from the command line. For a GPU model or a rate limited API, give it
+a `concurrency`: its calls wait their turn, counted across its points and
+every run in the process, while the rest of the run goes on.
+
+```js
+const upscaler = {
+  name: 'upscaler',
+  concurrency: 1, // one model run at a time
+  source: async (_image, { pixels }) => runModel(await pixels()),
+};
+```
+
+A call that waits logs it at `'debug'`; its start and end logs come after
+the wait, so its time is its work. A source waiting for its turn holds its
+image in memory.
+
 **Failures.** A hook that throws, or returns something else, fails with a
 `HookError` (its `hook`, its `point`, the hook's error as its `cause`): its
 size, its file at `beforeFormat`, its source at `source`, under

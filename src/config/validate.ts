@@ -191,8 +191,8 @@ export const HOOK_POINTS = [
 
 /**
  * Checks the hooks: a list of objects, each with a unique name, a string
- * key if any, and a function at one point at least. Other properties are
- * the hook's own.
+ * key and a whole concurrency from 1 if any, and a function at one point
+ * at least. Other properties are the hook's own.
  *
  * @returns A copy of the list: changing it later doesn't change a run.
  * @throws TypeError naming the first invalid hook and why.
@@ -209,13 +209,18 @@ export const parseHooks = (value: unknown): readonly Hook[] => {
     };
     if (!isPlainObject(hook))
       return fail('must be an object like { name, source: (image) => … }.');
-    const { name, key } = hook;
+    const { name, key, concurrency } = hook;
     if (typeof name !== 'string' || name.trim() === '')
       return fail('needs a name, for the logs, errors and the manifest.');
     if (names.has(name)) fail(`another hook is named '${name}'.`);
     names.add(name);
     if (key !== undefined && typeof key !== 'string')
       fail('key must be a string.');
+    if (
+      concurrency !== undefined &&
+      !(Number.isSafeInteger(concurrency) && (concurrency as number) >= 1)
+    )
+      fail('concurrency must be a whole number from 1.');
     const points = HOOK_POINTS.filter((point) => hook[point] !== undefined);
     for (const point of points)
       if (typeof hook[point] !== 'function')

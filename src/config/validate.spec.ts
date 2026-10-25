@@ -300,6 +300,11 @@ describe('parseHooks', () => {
     expect(() => parseHooks([{ name: 'a', key: 2, source }])).toThrow(
       'key must be a string.'
     );
+    for (const concurrency of [0, 1.5, '2'])
+      expect(() => parseHooks([{ name: 'a', concurrency, source }])).toThrow(
+        'concurrency must be a whole number from 1.'
+      );
+    expect(parseHooks([{ name: 'a', concurrency: 1, source }])).toHaveLength(1);
     expect(() => parseHooks([{ name: 'a', afterResize: 'sharpen' }])).toThrow(
       'afterResize must be a function.'
     );

@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { HookError } from '../errors/hook-error.js';
 import { generateAssets } from '../lib/generate-assets.js';
+import { generateBatchAssets } from '../lib/generate-batch-assets.js';
 import { generateSingleSourceAssets } from '../lib/generate-single-source-assets.js';
 import {
   createTempDir,
@@ -828,5 +829,103 @@ describe('hooks in the pipeline', () => {
       `Hook grade start: source of ${path.join(images, 'a.png')}`,
       expect.stringMatching(/^Hook grade end: source of .+a\.png in \d+ms$/),
     ]);
+  });
+});
+
+describe('hook concurrency', () => {
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  /** A hook taking its time, counting its calls running at once. */
+  const counting = (extra: Partial<Hook> = {}) => {
+    const stats = { max: 0, calls: 0 };
+    let active = 0;
+    const busy = async (): Promise<undefined> => {
+      stats.calls++;
+      active++;
+      stats.max = Math.max(stats.max, active);
+      await delay(60);
+      active--;
+      return undefined;
+    };
+    const hook: Hook = { name: 'model', source: busy, ...extra };
+    return { hook, stats, busy };
+  };
+
+  /** The 3 sources of tree/, all at once. */
+  const batch = (hooks: Hook[], options: object = {}) =>
+    generateBatchAssets(file('tree'), outDir(), [{ width: 50 }], ['webp'], {
+      ...silent,
+      concurrency: 3,
+      hooks,
+      ...options,
+    });
+
+  test('no limit: a call per source in progress; a limit: at most that many', async () => {
+    const free = counting();
+    await batch([free.hook]);
+    expect(free.stats).toEqual({ max: 3, calls: 3 });
+
+    const one = counting({ concurrency: 1 });
+    await batch([one.hook]);
+    expect(one.stats).toEqual({ max: 1, calls: 3 });
+
+    const two = counting({ concurrency: 2 });
+    await batch([two.hook]);
+    expect(two.stats).toEqual({ max: 2, calls: 3 });
+  });
+
+  test('one limit for all the points of a hook, and for every run', async () => {
+    const { hook, stats, busy } = counting({ concurrency: 1 });
+    const both: Hook = { ...hook, afterResize: busy };
+    await Promise.all([batch([both]), batch([both])]);
+    expect(stats).toEqual({ max: 1, calls: 12 });
+  });
+
+  test('a failed call gives its turn to the next', async () => {
+    let calls = 0;
+    const result = await batch([
+      {
+        name: 'flaky',
+        concurrency: 1,
+        source: async () => {
+          await delay(20);
+          if (++calls === 1) throw new Error('out of GPU memory');
+        },
+      },
+    ]);
+    expect(calls).toBe(3);
+    expect(result.sources.map(({ status }) => status).sort()).toEqual([
+      'failed',
+      'succeed',
+      'succeed',
+    ]);
+  });
+
+  test('waiting is logged; a waiting call never starts once the run is stopped', async () => {
+    const { logger, messages } = createRecordingLogger('debug');
+    const controller = new AbortController();
+    let calls = 0;
+    const result = await batch(
+      [
+        {
+          name: 'model',
+          concurrency: 1,
+          source: async () => {
+            calls++;
+            controller.abort(new Error('stopped'));
+            await delay(60);
+          },
+        },
+      ],
+      { logger, signal: controller.signal }
+    );
+    expect(calls).toBe(1);
+    expect(result.status).toBe('aborted');
+    expect(
+      messages('debug').filter((message) =>
+        message.startsWith('Hook model waiting: source of ')
+      )
+    ).toHaveLength(2);
   });
 });

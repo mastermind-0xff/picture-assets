@@ -166,10 +166,56 @@ type PointContext<P extends HookPoint> = Omit<
   'point' | 'width' | 'height' | 'channels' | 'pixels'
 >;
 
+/** At most `limit` calls at once: the others wait, in order. */
+interface Gate {
+  readonly full: () => boolean;
+  readonly acquire: () => Promise<void>;
+  readonly release: () => void;
+}
+
+const createGate = (limit: number): Gate => {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return {
+    full: () => active >= limit,
+    acquire: () => {
+      if (active < limit) {
+        active++;
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => waiting.push(resolve));
+    },
+    // the slot goes to the next call waiting, if any
+    release: () => {
+      const next = waiting.shift();
+      if (next) next();
+      else active--;
+    },
+  };
+};
+
+/**
+ * The gate of each hook with a `concurrency`: shared by its points and by
+ * every run in the process, as the GPU or the API it guards is.
+ */
+const gates = new WeakMap<Hook, Gate>();
+
+const gateOf = (hook: Hook): Gate | undefined => {
+  if (hook.concurrency === undefined) return undefined;
+  let gate = gates.get(hook);
+  if (gate === undefined) {
+    gate = createGate(hook.concurrency);
+    gates.set(hook, gate);
+  }
+  return gate;
+};
+
 /**
  * Runs the hooks of a point, one after the other, each on the image the
  * previous one gave. Each call is logged at debug level when it starts and
- * when it ends, its sharp object baked: its time is the hook's work.
+ * when it ends, its sharp object baked: its time is the hook's work. A call
+ * of a hook at its `concurrency` waits for a turn first (logged too), and
+ * doesn't start if the run was stopped meanwhile.
  *
  * @param label Where, for the logs: the source, its size or the file.
  * @param bakeLast Whether the last hook's sharp object is baked: not at
@@ -193,10 +239,15 @@ const run = async <P extends HookPoint>(
       ((image: Sharp, context: HookContext) => HookReturn) | undefined;
     if (call === undefined) continue;
     const toPixels = bakeLast || index < hooks.length - 1;
+    const gate = gateOf(hook);
+    if (gate?.full())
+      logger.debug(`Hook ${hook.name} waiting: ${point} of ${label}`);
+    await gate?.acquire();
     logger.debug(`Hook ${hook.name} start: ${point} of ${label}`);
     const start = performance.now();
     let result: RawImage | Sharp | undefined;
     try {
+      if (gate) context.signal.throwIfAborted();
       const returned: HookResult = await call.call(hook, current.create(), {
         ...context,
         point,
@@ -220,6 +271,8 @@ const run = async <P extends HookPoint>(
         point,
         { cause: error }
       );
+    } finally {
+      gate?.release();
     }
     logger.debug(
       `Hook ${hook.name} end: ${point} of ${label} in ${formatDuration(performance.now() - start)}`
