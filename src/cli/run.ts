@@ -20,6 +20,7 @@ import { HELP, parseCliArgs, UsageError, type CliArgs } from './args.js';
 import {
   findConfigFile,
   loadConfigFile,
+  loadHooksFile,
   mergeConfig,
   resolveConfigPaths,
 } from './config.js';
@@ -116,6 +117,9 @@ const readConfig = async (args: CliArgs, cwd: string) => {
     : await findConfigFile(cwd);
   const fileConfig = file === undefined ? {} : await loadConfigFile(file);
   const config = mergeConfig(fileConfig, resolveConfigPaths(args.config, cwd));
+  // over the config file's, as every flag
+  if (args.hooksFile !== undefined)
+    config.hooks = await loadHooksFile(path.resolve(cwd, args.hooksFile));
   if (config.input === undefined)
     throw new UsageError(
       'No input: name files, directories or globs, or set input in a config file.'

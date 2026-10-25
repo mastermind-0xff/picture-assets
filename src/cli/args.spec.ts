@@ -39,6 +39,8 @@ describe('parseCliArgs', () => {
       '6',
       '-c',
       'build.config.json',
+      '--hooks',
+      'build.hooks.js',
       '--manifest',
       'out/assets.json',
       '--force',
@@ -51,6 +53,7 @@ describe('parseCliArgs', () => {
       help: false,
       version: false,
       configFile: 'build.config.json',
+      hooksFile: 'build.hooks.js',
       dryRun: true,
       json: true,
       config: {

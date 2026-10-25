@@ -19,6 +19,8 @@ export interface CliArgs {
   readonly version: boolean;
   /** `--config`: a config file instead of the one found in the directory. */
   readonly configFile?: string;
+  /** `--hooks`: a JS module exporting the hooks, over the config file's. */
+  readonly hooksFile?: string;
   readonly dryRun: boolean;
   readonly json: boolean;
   readonly config: CliConfig;
@@ -34,6 +36,7 @@ const OPTIONS = {
   'on-error': { type: 'string' },
   concurrency: { type: 'string', short: 'j' },
   config: { type: 'string', short: 'c' },
+  hooks: { type: 'string' },
   manifest: { type: 'string' },
   force: { type: 'boolean' },
   upscale: { type: 'boolean' },
@@ -166,6 +169,7 @@ export const parseCliArgs = (argv: readonly string[]): CliArgs => {
     help: values.help ?? false,
     version: values.version ?? false,
     ...(values.config !== undefined && { configFile: values.config }),
+    ...(values.hooks !== undefined && { hooksFile: values.hooks }),
     dryRun: values['dry-run'] ?? false,
     json: values.json ?? false,
     config,
@@ -204,6 +208,8 @@ Options:
   -j, --concurrency <n>    Sources at a time: auto, max or a number  [auto]
   -c, --config <file>      Config file   [picture-assets.config.json, .js or
                            .mjs in the current directory]
+      --hooks <file>       A JS module exporting the hooks: a list of hooks,
+                           a hook, or a function returning them
       --manifest <file>    Write a manifest of the files; unchanged sources
                            are skipped by the next runs
       --force              Process every source, even unchanged ones

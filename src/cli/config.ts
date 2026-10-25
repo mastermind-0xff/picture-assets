@@ -91,6 +91,26 @@ export const loadConfigFile = async (file: string): Promise<CliConfig> => {
 };
 
 /**
+ * Loads the hooks of `--hooks`: a JavaScript module whose default export is
+ * a list of hooks, a hook, or a function returning either (or a promise of
+ * it). The hooks themselves are checked by the library.
+ *
+ * @throws TypeError when the module has no default export.
+ */
+export const loadHooksFile = async (file: string): Promise<unknown[]> => {
+  const module = (await import(pathToFileURL(path.resolve(file)).href)) as {
+    default?: unknown;
+  };
+  let hooks = module.default;
+  if (typeof hooks === 'function') hooks = await (hooks as () => unknown)();
+  if (hooks === undefined || hooks === null)
+    throw new TypeError(
+      `${file} must export its hooks as its default export: a list of hooks, a hook, or a function returning them.`
+    );
+  return Array.isArray(hooks) ? (hooks as unknown[]) : [hooks];
+};
+
+/**
  * The config of a run: the file's, then the flags' over it. Format options
  * are merged per format, so `--quality` keeps the file's other options.
  */

@@ -8,6 +8,7 @@ import {
   listFiles,
   writeFixtures,
 } from '../test-utils/fixtures.js';
+import type { ResultBatch } from '../types/output.js';
 import { EXIT_CODES, runCli, type CliIo } from './run.js';
 
 let dir: string;
@@ -190,6 +191,97 @@ describe('runCli', () => {
       '',
     ]);
     expect(stderr).toMatch(/The plan doesn't run the hooks \(grade\)/);
+  });
+
+  describe('--hooks <file>', () => {
+    /** A directory with files, the command run in it. */
+    const site = async (files: Record<string, string>) => {
+      const root = path.join(dir, `hooks-${++testIndex}`);
+      await fs.mkdir(root);
+      for (const [name, text] of Object.entries(files))
+        await fs.writeFile(path.join(root, name), text);
+      return root;
+    };
+    /** The hooks named by the dry run's note. */
+    const notedHooks = (stdout: string) =>
+      /Hooks not run by the plan: (.*)\. They/.exec(stdout)?.[1];
+
+    test('a list of hooks, applied to the run', async () => {
+      const cwd = await site({
+        'hooks.mjs': `export default [
+          { name: 'shrink', source: (image) => image.resize(40, 30) },
+        ];`,
+      });
+      const { code, stdout } = await run(
+        [
+          file('landscape.jpg'),
+          '-o',
+          'out',
+          '-s',
+          '20',
+          '-f',
+          'webp',
+          '--hooks',
+          'hooks.mjs',
+          '--json',
+          '--silent',
+        ],
+        { cwd }
+      );
+      expect(code).toBe(EXIT_CODES.ok);
+      const batch = JSON.parse(stdout) as ResultBatch;
+      // the source as the hook made it
+      expect(batch.sources[0]).toMatchObject({ width: 40, height: 30 });
+    });
+
+    test('a hook, or a function returning hooks; over the config file', async () => {
+      const cwd = await site({
+        'picture-assets.config.mjs': `export default {
+          output: 'out',
+          hooks: [{ name: 'fromConfig', source: () => undefined }],
+        };`,
+        'one.mjs': `export default { name: 'one', source: () => undefined };`,
+        'factory.mjs': `export default async () => [
+          { name: 'a', source: () => undefined },
+          { name: 'b', beforeFormat: () => undefined },
+        ];`,
+      });
+      const dryRun = async (...extra: string[]) =>
+        notedHooks(
+          (
+            await run(
+              [file('landscape.jpg'), '--dry-run', '--silent', ...extra],
+              { cwd }
+            )
+          ).stdout
+        );
+      expect(await dryRun()).toBe('fromConfig');
+      expect(await dryRun('--hooks', 'one.mjs')).toBe('one');
+      expect(await dryRun('--hooks', 'factory.mjs')).toBe('a, b');
+    });
+
+    test('a module without hooks, or invalid hooks: exit 2', async () => {
+      const cwd = await site({
+        'none.mjs': `export const hooks = [];`,
+        'invalid.mjs': `export default [{ name: 'x' }];`,
+      });
+      const common = [file('landscape.jpg'), '-o', 'out', '--hooks'];
+      expect(await run([...common, 'none.mjs'], { cwd })).toMatchObject({
+        code: EXIT_CODES.usage,
+        stderr: expect.stringMatching(
+          /none\.mjs must export its hooks as its default export/
+        ) as unknown,
+      });
+      expect(await run([...common, 'invalid.mjs'], { cwd })).toMatchObject({
+        code: EXIT_CODES.usage,
+        stderr: expect.stringMatching(
+          /Hook 0 .*has no function at any point/
+        ) as unknown,
+      });
+      expect(await run([...common, 'missing.mjs'], { cwd })).toMatchObject({
+        code: EXIT_CODES.usage,
+      });
+    });
   });
 
   test('a config file, flags over it, paths relative to it', async () => {

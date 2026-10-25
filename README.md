@@ -76,6 +76,7 @@ alone). The main flags; `picture-assets --help` has them all:
 | `-f, --formats`       | `avif,webp,jpg,png,…` and `fallback`, or `web`, `modern`, `lossless`      |
 | `-q, --quality`       | `75` for every lossy format, or `avif=55,webp=75`                         |
 | `--manifest <file>`   | Write a manifest; unchanged sources are skipped by the next runs          |
+| `--hooks <file>`      | A JS module exporting the [hooks](#hooks)                                 |
 | `--dry-run`, `--json` | Print the plan, or the result as JSON, on stdout                          |
 | `-v`, `--silent`      | Debug logs (settings, each size and hook, details, graphs), or none       |
 
@@ -98,8 +99,10 @@ which wins over the `PICTURE_ASSETS_*` variables:
 }
 ```
 
-A `.js` config file can also set `hooks` (see [Hooks](#hooks)): they are
-functions, so JSON and flags can't.
+Hooks (see [Hooks](#hooks)) are functions: a `.js` config file can set
+them, or `--hooks <file>`, a module whose default export is a list of
+hooks, a hook, or a function returning them. The flag keeps a JSON config
+pure data, and wins over the config file's hooks.
 
 **Thread pool.** Sharp runs on libuv's thread pool, 4 threads by default,
 the bottleneck of batches (see [bench/](bench/README.md)). libuv sizes it
@@ -424,7 +427,8 @@ run. What a function closes over isn't in its code, a factory's options
 (`colorGrade({ saturation: 1.2 })`) or a model's version: give those hooks
 a `key`, and change it with them. With a `key`, the code is not hashed.
 
-**Config.** Hooks come from code or a `.js` config file. `planAssets` and
+**Config.** Hooks come from code, a `.js` config file or `--hooks <file>`
+on the command line. `planAssets` and
 `--dry-run` don't run them: sizes are planned from the sources as read, so
 a run with hooks can differ from its plan. The plan names them
 (`hooksNotRun`, and a line in `--dry-run`'s output) and warns.

@@ -49,6 +49,8 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
   (`beforeFormat`) or the source (`source`), under `abortScope`.
 - Debug logs when each hook starts and ends, with its time.
+- **`--hooks <file>`**: a JS module whose default export is a list of
+  hooks, a hook, or a function returning them, over the config file's.
 - **`concurrency`** on a hook: at most that many of its calls at once,
   across its points and every run in the process (a GPU model, a rate
   limited API); the others wait their turn, logged at debug.
