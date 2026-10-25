@@ -16,6 +16,7 @@ import {
   type AssetsPlan,
 } from '../lib/generate-assets.js';
 import type { AssetsLogger } from '../log/logger.js';
+import { displayPath } from '../utils/helpers.js';
 import { HELP, parseCliArgs, UsageError, type CliArgs } from './args.js';
 import {
   findConfigFile,
@@ -82,14 +83,18 @@ const formatPlan = (plan: AssetsPlan) => {
   const lines: string[] = [];
   for (const source of plan.sources) {
     if (source.status === 'unchanged') {
-      lines.push(`${source.source}: unchanged, skipped`);
+      lines.push(`${displayPath(source.source)}: unchanged, skipped`);
       continue;
     }
     if (source.status === 'failed') {
-      lines.push(`${source.source}: fails: ${errorMessage(source.error)}`);
+      lines.push(
+        `${displayPath(source.source)}: fails: ${errorMessage(source.error)}`
+      );
       continue;
     }
-    lines.push(`${source.source} (${source.width}x${source.height})`);
+    lines.push(
+      `${displayPath(source.source)} (${source.width}x${source.height})`
+    );
     for (const { size, status, files } of source.sizes)
       lines.push(
         `  ${size.padEnd(11)} ${
@@ -189,7 +194,7 @@ export const runCli = async (
   // a JS config's own logger is checked by the library, before any log
   if (configFile !== undefined)
     cliLogger?.info(
-      `Config file: ${path.relative(io.cwd, configFile) || configFile}`
+      `Config file: ${displayPath(path.relative(io.cwd, configFile) || configFile)}`
     );
   const assetsConfig = {
     ...config,

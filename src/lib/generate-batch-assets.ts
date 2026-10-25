@@ -31,6 +31,7 @@ import type {
 } from '../types/output.js';
 import {
   allResultsSucceeded,
+  displayPath,
   formatBytes,
   formatDuration,
   sampleCPUUsage,
@@ -162,7 +163,7 @@ const batchDetails = (
     ),
     ...(failed > 0 && { 'failed files': failed }),
     ...(slowest && {
-      'time per source': `${formatDuration(Math.round(total / processed.length))} on average, the slowest ${slowest.source} in ${formatDuration(slowest.duration)}`,
+      'time per source': `${formatDuration(Math.round(total / processed.length))} on average, the slowest ${displayPath(slowest.source)} in ${formatDuration(slowest.duration)}`,
     }),
     // the process's peak, the batch's included
     'peak memory': formatBytes(process.resourceUsage().maxRSS * 1024),
@@ -200,7 +201,7 @@ export const planTargets = (
       const owner = owners.get(key);
       if (owner !== undefined)
         throw new Error(
-          `${source.path} and ${owner} would write the same files (${target.outputPath}*): rename one of them.`
+          `${displayPath(source.path)} and ${displayPath(owner)} would write the same files (${displayPath(target.outputPath)}*): rename one of them.`
         );
       owners.set(key, source.path);
       targets[index] = target;
@@ -247,8 +248,9 @@ export const runBatch = async (
 ): Promise<{ batch: ResultBatch; targets: (SourceTarget | undefined)[] }> => {
   const timeStart = performance.now();
   const cpuStart = sampleCPUUsage();
-  const { sources, destRoot, settings, formats, options, inputName } = run;
+  const { sources, destRoot, settings, formats, options } = run;
   const { logger } = options;
+  const inputName = displayPath(run.inputName);
   if (sources.length === 0) {
     logger.warning(`No source images found in ${inputName}.`);
     return {
@@ -265,7 +267,7 @@ export const runBatch = async (
   const formatNames =
     formats.size > 0 ? [...formats.keys()].join(', ') : 'its own format';
   logger.info(
-    `Found ${sources.length} source image(s) in ${inputName}: ${settings.length} size(s) each, in ${formatNames}, into ${destRoot}, ${concurrency} at a time.`
+    `Found ${sources.length} source image(s) in ${inputName}: ${settings.length} size(s) each, in ${formatNames}, into ${displayPath(destRoot)}, ${concurrency} at a time.`
   );
 
   const controller = new AbortController();
@@ -306,7 +308,7 @@ export const runBatch = async (
   errors.forEach((error, index) => {
     const source = sources[index];
     if (source === undefined) return;
-    logger.error({ source: source.path, error });
+    logger.error({ source: displayPath(source.path), error });
     results[index] = sourceResult(
       source.path,
       'failed',
@@ -327,7 +329,9 @@ export const runBatch = async (
       if (source === undefined || target === undefined) continue;
       const start = performance.now();
       if (!controller.signal.aborted && (await run.skip?.(source, target))) {
-        logger.debug(`Unchanged since the last run: ${source.path}`);
+        logger.debug(
+          `Unchanged since the last run: ${displayPath(source.path)}`
+        );
         results[index] = sourceResult(source.path, 'skipped', start);
       } else
         results[index] = await processSource(

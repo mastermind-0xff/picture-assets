@@ -20,6 +20,7 @@ import {
   writeFixtures,
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
+import { displayPath } from '../utils/helpers.js';
 import { ssim } from '../test-utils/ssim.js';
 import type { OutputSetting, ResultSource } from '../types/output.js';
 import type { ResizeStrategyHint } from '../types/size.js';
@@ -354,7 +355,7 @@ describe('generateSingleSourceAssets: sizes', () => {
       ['png'],
       { logger }
     );
-    const source = file('landscape.jpg');
+    const source = displayPath(file('landscape.jpg'));
     expect(
       messages('verbose').filter((message) => message.startsWith('Resizing'))
     ).toEqual([

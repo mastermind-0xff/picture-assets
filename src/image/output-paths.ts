@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parsePath } from '@mmutils/common';
 
 import type { FormatSelector } from '../types/output.js';
+import { displayPath } from '../utils/helpers.js';
 import { canWriteFormat, isOutputFormat } from './formats.js';
 
 /** Formats of an output, with the options given with each. */
@@ -53,7 +54,7 @@ export const resolvePathsAndFormats = (
     const srcFormat = src.extension.toLowerCase();
     if (!isOutputFormat(srcFormat) || !canWriteFormat(srcFormat))
       throw new TypeError(
-        `No output format for ${srcPath}: pass formats, or a destination with a format extension. The source's own format (${src.extension === '' ? 'no extension' : `'${src.extension}'`}) can't be written.`
+        `No output format for ${displayPath(srcPath)}: pass formats, or a destination with a format extension. The source's own format (${src.extension === '' ? 'no extension' : `'${src.extension}'`}) can't be written.`
       );
     combined.set(srcFormat, undefined);
   }

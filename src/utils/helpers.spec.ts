@@ -1,12 +1,26 @@
+import path from 'node:path';
+
 import { describe, expect, test } from 'vitest';
 
 import {
   allResultsSucceeded,
+  displayPath,
   formatBytes,
   formatDuration,
   isMatchingAspectRatio,
   sampleCPUUsage,
 } from './helpers.js';
+
+describe('displayPath', () => {
+  test('/ on every system; a POSIX name keeps its backslashes', () => {
+    expect(displayPath(path.join('photos', 'trips', 'a.jpg'))).toBe(
+      'photos/trips/a.jpg'
+    );
+    expect(displayPath('C:\\photos\\a.jpg')).toBe(
+      path.sep === '\\' ? 'C:/photos/a.jpg' : 'C:\\photos\\a.jpg'
+    );
+  });
+});
 
 describe('isMatchingAspectRatio', () => {
   test('same and scaled ratios', () => {

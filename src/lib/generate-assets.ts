@@ -26,6 +26,7 @@ import {
 } from '../image/output.js';
 import type { Concurrency, AssetsOptions } from '../types/options.js';
 import type { ResultBatch } from '../types/output.js';
+import { displayPath } from '../utils/helpers.js';
 import { planTargets, runBatch } from './generate-batch-assets.js';
 import { assertPath } from './generate-single-source-assets.js';
 import {
@@ -192,13 +193,13 @@ const loadManifest = async ({ manifest, options }: Prepared) => {
   const { manifest: previous, problem } = await readManifest(manifest);
   if (problem !== undefined)
     options.logger.warning(
-      `Ignoring the manifest ${manifest}: ${problem}. Every source is processed.`
+      `Ignoring the manifest ${displayPath(manifest)}: ${problem}. Every source is processed.`
     );
   else
     options.logger.debug(
       previous ?
-        `Manifest read: ${manifest}, ${Object.keys(previous.sources).length} source(s)`
-      : `No manifest at ${manifest} yet: every source is processed.`
+        `Manifest read: ${displayPath(manifest)}, ${Object.keys(previous.sources).length} source(s)`
+      : `No manifest at ${displayPath(manifest)} yet: every source is processed.`
     );
   return previous;
 };
@@ -262,7 +263,7 @@ export const generateAssets = async (
     const next: Manifest = { version: MANIFEST_VERSION, sources: entries };
     await writeManifest(manifest, next);
     options.logger.info(
-      `Manifest written: ${manifest}, ${Object.keys(entries).length} source(s)`
+      `Manifest written: ${displayPath(manifest)}, ${Object.keys(entries).length} source(s)`
     );
   };
 

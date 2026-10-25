@@ -21,7 +21,7 @@ import type {
   ResultSource,
   ResultStatus,
 } from '../types/output.js';
-import { formatBytes, formatDuration } from '../utils/helpers.js';
+import { displayPath, formatBytes, formatDuration } from '../utils/helpers.js';
 
 /** Where a source's outputs go and how they are encoded. */
 export interface SourceTarget {
@@ -107,7 +107,7 @@ export const processSource = async (
     };
 
     const { written, bytes, failed } = tallyFiles([result]);
-    const summary = `${srcPath}: ${written} files, ${formatBytes(bytes)} in ${formatDuration(result.duration)}`;
+    const summary = `${displayPath(srcPath)}: ${written} files, ${formatBytes(bytes)} in ${formatDuration(result.duration)}`;
     if (status === 'succeed') logger.info(summary);
     else if (status === 'failed')
       logger.warning(`${summary}, ${failed} failed`);
@@ -115,7 +115,7 @@ export const processSource = async (
 
     return result;
   } catch (error: unknown) {
-    logger.error({ source: srcPath, error });
+    logger.error({ source: displayPath(srcPath), error });
     if (context.abortScope === 'batch') context.abort(error);
     return sourceResult(srcPath, 'failed', start, error);
   }
@@ -288,8 +288,8 @@ export const generateSingleSourceAssets = async (
     resolvedOptions.formatOptions
   );
   resolvedOptions.logger.debug({
-    source: srcPath,
-    output: target.outputPath,
+    source: displayPath(srcPath),
+    output: displayPath(target.outputPath),
     ...describeSettings(settings, target.encoders, resolvedOptions),
   });
 
@@ -303,9 +303,13 @@ export const generateSingleSourceAssets = async (
   });
 
   if (resolvedOptions.abortScope === 'batch' && result.status !== 'succeed')
-    throw new ResultSourceError(`Source ${srcPath} failed.`, result, {
-      cause: controller.signal.reason,
-    });
+    throw new ResultSourceError(
+      `Source ${displayPath(srcPath)} failed.`,
+      result,
+      {
+        cause: controller.signal.reason,
+      }
+    );
 
   return result;
 };

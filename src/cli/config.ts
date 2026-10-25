@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { describe, isPlainObject } from '../config/validate.js';
+import { displayPath } from '../utils/helpers.js';
 import type { CliConfig } from './args.js';
 
 /** Config files looked for in the current directory, in this order. */
@@ -71,7 +72,7 @@ export const loadConfigFile = async (file: string): Promise<CliConfig> => {
       config = JSON.parse(text);
     } catch (error) {
       throw new SyntaxError(
-        `${file} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+        `${displayPath(file)} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error }
       );
     }
@@ -85,7 +86,7 @@ export const loadConfigFile = async (file: string): Promise<CliConfig> => {
   }
   if (!isPlainObject(config))
     throw new TypeError(
-      `${file} must hold a config object (a JS module as its default export), got ${describe(config)}.`
+      `${displayPath(file)} must hold a config object (a JS module as its default export), got ${describe(config)}.`
     );
   return resolveConfigPaths(config, path.dirname(absolute));
 };
@@ -105,7 +106,7 @@ export const loadHooksFile = async (file: string): Promise<unknown[]> => {
   if (typeof hooks === 'function') hooks = await (hooks as () => unknown)();
   if (hooks === undefined || hooks === null)
     throw new TypeError(
-      `${file} must export its hooks as its default export: a list of hooks, a hook, or a function returning them.`
+      `${displayPath(file)} must export its hooks as its default export: a list of hooks, a hook, or a function returning them.`
     );
   return Array.isArray(hooks) ? (hooks as unknown[]) : [hooks];
 };

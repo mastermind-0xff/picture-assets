@@ -9,6 +9,7 @@ import {
   writeFixtures,
 } from '../test-utils/fixtures.js';
 import type { ResultBatch } from '../types/output.js';
+import { displayPath } from '../utils/helpers.js';
 import { EXIT_CODES, runCli, type CliIo } from './run.js';
 
 let dir: string;
@@ -131,7 +132,7 @@ describe('runCli', () => {
     ]);
     expect(code).toBe(EXIT_CODES.ok);
     expect(stdout.split('\n')).toEqual([
-      `${path.relative(process.cwd(), file('landscape.jpg'))} (800x600)`,
+      `${displayPath(path.relative(process.cwd(), file('landscape.jpg')))} (800x600)`,
       '  800x600     landscape@800w.avif',
       '  1920x1440   skipped: larger than the source',
       '  1280x960    skipped: larger than the source',
@@ -159,7 +160,7 @@ describe('runCli', () => {
     ]);
     expect(code).toBe(EXIT_CODES.failed);
     expect(stdout.split('\n')).toEqual([
-      `${path.relative(process.cwd(), file('landscape.jpg'))}: unchanged, skipped`,
+      `${displayPath(path.relative(process.cwd(), file('landscape.jpg')))}: unchanged, skipped`,
       expect.stringMatching(
         /corrupt\.jpg: fails: Input buffer contains unsupported image format$/
       ) as unknown,

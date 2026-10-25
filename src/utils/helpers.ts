@@ -1,4 +1,5 @@
 import os from 'node:os';
+import path from 'node:path';
 
 import { formatHighResTime } from '@mmutils/time';
 
@@ -31,6 +32,14 @@ export const allResultsSucceeded = (
  */
 export const formatDuration = (ms: number): string =>
   formatHighResTime(ms, 'ms', 'ms');
+
+/**
+ * A path as logs and messages show it: with `/` on Windows too, as the
+ * manifest has it and every shell takes it, the same on every system.
+ * Results keep native paths, for `path` and `fs`.
+ */
+export const displayPath = (file: string): string =>
+  path.sep === '\\' ? file.replaceAll('\\', '/') : file;
 
 /** Formats a size in bytes: `'812 B'`, `'45.3 kB'`, `'1.25 MB'`. */
 export const formatBytes = (bytes: number): string => {

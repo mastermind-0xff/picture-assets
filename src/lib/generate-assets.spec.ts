@@ -168,6 +168,52 @@ describe('generateAssets: defaults', () => {
   });
 });
 
+describe('generateAssets: paths', () => {
+  test('logs and messages show / paths; results keep native ones', async () => {
+    const { logger, logs } = createRecordingLogger('verbose');
+    const output = outDir();
+    const manifest = path.join(output, 'assets.json');
+    const batch = await generateAssets({
+      input: [file('tree'), file('corrupt.jpg')],
+      output,
+      sizes: [50],
+      formats: ['webp'],
+      manifest,
+      logger,
+      hooks: [{ name: 'mark', beforeFormat: () => undefined }],
+    });
+
+    // every text a log shows: messages, and string values of object logs
+    const texts = logs.flatMap(({ data }) =>
+      typeof data === 'string' ?
+        [data]
+      : Object.values(data).filter(
+          (value): value is string => typeof value === 'string'
+        )
+    );
+    expect(texts.length).toBeGreaterThan(20);
+    expect(texts.filter((text) => text.includes('\\'))).toEqual([]);
+    expect(texts).toContainEqual(
+      expect.stringMatching(
+        /^Hook mark start: beforeFormat of .*\/a@50w\.webp$/
+      )
+    );
+    expect(texts).toContainEqual(
+      expect.stringMatching(
+        /^Manifest written: .*\/assets\.json, 3 source\(s\)$/
+      )
+    );
+
+    // results: native paths, for path and fs
+    expect(batch.sources.map(({ source }) => source)).toEqual([
+      path.join(file('tree'), 'a.jpg'),
+      path.join(file('tree'), 'sub', 'b.png'),
+      path.join(file('tree'), 'sub', 'deeper', 'c.webp'),
+      file('corrupt.jpg'),
+    ]);
+  });
+});
+
 describe('generateAssets: manifest and incremental runs', () => {
   const run = (root: string, output: string, extra = {}) =>
     generateAssets({

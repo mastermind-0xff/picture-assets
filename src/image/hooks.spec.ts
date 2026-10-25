@@ -15,6 +15,7 @@ import {
   writeFixtures,
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
+import { displayPath } from '../utils/helpers.js';
 import { ssim } from '../test-utils/ssim.js';
 import type {
   Hook,
@@ -826,7 +827,7 @@ describe('hooks in the pipeline', () => {
     expect(
       messages('debug').filter((message) => message.startsWith('Hook grade'))
     ).toEqual([
-      `Hook grade start: source of ${path.join(images, 'a.png')}`,
+      `Hook grade start: source of ${displayPath(path.join(images, 'a.png'))}`,
       expect.stringMatching(/^Hook grade end: source of .+a\.png in \d+ms$/),
     ]);
   });

@@ -490,6 +490,10 @@ see:
 milliseconds, at a fixed width (`HH:mm:ss.SSS` on the command line): with
 the debug lines around each hook and size, they tell where the time goes.
 
+Paths in logs, messages and `--dry-run` use `/`, on Windows too: the
+manifest's form, which every shell takes, the same on every system.
+Results and `--json` keep the system's paths, for `path` and `fs`.
+
 Pass a level, or your own logger: a `@mmutils/logger` `Logger` (with
 `jsonPlugin` for JSON lines, for example) or any object with `error`,
 `warning`, `info`, `debug` and `verbose` methods.

@@ -19,6 +19,7 @@ import type {
 } from '../types/output.js';
 import {
   allResultsSucceeded,
+  displayPath,
   formatBytes,
   formatDuration,
   isMatchingAspectRatio,
@@ -269,9 +270,10 @@ export const settingToFormats = async (
     if (result.status === 'succeed') {
       const { width, height, size } = result.fileData;
       logger.verbose(
-        `Created ${result.file} (${width}x${height}, ${formatBytes(size)})`
+        `Created ${displayPath(result.file)} (${width}x${height}, ${formatBytes(size)})`
       );
-    } else logger.error({ file: result.file, error: result.error });
+    } else
+      logger.error({ file: displayPath(result.file), error: result.error });
   }
 
   return results;
@@ -358,6 +360,7 @@ export const sourceToSettings = async (
 }> => {
   const { logger, suffix, abortScope, signal, hooks } = context;
 
+  const shown = displayPath(srcPath);
   // read once: every size sees the same file, and libvips' file cache never
   // keeps it open (Windows can't change or delete open files)
   const input = await fs.readFile(srcPath);
@@ -380,7 +383,7 @@ export const sourceToSettings = async (
         hooks.source,
         encoded(),
         { source: srcPath, signal, logger },
-        srcPath
+        shown
       )
     : undefined;
   const info =
@@ -395,9 +398,9 @@ export const sourceToSettings = async (
   const made = plan.settings.filter(({ skipped }) => skipped !== true).length;
   const skipped = plan.settings.length - made;
   logger.info(
-    `Processing ${srcPath} (${srcWidth}x${srcHeight}): ${made} size(s) in ${encoders.length} format(s)${skipped > 0 ? `, ${skipped} skipped as larger than the source` : ''}`
+    `Processing ${shown} (${srcWidth}x${srcHeight}): ${made} size(s) in ${encoders.length} format(s)${skipped > 0 ? `, ${skipped} skipped as larger than the source` : ''}`
   );
-  logger.verbose({ source: srcPath, settings: plan.settings });
+  logger.verbose({ source: shown, settings: plan.settings });
   // the source's hooks may have had it decoded already: decoding is the
   // cost, resizing its pixels is then faster than resizing its file
   const decodedForHooks = sourceInput?.decoded();
@@ -408,7 +411,7 @@ export const sourceToSettings = async (
     : undefined);
   if (pixels && !sourcePixels)
     logger.verbose(
-      `Decoded ${srcPath}${decodedForHooks ? ' for its hooks' : ''}: its sizes resize from its pixels`
+      `Decoded ${shown}${decodedForHooks ? ' for its hooks' : ''}: its sizes resize from its pixels`
     );
 
   /** Encoders of an image: `'fallback'` follows its transparency. */
@@ -471,7 +474,7 @@ export const sourceToSettings = async (
         files: [],
       });
       logger.debug(
-        `Skipped ${width}x${height} of ${srcPath}: larger than the source (${srcWidth}x${srcHeight})`
+        `Skipped ${width}x${height} of ${shown}: larger than the source (${srcWidth}x${srcHeight})`
       );
       continue;
     }
@@ -480,9 +483,9 @@ export const sourceToSettings = async (
         sourceBase
       : base;
     logger.verbose(
-      `Resizing ${srcPath} to ${width}x${height} from ${start.isBuffer ? `the ${start.width}x${start.height} buffer` : 'the source'}`
+      `Resizing ${shown} to ${width}x${height} from ${start.isBuffer ? `the ${start.width}x${start.height} buffer` : 'the source'}`
     );
-    const label = `${srcPath} at ${width}x${height}`;
+    const label = `${shown} at ${width}x${height}`;
     const sizeStart = performance.now();
 
     let result: ResultSetting;
@@ -582,7 +585,7 @@ export const sourceToSettings = async (
       )}`;
       if (identifiers.has(outputIdentifier))
         throw new Error(
-          `Another setting already writes ${outputIdentifier}.*: give the settings different suffixes, e.g. with {w}.`
+          `Another setting already writes ${displayPath(outputIdentifier)}.*: give the settings different suffixes, e.g. with {w}.`
         );
       identifiers.add(outputIdentifier);
 
@@ -603,7 +606,7 @@ export const sourceToSettings = async (
                 options: encoder.options,
                 file,
               },
-              file
+              displayPath(file)
             )
         : undefined
       );
@@ -616,7 +619,7 @@ export const sourceToSettings = async (
         { outputsBySetting: [result] },
       ]);
       logger.debug(
-        `${srcPath} at ${result.size}: ${describeFiles(written, bytes)}${failed > 0 ? `, ${failed} failed` : ''} in ${formatDuration(performance.now() - sizeStart)}`
+        `${shown} at ${result.size}: ${describeFiles(written, bytes)}${failed > 0 ? `, ${failed} failed` : ''} in ${formatDuration(performance.now() - sizeStart)}`
       );
 
       if (setting.useAsNextResizeIteration) base = next;
@@ -627,7 +630,7 @@ export const sourceToSettings = async (
         files: [],
         error,
       };
-      logger.error({ source: srcPath, size: result.size, error });
+      logger.error({ source: shown, size: result.size, error });
     }
 
     outputsBySetting.push(result);
@@ -639,7 +642,7 @@ export const sourceToSettings = async (
           (file) => file.status === 'failed'
         );
         context.abort(
-          new Error(`Setting ${result.size} of ${srcPath} failed.`, {
+          new Error(`Setting ${result.size} of ${shown} failed.`, {
             cause: result.error ?? failedFile?.error,
           })
         );

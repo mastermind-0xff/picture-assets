@@ -70,6 +70,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
   memory, then the graphs. Lines per file moved to `'verbose'`. Timestamps
   have milliseconds (`HH:mm:ss.SSS` on the command line); the command logs
   the config file it read.
+- **Paths shown with `/`** in logs, error messages and `--dry-run`, on
+  Windows too, as in the manifest; results and `--json` keep native paths.
+  Object logs (errors) no longer show Windows paths with doubled
+  backslashes.
 - **Sources decoded once** when that's faster than resizing from the file:
   a PNG, AVIF, GIF or TIFF, or a JPEG whose largest size is shrunk less
   than 3 times (most of the cost was the ICC profile's transform during
