@@ -99,6 +99,32 @@ describe('runHooks', () => {
     expect(calls).toEqual(['a', 'b']);
   });
 
+  test('functions written apart that return nothing: valid points, no change', async () => {
+    const seen: string[] = [];
+    // typed from their own code, void and Promise<void>, not from Hook
+    const logs = (_image: Sharp, { source }: HookContext) => {
+      seen.push(source);
+    };
+    const saves = async (_image: Sharp, { source }: HookContext) => {
+      await Promise.resolve();
+      seen.push(`${source} saved`);
+    };
+    const hooks: Hook[] = [
+      { name: 'logs', source: logs },
+      { name: 'saves', source: saves },
+    ];
+    expect(
+      await runHooks(
+        'source',
+        hooks,
+        rawInput(smallPixels()),
+        pointContext(),
+        'a.jpg'
+      )
+    ).toBeUndefined();
+    expect(seen).toEqual(['a.jpg', 'a.jpg saved']);
+  });
+
   test('in order, each on the image the previous one gave', async () => {
     const seen: number[] = [];
     const hooks: Hook[] = [
@@ -841,13 +867,12 @@ describe('hook concurrency', () => {
   const counting = (extra: Partial<Hook> = {}) => {
     const stats = { max: 0, calls: 0 };
     let active = 0;
-    const busy = async (): Promise<undefined> => {
+    const busy = async () => {
       stats.calls++;
       active++;
       stats.max = Math.max(stats.max, active);
       await delay(60);
       active--;
-      return undefined;
     };
     const hook: Hook = { name: 'model', source: busy, ...extra };
     return { hook, stats, busy };

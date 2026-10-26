@@ -39,12 +39,19 @@ export interface RawImage {
 /**
  * What a hook gives back:
  *
- * - `undefined`: no change.
+ * - `undefined`, or nothing: no change. A hook may only log, write to a
+ *   database or detect something.
  * - a sharp object: the image from now on. Its operations run once, when it
  *   is baked to pixels, before the next hook or step.
  * - `RawImage`: the image from now on, as is.
+ *
+ * `void` is what TypeScript calls the return of a function without a
+ * `return`: with it, such a function written apart from its hook object (a
+ * shared module, a `--hooks` file) is a valid point. Numbers, `null` or
+ * encoded bytes still aren't.
  */
-export type HookResult = Sharp | RawImage | undefined;
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- a function without a return returns void
+export type HookResult = Sharp | RawImage | undefined | void;
 
 /** A hook's return value, or a promise of it. */
 export type HookReturn = HookResult | Promise<HookResult>;

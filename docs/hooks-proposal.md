@@ -364,7 +364,17 @@ Each item was discussed with examples (plan mode), then decided:
     native paths.
 
 Also decided: elapsed timestamps (`+1s 241ms`) reverted to fixed width
-(`8d11d7e`); hooks typed TypeScript-side as returning `HookReturn`, so a
-hook function defined apart from its hook object and returning nothing
-needs a `Promise<undefined>` return type (`void` in the union is refused
-by the lint rules; inline functions are typed from the hook).
+(`8d11d7e`).
+
+Hooks that return nothing (2026-10-26): a working hook (it logs, writes
+to a database, detects something). TypeScript types a function without a
+`return` as returning `void`, not `undefined`, so one written apart from
+its hook object was refused by `HookResult` (a `Promise<undefined>` return
+type was needed). Measured on 19 cases with tsc and the lint rules:
+`HookResult = Sharp | RawImage | undefined | void` accepts every working
+case (sync or async, a guard that throws, `if` without `else`) and still
+refuses 42, `null`, encoded bytes, `stats()`, `toFile()`; `void` in a union
+needs one `eslint-disable-next-line no-invalid-void-type`. The one hole: a
+function declared `=> void` that returns 42, refused at run time. Rejected:
+`unknown` (accepts 42), `| Promise<void>` alone (sync functions still
+refused).

@@ -376,7 +376,8 @@ or a model), the run's `signal` and `logger`. The size points add the
 `resizeOptions`, `extractRegion`), `beforeFormat` the `format`, its
 encoder `options` and the `file`. It returns, or resolves to:
 
-- `undefined`: no change.
+- nothing (`undefined`): no change. A hook may only log, write to a
+  database or detect something.
 - a sharp object: baked to pixels before the next hook or step, so its
   operations run once, and before what follows (sharp runs a pipeline's
   operations in its own order, not in call order). At `beforeFormat` it is

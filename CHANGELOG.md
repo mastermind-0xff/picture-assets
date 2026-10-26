@@ -41,9 +41,11 @@ toolchain, with its bugs fixed, every argument validated and logging with
   `afterResize` (the image goes down the chain), `beforeEncode` (every
   file of the size, not the chain) and `beforeFormat` (one file). Each gets
   a new sharp object and a context (`setting`, `pixels()`, `signal`,
-  `logger`, …), and returns `undefined`, a sharp object (baked once) or
-  pixels. What a point gives is the image from there on: its size plans the
-  sizes and names the files, its alpha picks `'fallback'`.
+  `logger`, …), and returns nothing (`undefined`), a sharp object (baked
+  once) or pixels. A hook that returns nothing (it logs, writes to a
+  database, detects something) type-checks also when written apart from
+  its hook object. What a point gives is the image from there on: its size
+  plans the sizes and names the files, its alpha picks `'fallback'`.
 - Points without hooks do nothing: a run without hooks writes the same
   bytes.
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
