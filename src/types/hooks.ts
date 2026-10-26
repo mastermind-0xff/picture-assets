@@ -10,7 +10,7 @@ import type {
 /**
  * Where a hook runs, in the order of a source's run:
  *
- * - `'source'`: once per source, after it is read (EXIF orientation
+ * - `'afterSourceLoad'`: once per source, after it is read (EXIF orientation
  *   applied), before its sizes are planned.
  * - `'beforeResize'`: per size, on the image the size is resized from (the
  *   source or the previous size).
@@ -21,7 +21,11 @@ import type {
  * - `'beforeFormat'`: per file, before it is encoded.
  */
 export type HookPoint =
-  'source' | 'beforeResize' | 'afterResize' | 'beforeEncode' | 'beforeFormat';
+  | 'afterSourceLoad'
+  | 'beforeResize'
+  | 'afterResize'
+  | 'beforeEncode'
+  | 'beforeFormat';
 
 /**
  * Decoded pixels: 8 bits per channel, channels interleaved, rows from the
@@ -113,7 +117,7 @@ export interface FormatHookContext extends SizeHookContext {
  * ```ts
  * const colorGrade: Hook = {
  *   name: 'colorGrade',
- *   source: (image) => image.modulate({ saturation: 1.1 }),
+ *   afterSourceLoad: (image) => image.modulate({ saturation: 1.1 }),
  * };
  * ```
  */
@@ -136,7 +140,7 @@ export interface Hook {
    * formats in progress).
    */
   readonly concurrency?: number;
-  readonly source?: (image: Sharp, context: HookContext) => HookReturn;
+  readonly afterSourceLoad?: (image: Sharp, context: HookContext) => HookReturn;
   readonly beforeResize?: (
     image: Sharp,
     context: SizeHookContext

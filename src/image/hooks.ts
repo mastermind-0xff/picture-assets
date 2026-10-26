@@ -24,7 +24,7 @@ export interface ResolvedHooks extends Readonly<
 /** No hooks: every point is skipped. */
 export const NO_HOOKS: ResolvedHooks = Object.freeze({
   all: [],
-  source: [],
+  afterSourceLoad: [],
   beforeResize: [],
   afterResize: [],
   beforeEncode: [],
@@ -38,7 +38,7 @@ export const groupHooks = (hooks: readonly Hook[]): ResolvedHooks => {
     hooks.filter((hook) => hook[point] !== undefined);
   return {
     all: hooks,
-    source: at('source'),
+    afterSourceLoad: at('afterSourceLoad'),
     beforeResize: at('beforeResize'),
     afterResize: at('afterResize'),
     beforeEncode: at('beforeEncode'),
@@ -160,7 +160,7 @@ const checkRawImage = (image: RawImage): RawImage => {
 
 /** What a point tells its hooks, beyond what each image tells. */
 type PointContext<P extends HookPoint> = Omit<
-  P extends 'source' ? HookContext
+  P extends 'afterSourceLoad' ? HookContext
   : P extends 'beforeFormat' ? FormatHookContext
   : SizeHookContext,
   'point' | 'width' | 'height' | 'channels' | 'pixels'

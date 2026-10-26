@@ -349,7 +349,7 @@ await generateAssets({
     {
       name: 'grade',
       key: 'warm-1',
-      source: (image) => image.modulate({ saturation: 1.1 }),
+      afterSourceLoad: (image) => image.modulate({ saturation: 1.1 }),
     },
     {
       name: 'avifSharpen',
@@ -360,13 +360,13 @@ await generateAssets({
 });
 ```
 
-| Point          | Runs                                                                            | Changes                                                                      |
-| -------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `source`       | Once per source, after it is read (EXIF orientation applied)                    | The source: the sizes are planned from what it gives                         |
-| `beforeResize` | Per size, on the image the size is resized from (the source or a previous size) | This size, and the sizes resized from it                                     |
-| `afterResize`  | Per size, after the resize                                                      | This size, and the sizes resized from it: effects add up down the chain      |
-| `beforeEncode` | Per size, once the next sizes took it                                           | Every file of this size, not the chain: a watermark at each size's own scale |
-| `beforeFormat` | Per file, before it is encoded                                                  | That file. The format is set after the hook: it can't change it              |
+| Point             | Runs                                                                            | Changes                                                                      |
+| ----------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `afterSourceLoad` | Once per source, after it is read (EXIF orientation applied)                    | The source: the sizes are planned from what it gives                         |
+| `beforeResize`    | Per size, on the image the size is resized from (the source or a previous size) | This size, and the sizes resized from it                                     |
+| `afterResize`     | Per size, after the resize                                                      | This size, and the sizes resized from it: effects add up down the chain      |
+| `beforeEncode`    | Per size, once the next sizes took it                                           | Every file of this size, not the chain: a watermark at each size's own scale |
+| `beforeFormat`    | Per file, before it is encoded                                                  | That file. The format is set after the hook: it can't change it              |
 
 Each function gets a new sharp object over the image, never one the run
 uses, and a context: the `source` path, the image's `width`, `height` and
@@ -385,17 +385,17 @@ encoder `options` and the `file`. It returns, or resolves to:
 - pixels, `{ data, info: { width, height, channels } }`: used as they are.
 
 **What a point gives is the image from there on**, its size and
-transparency included. A `source` hook that upscales gets the larger sizes
-made where `upscale: false` would skip them; one that adds alpha makes
-`'fallback'` write PNG. A size whose hooks change its size names its files
+transparency included. An `afterSourceLoad` hook that upscales gets the
+larger sizes made where `upscale: false` would skip them; one that adds
+alpha makes `'fallback'` write PNG. A size whose hooks change its size names its files
 by the new size and hands it to the next sizes. An image of another aspect
 ratio (a hero crop at `beforeResize`) is cropped to the size, as built-in
 crops are, not stretched.
 
 **Cost.** A point without hooks does nothing: a run without hooks writes
 the same bytes in the same time. A hook costs its own work and, for a sharp
-object, one bake to pixels, at the image's size: a `source` hook works on
-the whole source (see [bench/hooks.js](bench/README.md#results)).
+object, one bake to pixels, at the image's size: an `afterSourceLoad`
+hook works on the whole source (see [bench/hooks.js](bench/README.md#results)).
 
 **Concurrency.** A hook runs as many times at once as there are sources
 in progress (and formats, at `beforeFormat`): 4 by default, a thread per
@@ -407,7 +407,7 @@ every run in the process, while the rest of the run goes on.
 const upscaler = {
   name: 'upscaler',
   concurrency: 1, // one model run at a time
-  source: async (_image, { pixels }) => runModel(await pixels()),
+  afterSourceLoad: async (_image, { pixels }) => runModel(await pixels()),
 };
 ```
 
@@ -417,7 +417,7 @@ image in memory.
 
 **Failures.** A hook that throws, or returns something else, fails with a
 `HookError` (its `hook`, its `point`, the hook's error as its `cause`): its
-size, its file at `beforeFormat`, its source at `source`, under
+size, its file at `beforeFormat`, its source at `afterSourceLoad`, under
 `abortScope` as any failure.
 
 **Logs.** At `'debug'`, each hook call logs when it starts and when it

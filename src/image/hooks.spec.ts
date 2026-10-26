@@ -110,12 +110,12 @@ describe('runHooks', () => {
       seen.push(`${source} saved`);
     };
     const hooks: Hook[] = [
-      { name: 'logs', source: logs },
-      { name: 'saves', source: saves },
+      { name: 'logs', afterSourceLoad: logs },
+      { name: 'saves', afterSourceLoad: saves },
     ];
     expect(
       await runHooks(
-        'source',
+        'afterSourceLoad',
         hooks,
         rawInput(smallPixels()),
         pointContext(),
@@ -130,21 +130,21 @@ describe('runHooks', () => {
     const hooks: Hook[] = [
       {
         name: 'wider',
-        source: (image, { width }) => {
+        afterSourceLoad: (image, { width }) => {
           seen.push(width);
           return image.extend({ right: 4 });
         },
       },
       {
         name: 'taller',
-        source: (image, { width, height }) => {
+        afterSourceLoad: (image, { width, height }) => {
           seen.push(width, height);
           return image.extend({ bottom: 2 });
         },
       },
     ];
     const result = await runHooks(
-      'source',
+      'afterSourceLoad',
       hooks,
       rawInput(smallPixels()),
       pointContext(),
@@ -157,8 +157,8 @@ describe('runHooks', () => {
   test('pixels returned are used as they are', async () => {
     const pixels = smallPixels();
     const result = await runHooks(
-      'source',
-      [{ name: 'raw', source: () => pixels }],
+      'afterSourceLoad',
+      [{ name: 'raw', afterSourceLoad: () => pixels }],
       rawInput(smallPixels()),
       pointContext(),
       'a.jpg'
@@ -171,21 +171,21 @@ describe('runHooks', () => {
     const hooks: Hook[] = [
       {
         name: 'forgets',
-        source: (image) => {
+        afterSourceLoad: (image) => {
           images.push(image);
           image.negate();
         },
       },
       {
         name: 'checks',
-        source: (image) => {
+        afterSourceLoad: (image) => {
           images.push(image);
         },
       },
     ];
     expect(
       await runHooks(
-        'source',
+        'afterSourceLoad',
         hooks,
         rawInput(smallPixels()),
         pointContext(),
@@ -198,11 +198,11 @@ describe('runHooks', () => {
   test('pixels(): a copy the hook owns', async () => {
     const input = smallPixels();
     const result = await runHooks(
-      'source',
+      'afterSourceLoad',
       [
         {
           name: 'invert',
-          source: async (_image, { pixels }) => {
+          afterSourceLoad: async (_image, { pixels }) => {
             const own = await pixels();
             for (let index = 0; index < own.data.length; index++)
               own.data[index] = 255 - own.data[index]!;
@@ -236,12 +236,12 @@ describe('runHooks', () => {
     class Brighten {
       readonly name = 'brighten';
       readonly amount = 1.2;
-      source(image: Sharp) {
+      afterSourceLoad(image: Sharp) {
         return image.modulate({ brightness: this.amount });
       }
     }
     const result = await runHooks(
-      'source',
+      'afterSourceLoad',
       [new Brighten()],
       rawInput(smallPixels()),
       pointContext(),
@@ -251,10 +251,10 @@ describe('runHooks', () => {
   });
 
   test('a throw or another return fails with a HookError naming the hook', async () => {
-    const run = (source: NonNullable<Hook['source']>) =>
+    const run = (source: NonNullable<Hook['afterSourceLoad']>) =>
       runHooks(
-        'source',
-        [{ name: 'broken', source }],
+        'afterSourceLoad',
+        [{ name: 'broken', afterSourceLoad: source }],
         rawInput(smallPixels()),
         pointContext(),
         'a.jpg'
@@ -266,9 +266,10 @@ describe('runHooks', () => {
     expect(error).toBeInstanceOf(HookError);
     expect(error).toMatchObject({
       hook: 'broken',
-      point: 'source',
+      point: 'afterSourceLoad',
       cause,
-      message: 'Hook broken failed at source of a.jpg: model not found',
+      message:
+        'Hook broken failed at afterSourceLoad of a.jpg: model not found',
     });
 
     await expect(run(() => 'done' as never)).rejects.toThrow(
@@ -278,7 +279,7 @@ describe('runHooks', () => {
     await expect(
       run((image) => image.png().toBuffer() as never)
     ).rejects.toThrow(
-      /^Hook broken failed at source of a\.jpg: returned Buffer\(\d+ bytes\): expected/
+      /^Hook broken failed at afterSourceLoad of a\.jpg: returned Buffer\(\d+ bytes\): expected/
     );
     await expect(
       run(() => ({ data: Buffer.alloc(5), info: smallPixels().info }))
@@ -369,14 +370,14 @@ describe('runFormatHooks', () => {
 
 describe('groupHooks', () => {
   test('by point, in order', () => {
-    const a: Hook = { name: 'a', source: () => undefined };
+    const a: Hook = { name: 'a', afterSourceLoad: () => undefined };
     const b: Hook = {
       name: 'b',
-      source: () => undefined,
+      afterSourceLoad: () => undefined,
       afterResize: () => undefined,
     };
     expect(groupHooks([a, b])).toMatchObject({
-      source: [a, b],
+      afterSourceLoad: [a, b],
       afterResize: [b],
       beforeResize: [],
     });
@@ -386,7 +387,7 @@ describe('groupHooks', () => {
 /** A hook at every point that changes nothing. */
 const noOpHook: Hook = {
   name: 'noop',
-  source: () => undefined,
+  afterSourceLoad: () => undefined,
   beforeResize: () => undefined,
   afterResize: () => undefined,
   beforeEncode: () => undefined,
@@ -439,7 +440,7 @@ describe('hooks in the pipeline', () => {
       };
     const hook: Hook = {
       name: 'record',
-      source: record('source'),
+      afterSourceLoad: record('afterSourceLoad'),
       beforeResize: record('beforeResize'),
       afterResize: record('afterResize'),
       beforeEncode: record('beforeEncode'),
@@ -455,7 +456,7 @@ describe('hooks in the pipeline', () => {
     // the formats of a size are encoded at the same time
     const sorted = (from: number) => calls.slice(from, from + 2).sort();
     expect(calls.slice(0, 4)).toEqual([
-      'source',
+      'afterSourceLoad',
       'beforeResize 400',
       'afterResize 400',
       'beforeEncode 400',
@@ -552,7 +553,7 @@ describe('hooks in the pipeline', () => {
     expect((await pixel(`${split}landscape@200w.png`, 100, 75))[0]).toBe(r);
   });
 
-  test('a source hook changes the source: sizes are planned from its image', async () => {
+  test('an afterSourceLoad hook changes the source: sizes are planned from its image', async () => {
     const out = outDir();
     const result = await generateSingleSourceAssets(
       file('landscape.jpg'),
@@ -565,7 +566,7 @@ describe('hooks in the pipeline', () => {
         hooks: [
           {
             name: 'upscale',
-            source: (image, { width, height }) =>
+            afterSourceLoad: (image, { width, height }) =>
               image.resize(width * 2, height * 2),
           },
         ],
@@ -663,7 +664,9 @@ describe('hooks in the pipeline', () => {
       ['fallback'],
       {
         ...silent,
-        hooks: [{ name: 'alpha', source: (image) => image.ensureAlpha(0.5) }],
+        hooks: [
+          { name: 'alpha', afterSourceLoad: (image) => image.ensureAlpha(0.5) },
+        ],
       }
     );
     await generateSingleSourceAssets(
@@ -676,7 +679,7 @@ describe('hooks in the pipeline', () => {
         hooks: [
           {
             name: 'flatten',
-            source: (image) => image.flatten({ background: '#fff' }),
+            afterSourceLoad: (image) => image.flatten({ background: '#fff' }),
           },
         ],
       }
@@ -782,12 +785,12 @@ describe('hooks in the pipeline', () => {
       outDir(),
       [{ width: 400 }],
       ['webp'],
-      { ...silent, hooks: [{ name: 'grade', source: fail }] }
+      { ...silent, hooks: [{ name: 'grade', afterSourceLoad: fail }] }
     );
     expect(sourceResult).toMatchObject({
       status: 'failed',
       outputsBySetting: [],
-      error: { hook: 'grade', point: 'source' },
+      error: { hook: 'grade', point: 'afterSourceLoad' },
     });
 
     const fileResult = await generateSingleSourceAssets(
@@ -851,7 +854,7 @@ describe('hooks in the pipeline', () => {
       hooks: [
         {
           name: 'grade',
-          source: (image) => image.modulate({ saturation: 1.2 }),
+          afterSourceLoad: (image) => image.modulate({ saturation: 1.2 }),
         },
       ],
     });
@@ -859,8 +862,10 @@ describe('hooks in the pipeline', () => {
     expect(
       messages('debug').filter((message) => message.startsWith('Hook grade'))
     ).toEqual([
-      `Hook grade start: source of ${displayPath(path.join(images, 'a.png'))}`,
-      expect.stringMatching(/^Hook grade end: source of .+a\.png in \d+ms$/),
+      `Hook grade start: afterSourceLoad of ${displayPath(path.join(images, 'a.png'))}`,
+      expect.stringMatching(
+        /^Hook grade end: afterSourceLoad of .+a\.png in \d+ms$/
+      ),
     ]);
   });
 });
@@ -880,7 +885,7 @@ describe('hook concurrency', () => {
       await delay(60);
       active--;
     };
-    const hook: Hook = { name: 'model', source: busy, ...extra };
+    const hook: Hook = { name: 'model', afterSourceLoad: busy, ...extra };
     return { hook, stats, busy };
   };
 
@@ -920,7 +925,7 @@ describe('hook concurrency', () => {
       {
         name: 'flaky',
         concurrency: 1,
-        source: async () => {
+        afterSourceLoad: async () => {
           await delay(20);
           if (++calls === 1) throw new Error('out of GPU memory');
         },
@@ -943,7 +948,7 @@ describe('hook concurrency', () => {
         {
           name: 'model',
           concurrency: 1,
-          source: async () => {
+          afterSourceLoad: async () => {
             calls++;
             controller.abort(new Error('stopped'));
             await delay(60);
@@ -956,7 +961,7 @@ describe('hook concurrency', () => {
     expect(result.status).toBe('aborted');
     expect(
       messages('debug').filter((message) =>
-        message.startsWith('Hook model waiting: source of ')
+        message.startsWith('Hook model waiting: afterSourceLoad of ')
       )
     ).toHaveLength(2);
   });

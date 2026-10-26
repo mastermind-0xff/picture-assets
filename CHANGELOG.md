@@ -36,7 +36,7 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Added: hooks
 
-- **`hooks`**: functions in the resize chain, at five points: `source`
+- **`hooks`**: functions in the resize chain, at five points: `afterSourceLoad`
   (once per source, before its sizes are planned), `beforeResize`,
   `afterResize` (the image goes down the chain), `beforeEncode` (every
   file of the size, not the chain) and `beforeFormat` (one file). Each gets
@@ -49,7 +49,7 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - Points without hooks do nothing: a run without hooks writes the same
   bytes.
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
-  (`beforeFormat`) or the source (`source`), under `abortScope`.
+  (`beforeFormat`) or the source (`afterSourceLoad`), under `abortScope`.
 - Debug logs when each hook starts and ends, with its time.
 - **`--hooks <file>`**: a JS module whose default export is a list of
   hooks, a hook, or a function returning them, over the config file's.
@@ -85,7 +85,7 @@ toolchain, with its bugs fixed, every argument validated and logging with
   batch, for 19MB more peak memory per photo (11% for the batch). Every
   size from the source of a decoded JPEG is now exactly a resize of its
   full pixels: no shrink-on-load approximation.
-- **A source hook's decode is reused**: when a `source` hook reads
+- **An `afterSourceLoad` hook's decode is reused**: when one reads
   `pixels()` and changes nothing, the sizes resize from those pixels
   instead of decoding the source again.
 - **Formats share a size's pixels**: each format gets its own sharp object

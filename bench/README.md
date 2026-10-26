@@ -162,20 +162,20 @@ fine texture, JPEG blocks).
 **hooks.js**: pipeline.js's photo, sizes and formats (2048, 1024, 512;
 WebP and JPEG), with one hook per case.
 
-| Case                                  | Mean  | vs no hooks |
-| ------------------------------------- | ----- | ----------- |
-| no hooks                              | 675ms |             |
-| a hook at every point, no change      | 716ms | 6% slower   |
-| `source`: `modulate`                  | 882ms | 31% slower  |
-| `source`: `pixels()`, a gain in JS    | 751ms | 11% slower  |
-| `afterResize`: `sharpen`              | 799ms | 18% slower  |
-| `beforeEncode`: a translucent overlay | 738ms | 9% slower   |
-| `beforeFormat`: `sharpen`, WebP only  | 776ms | 15% slower  |
+| Case                                   | Mean  | vs no hooks |
+| -------------------------------------- | ----- | ----------- |
+| no hooks                               | 675ms |             |
+| a hook at every point, no change       | 716ms | 6% slower   |
+| `afterSourceLoad`: `modulate`          | 882ms | 31% slower  |
+| `afterSourceLoad`: `pixels()`, JS gain | 751ms | 11% slower  |
+| `afterResize`: `sharpen`               | 799ms | 18% slower  |
+| `beforeEncode`: a translucent overlay  | 738ms | 9% slower   |
+| `beforeFormat`: `sharpen`, WebP only   | 776ms | 15% slower  |
 
 Recorded with other processes busy: no hooks ran in 582ms in pipeline.js
 the same minutes, and before sources were decoded first, hooks that change
-nothing measured 746ms against 748ms without hooks. A `source` hook costs
-its work at the photo's full size (11.4 megapixels): a `modulate` and its
+nothing measured 746ms against 748ms without hooks. An `afterSourceLoad`
+hook costs its work at the photo's full size (11.4 megapixels): a `modulate` and its
 bake about 200ms, a copy of the pixels and a loop over 34 million bytes
 about 80ms. A sharpen costs about as much baked per size (`afterResize`,
 for both formats) as run in the WebP encodes (`beforeFormat`): three

@@ -6,10 +6,11 @@
  * - `every point, no change`: a hook at all 5 points returning undefined,
  *   so nothing is baked: the cost of calling hooks (and their debug logs,
  *   filtered here).
- * - `source: modulate`: a color grade, baked once at the source's full
+ * - `afterSourceLoad: modulate`: a color grade, baked once at the source's full
  *   size.
- * - `source: pixels() loop`: the same place in JS: a copy of the decoded
- *   source (32.7 MB), a gain on every byte, the pixels returned as they are.
+ * - `afterSourceLoad: pixels() loop`: the same place in JS: a copy of the
+ *   decoded source (32.7 MB), a gain on every byte, the pixels returned as
+ *   they are.
  * - `afterResize: sharpen`: baked once per size, before the next size.
  * - `beforeEncode: overlay`: a translucent band composited on every size,
  *   baked once per size, for all its formats.
@@ -40,23 +41,24 @@ const CASES = {
   'every point, no change': [
     {
       name: 'none',
-      source: none,
+      afterSourceLoad: none,
       beforeResize: none,
       afterResize: none,
       beforeEncode: none,
       beforeFormat: none,
     },
   ],
-  'source: modulate': [
+  'afterSourceLoad: modulate': [
     {
       name: 'grade',
-      source: (image) => image.modulate({ saturation: 1.1, brightness: 1.02 }),
+      afterSourceLoad: (image) =>
+        image.modulate({ saturation: 1.1, brightness: 1.02 }),
     },
   ],
-  'source: pixels() loop': [
+  'afterSourceLoad: pixels() loop': [
     {
       name: 'gain',
-      source: async (_image, { pixels }) => {
+      afterSourceLoad: async (_image, { pixels }) => {
         const image = await pixels();
         const { data } = image;
         for (let index = 0; index < data.length; index++)

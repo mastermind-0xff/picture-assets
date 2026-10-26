@@ -1,8 +1,8 @@
 /**
  * Hooks: functions in the resize chain, at the points they implement.
  *
- * - `source`: a color grade, once per source, before the sizes are planned:
- *   the cheapest place for heavy work.
+ * - `afterSourceLoad`: a color grade, once per source, before the sizes
+ *   are planned: the cheapest place for heavy work.
  * - `beforeResize`: a hero crop. Sizes with another aspect ratio are cut
  *   around a focal point before they are resized, where the built-in crop
  *   keeps the middle (or, with `position: 'attention'`, what sharp finds
@@ -32,7 +32,7 @@ const colorGrade = {
   name: 'colorGrade',
   // in the manifest's hash: change it when the grade changes
   key: 'warm-1',
-  source: (image) =>
+  afterSourceLoad: (image) =>
     image.modulate({ saturation: 1.12, brightness: 1.02 }).linear(1.04, -4),
 };
 

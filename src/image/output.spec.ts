@@ -129,10 +129,10 @@ describe('sources decoded first', () => {
     }
   });
 
-  test("a source hook's decode is reused: decoded once", async () => {
+  test("an afterSourceLoad hook's decode is reused: decoded once", async () => {
     const readsPixels: Hook = {
       name: 'detector',
-      source: async (_image, { pixels }) => {
+      afterSourceLoad: async (_image, { pixels }) => {
         await pixels();
       },
     };

@@ -232,13 +232,20 @@ describe('generateAssets: manifest and incremental runs', () => {
     const only = (batch: ResultBatch) =>
       batch.sources.map(({ status }) => status);
     await run(root, output, {
-      hooks: [{ name: 'grade', source: (image: Sharp) => image.negate() }],
+      hooks: [
+        { name: 'grade', afterSourceLoad: (image: Sharp) => image.negate() },
+      ],
     });
     // the same code: unchanged
     expect(
       only(
         await run(root, output, {
-          hooks: [{ name: 'grade', source: (image: Sharp) => image.negate() }],
+          hooks: [
+            {
+              name: 'grade',
+              afterSourceLoad: (image: Sharp) => image.negate(),
+            },
+          ],
         })
       )
     ).toEqual(['skipped', 'skipped', 'skipped']);
@@ -246,7 +253,9 @@ describe('generateAssets: manifest and incremental runs', () => {
     expect(
       only(
         await run(root, output, {
-          hooks: [{ name: 'grade', source: (image: Sharp) => image.flop() }],
+          hooks: [
+            { name: 'grade', afterSourceLoad: (image: Sharp) => image.flop() },
+          ],
         })
       )
     ).toEqual(['succeed', 'succeed', 'succeed']);
@@ -398,7 +407,7 @@ describe('planAssets', () => {
       sizes: [200],
       formats: ['webp'],
       logger,
-      hooks: [{ name: 'upscale', source }],
+      hooks: [{ name: 'upscale', afterSourceLoad: source }],
     });
     expect(source).not.toHaveBeenCalled();
     expect(plan.hooksNotRun).toEqual(['upscale']);

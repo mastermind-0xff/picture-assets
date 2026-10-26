@@ -232,7 +232,7 @@ export const parseLogger = (value: unknown): LogLevel | AssetsLogger => {
 
 /** Points a hook can implement, in the order of a source's run. */
 export const HOOK_POINTS = [
-  'source',
+  'afterSourceLoad',
   'beforeResize',
   'afterResize',
   'beforeEncode',
@@ -258,7 +258,9 @@ export const parseHooks = (value: unknown): readonly Hook[] => {
       throw new TypeError(`Hook ${index} ${describe(hook)}: ${reason}`);
     };
     if (!isPlainObject(hook))
-      return fail('must be an object like { name, source: (image) => … }.');
+      return fail(
+        'must be an object like { name, afterSourceLoad: (image) => … }.'
+      );
     const { name, key, concurrency } = hook;
     if (typeof name !== 'string' || name.trim() === '')
       return fail('needs a name, for the logs, errors and the manifest.');

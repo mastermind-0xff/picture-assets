@@ -2,13 +2,13 @@
  * Hooks with pixels: what a hook gives is the image from then on, its size
  * and transparency included.
  *
- * - `upscaler` at `source`: a stand-in for an AI upscaler (onnxruntime, an
- *   external binary), which takes pixels and gives back pixels twice the
- *   size. The sizes are planned after it: the 1300 pixels wide photo gets
+ * - `upscaler` at `afterSourceLoad`: a stand-in for an AI upscaler
+ *   (onnxruntime, an external binary), which takes pixels and gives back
+ *   pixels twice the size. The sizes are planned after it: the 1300 pixels wide photo gets
  *   the `responsive` preset's 2560 and 1920, which the preset skips without
  *   the hook (`upscale: false` is its default).
- * - `vignette` at `source`, after the upscaler: a loop over the pixels that
- *   fades the edges to transparent. The source has alpha from then on, so
+ * - `vignette` at `afterSourceLoad`, after the upscaler: a loop over the
+ *   pixels that fades the edges to transparent. The source has alpha from then on, so
  *   every size keeps it, and `'fallback'` writes PNG instead of JPEG.
  *
  * Run: npm run build && node examples/hooks-pixels.js
@@ -43,7 +43,7 @@ const upscaler = {
   name: 'upscaler',
   // in the manifest's hash: change it with the model
   key: 'stand-in-2x',
-  source: async (_image, { pixels, signal }) => {
+  afterSourceLoad: async (_image, { pixels, signal }) => {
     const upscaled = await upscale2x(await pixels());
     // a long job checks the run's signal: Ctrl+C stops it
     signal.throwIfAborted();
@@ -54,7 +54,7 @@ const upscaler = {
 /** @type {import('picture-assets').Hook} */
 const vignette = {
   name: 'vignette',
-  source: async (_image, { pixels }) => {
+  afterSourceLoad: async (_image, { pixels }) => {
     const { data, info } = await pixels();
     const { width, height, channels } = info;
     const rgba = Buffer.alloc(width * height * 4);

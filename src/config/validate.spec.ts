@@ -290,17 +290,17 @@ describe('parseBoolean', () => {
 });
 
 describe('parseHooks', () => {
-  const source = () => undefined;
+  const none = () => undefined;
 
   test('a copy of the list, the hooks as given', () => {
     class Grade {
       readonly name = 'grade';
       readonly strength = 2;
-      source() {
+      afterSourceLoad() {
         return undefined;
       }
     }
-    const hooks = [{ name: 'a', key: '1', source }, new Grade()];
+    const hooks = [{ name: 'a', key: '1', afterSourceLoad: none }, new Grade()];
     const parsed = parseHooks(hooks);
     expect(parsed).toEqual(hooks);
     expect(parsed).not.toBe(hooks);
@@ -309,32 +309,38 @@ describe('parseHooks', () => {
   });
 
   test('invalid hooks throw, naming the hook and why', () => {
-    expect(() => parseHooks({ name: 'a', source })).toThrow(
+    expect(() => parseHooks({ name: 'a', afterSourceLoad: none })).toThrow(
       'Hooks must be a list of hook objects'
     );
-    expect(() => parseHooks([source])).toThrow('Hook 0');
-    expect(() => parseHooks([{ source }])).toThrow('needs a name');
-    expect(() => parseHooks([{ name: ' ', source }])).toThrow('needs a name');
+    expect(() => parseHooks([none])).toThrow('Hook 0');
+    expect(() => parseHooks([{ afterSourceLoad: none }])).toThrow(
+      'needs a name'
+    );
+    expect(() => parseHooks([{ name: ' ', afterSourceLoad: none }])).toThrow(
+      'needs a name'
+    );
     expect(() =>
       parseHooks([
-        { name: 'a', source },
-        { name: 'a', beforeFormat: source },
+        { name: 'a', afterSourceLoad: none },
+        { name: 'a', beforeFormat: none },
       ])
     ).toThrow('Hook 1 {"name":"a"}: another hook is named \'a\'.');
-    expect(() => parseHooks([{ name: 'a', key: 2, source }])).toThrow(
-      'key must be a string.'
-    );
+    expect(() =>
+      parseHooks([{ name: 'a', key: 2, afterSourceLoad: none }])
+    ).toThrow('key must be a string.');
     for (const concurrency of [0, 1.5, '2'])
-      expect(() => parseHooks([{ name: 'a', concurrency, source }])).toThrow(
-        'concurrency must be a whole number from 1.'
-      );
-    expect(parseHooks([{ name: 'a', concurrency: 1, source }])).toHaveLength(1);
+      expect(() =>
+        parseHooks([{ name: 'a', concurrency, afterSourceLoad: none }])
+      ).toThrow('concurrency must be a whole number from 1.');
+    expect(
+      parseHooks([{ name: 'a', concurrency: 1, afterSourceLoad: none }])
+    ).toHaveLength(1);
     expect(() => parseHooks([{ name: 'a', afterResize: 'sharpen' }])).toThrow(
       'afterResize must be a function.'
     );
     // a typo leaves no point
-    expect(() => parseHooks([{ name: 'a', beforeresize: source }])).toThrow(
-      'has no function at any point: source, beforeResize, afterResize, beforeEncode, beforeFormat.'
+    expect(() => parseHooks([{ name: 'a', beforeresize: none }])).toThrow(
+      'has no function at any point: afterSourceLoad, beforeResize, afterResize, beforeEncode, beforeFormat.'
     );
     for (const hook of [null, 'a', []])
       expect(() => parseHooks([hook])).toThrow(TypeError);

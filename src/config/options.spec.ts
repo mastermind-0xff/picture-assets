@@ -63,7 +63,7 @@ describe('resolveOptions', () => {
   });
 
   test('hooks: grouped by point, in the given order', () => {
-    const grade: Hook = { name: 'grade', source: () => undefined };
+    const grade: Hook = { name: 'grade', afterSourceLoad: () => undefined };
     const crop: Hook = {
       name: 'crop',
       beforeResize: () => undefined,
@@ -73,7 +73,7 @@ describe('resolveOptions', () => {
     const { hooks } = resolveOptions({ hooks: [grade, crop, mark] }, {});
     expect(hooks).toEqual({
       all: [grade, crop, mark],
-      source: [grade],
+      afterSourceLoad: [grade],
       beforeResize: [crop],
       afterResize: [],
       beforeEncode: [],

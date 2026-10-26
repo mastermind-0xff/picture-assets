@@ -178,7 +178,7 @@ describe('runCli', () => {
         output: 'public',
         sizes: [200],
         formats: ['webp'],
-        hooks: [{ name: 'grade', source: (image) => image.modulate({ saturation: 1.1 }) }],
+        hooks: [{ name: 'grade', afterSourceLoad: (image) => image.modulate({ saturation: 1.1 }) }],
       };`
     );
     const { code, stdout, stderr } = await run(
@@ -210,7 +210,7 @@ describe('runCli', () => {
     test('a list of hooks, applied to the run', async () => {
       const cwd = await site({
         'hooks.mjs': `export default [
-          { name: 'shrink', source: (image) => image.resize(40, 30) },
+          { name: 'shrink', afterSourceLoad: (image) => image.resize(40, 30) },
         ];`,
       });
       const { code, stdout } = await run(
@@ -239,11 +239,11 @@ describe('runCli', () => {
       const cwd = await site({
         'picture-assets.config.mjs': `export default {
           output: 'out',
-          hooks: [{ name: 'fromConfig', source: () => undefined }],
+          hooks: [{ name: 'fromConfig', afterSourceLoad: () => undefined }],
         };`,
-        'one.mjs': `export default { name: 'one', source: () => undefined };`,
+        'one.mjs': `export default { name: 'one', afterSourceLoad: () => undefined };`,
         'factory.mjs': `export default async () => [
-          { name: 'a', source: () => undefined },
+          { name: 'a', afterSourceLoad: () => undefined },
           { name: 'b', beforeFormat: () => undefined },
         ];`,
       });

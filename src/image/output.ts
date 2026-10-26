@@ -61,7 +61,7 @@ export interface SourcePlan {
   readonly encoders: Encoder[];
 }
 
-/** What a source is, as read or as its `source` hooks made it. */
+/** What a source is, as read or as its `afterSourceLoad` hooks made it. */
 export interface SourceInfo {
   /** Size as shown (auto-oriented). */
   readonly width: number;
@@ -330,9 +330,10 @@ const toHookSetting = ({
  *
  * Hooks run at their points (see `HookPoint`), and the image each point's
  * hooks give is the image from there on, with its size and transparency:
- * a `source` hook's image is planned as the source; after `afterResize`, a
- * size's image is what the next sizes resize from; after `beforeEncode`, it
- * is only what this size's files encode. Points without hooks cost nothing.
+ * an `afterSourceLoad` hook's image is planned as the source; after
+ * `afterResize`, a size's image is what the next sizes resize from; after
+ * `beforeEncode`, it is only what this size's files encode. Points without
+ * hooks cost nothing.
  *
  * @param srcPath Source's image full path.
  * @param settings Settings list to generate files.
@@ -343,8 +344,8 @@ const toHookSetting = ({
  * @returns Promise that resolves to a list of objects containing metadata about
  * each setting and its resulting files, whether the source stopped before
  * its last setting, and the source's size.
- * @throws When the source can't be read, a `source` hook fails or the output
- * directory can't be created: nothing was processed.
+ * @throws When the source can't be read, an `afterSourceLoad` hook fails
+ * or the output directory can't be created: nothing was processed.
  */
 export const sourceToSettings = async (
   srcPath: string,
@@ -374,13 +375,13 @@ export const sourceToSettings = async (
   const inputOf = (base: ResizeBase) =>
     base.pixels ? rawInput(base.pixels) : encoded();
 
-  // the image a source hook gives is the source from now on: its size,
-  // channels and transparency plan the sizes
+  // the image an afterSourceLoad hook gives is the source from now on: its
+  // size, channels and transparency plan the sizes
   const sourcePixels =
-    hooks.source.length > 0 ?
+    hooks.afterSourceLoad.length > 0 ?
       await runHooks(
-        'source',
-        hooks.source,
+        'afterSourceLoad',
+        hooks.afterSourceLoad,
         encoded(),
         { source: srcPath, signal, logger },
         shown

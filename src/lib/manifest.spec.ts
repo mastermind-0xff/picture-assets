@@ -97,7 +97,7 @@ describe('targetHash', () => {
       });
     const grade: Hook = {
       name: 'grade',
-      source: (image) => image.modulate({ saturation: 1.1 }),
+      afterSourceLoad: (image) => image.modulate({ saturation: 1.1 }),
     };
     const hash = targetHash(manifest, target, [{ width: 100 }], options);
 
@@ -107,7 +107,7 @@ describe('targetHash', () => {
     // without a key, an edit of the code changes the hash
     const edited: Hook = {
       name: 'grade',
-      source: (image) => image.modulate({ saturation: 1.2 }),
+      afterSourceLoad: (image) => image.modulate({ saturation: 1.2 }),
     };
     expect(withHooks(edited)).not.toBe(withHooks(grade));
     // with one, the key decides: the code is not hashed
@@ -120,7 +120,7 @@ describe('targetHash', () => {
     // what a function closes over is not in its code: that needs a key
     const factory = (saturation: number): Hook => ({
       name: 'grade',
-      source: (image) => image.modulate({ saturation }),
+      afterSourceLoad: (image) => image.modulate({ saturation }),
     });
     expect(withHooks(factory(1.1))).toBe(withHooks(factory(1.2)));
     // concurrency doesn't change the files

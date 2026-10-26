@@ -5,11 +5,14 @@ session finished the `cli` branch and renamed the package; kept as working
 notes during the hooks work (branch `hooks`), and moved here on 2026-10-24
 as the history of the decisions, like `docs/cli-proposal.md`. Sections 1 to
 5 are the proposal as written before the work (line numbers of that time:
-find the functions by name); 6 and 7 what was built and what is left. The
-user documentation is the README's Hooks section.
+find the functions by name); 6 and 7 what was built and what is left; 8
+the branch `hook-results`. The user documentation is the README's Hooks
+section. Point names are those of their time: `source` is `afterSourceLoad`
+since section 8.
 
 Sections: what the author decided, what was measured, the suggested
-design, open questions, order of work, what was built, what is left.
+design, open questions, order of work, what was built, what is left, the
+names and the encoder options.
 
 ## 1. Decided by the author
 
@@ -378,3 +381,10 @@ needs one `eslint-disable-next-line no-invalid-void-type`. The one hole: a
 function declared `=> void` that returns 42, refused at run time. Rejected:
 `unknown` (accepts 42), `| Promise<void>` alone (sync functions still
 refused).
+
+## 8. Names and encoder options (2026-10-26, branch `hook-results`)
+
+1. The `source` point is renamed `afterSourceLoad` (the author): it says
+   which step it follows, and that it runs once per source, like the other
+   points' `before` / `after` and a step. Free before 1.0. Manifest hashes
+   don't change: a hook's code is hashed by the position of its point.
