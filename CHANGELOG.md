@@ -139,6 +139,9 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 
 ### Fixed
 
+- Error messages tell binary data and long lists by their size, and cut
+  descriptions at 200 characters: a hook that returned an encoded image
+  (5.6 MB) made a message of 20 MB, in 150 ms.
 - `src/log/logger.ts` didn't compile. Errors were logged as `{}`.
 - The batch processed at most 5 files.
 - After a crop, the next size kept the crop.

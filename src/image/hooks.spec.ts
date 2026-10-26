@@ -274,6 +274,12 @@ describe('runHooks', () => {
     await expect(run(() => 'done' as never)).rejects.toThrow(
       "returned 'done': expected a sharp object, pixels as { data, info } or undefined."
     );
+    // encoded bytes by mistake: told by their size, not their contents
+    await expect(
+      run((image) => image.png().toBuffer() as never)
+    ).rejects.toThrow(
+      /^Hook broken failed at source of a\.jpg: returned Buffer\(\d+ bytes\): expected/
+    );
     await expect(
       run(() => ({ data: Buffer.alloc(5), info: smallPixels().info }))
     ).rejects.toThrow('returned 5 bytes of pixels for 4x2 with 3 channels');

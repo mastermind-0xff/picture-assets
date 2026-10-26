@@ -49,17 +49,67 @@ export const ABORT_SCOPES = ['none', 'source', 'batch'] as const;
 
 const LOGGER_METHODS = ['error', 'warning', 'info', 'debug', 'verbose'];
 
-/** `JSON.stringify` gives undefined for undefined, functions and symbols. */
-const toJson = (value: unknown): string | undefined => JSON.stringify(value);
+/** Longest description of a value in a message: the rest is cut. */
+const DESCRIPTION_LENGTH = 200;
 
-/** Short description of a value for error messages. */
+/** Lists longer than this are told by their length, not their items. */
+const LIST_ITEMS = 20;
+
+/**
+ * Binary data and long lists by their size, never their contents: as JSON
+ * they would be megabytes (a hook's encoded image of 5.6 MB: 20 MB of text
+ * in 150 ms).
+ */
+const sizeOf = (value: unknown): string | undefined => {
+  if (ArrayBuffer.isView(value))
+    return `${value.constructor.name}(${value.byteLength} bytes)`;
+  if (value instanceof ArrayBuffer)
+    return `ArrayBuffer(${value.byteLength} bytes)`;
+  if (Array.isArray(value) && value.length > LIST_ITEMS)
+    return `Array(${value.length} items)`;
+  return undefined;
+};
+
+/**
+ * A `JSON.stringify` replacer: an object's binary data and long lists are
+ * told by their size before JSON reaches them (a Buffer's `toJSON` would
+ * copy its bytes into a list first). Objects without any are kept as they
+ * are, so circular ones still fail.
+ */
+const withSizes = (_key: string, value: unknown): unknown => {
+  if (typeof value !== 'object' || value === null) return value;
+  const entries: [string, unknown][] = Object.entries(value);
+  if (entries.every(([, item]) => sizeOf(item) === undefined)) return value;
+  const told = entries.map(
+    ([key, item]) => [key, sizeOf(item) ?? item] as const
+  );
+  return Array.isArray(value) ?
+      told.map(([, item]) => item)
+    : Object.fromEntries(told);
+};
+
+/** `JSON.stringify` gives undefined for undefined, functions and symbols. */
+const toJson = (value: unknown): string | undefined =>
+  JSON.stringify(value, withSizes);
+
+/**
+ * Short description of a value for error messages, at most
+ * `DESCRIPTION_LENGTH` characters. Only built for a message: it costs
+ * nothing to a run that doesn't fail.
+ */
 export const describe = (value: unknown): string => {
   if (typeof value === 'string') return `'${value}'`;
+  const size = sizeOf(value);
+  if (size !== undefined) return size;
+  let text: string;
   try {
-    return toJson(value) ?? String(value);
+    text = toJson(value) ?? String(value);
   } catch {
-    return String(value);
+    text = String(value);
   }
+  return text.length > DESCRIPTION_LENGTH ?
+      `${text.slice(0, DESCRIPTION_LENGTH)}…`
+    : text;
 };
 
 export const isPlainObject = (

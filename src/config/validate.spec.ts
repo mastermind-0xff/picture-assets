@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { createRecordingLogger } from '../test-utils/logger.js';
 import {
@@ -26,6 +26,30 @@ describe('describe', () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
     expect(describeValue(circular)).toBe('[object Object]');
+  });
+
+  test('binary data and long lists by their size, never their contents', () => {
+    const toJSON = vi.spyOn(Buffer.prototype, 'toJSON');
+    const bytes = Buffer.alloc(3_000_000);
+    expect(describeValue(bytes)).toBe('Buffer(3000000 bytes)');
+    expect(describeValue({ pixels: bytes, info: { width: 4 } })).toBe(
+      '{"pixels":"Buffer(3000000 bytes)","info":{"width":4}}'
+    );
+    expect(describeValue([bytes, 1])).toBe('["Buffer(3000000 bytes)",1]');
+    expect(toJSON).not.toHaveBeenCalled();
+    toJSON.mockRestore();
+    expect(describeValue(new Uint8Array(4))).toBe('Uint8Array(4 bytes)');
+    expect(describeValue(new ArrayBuffer(8))).toBe('ArrayBuffer(8 bytes)');
+    expect(describeValue(Array.from({ length: 1000 }, () => 0))).toBe(
+      'Array(1000 items)'
+    );
+    expect(describeValue({ list: [1, 2, 3] })).toBe('{"list":[1,2,3]}');
+  });
+
+  test('long descriptions cut at 200 characters', () => {
+    const text = describeValue({ text: 'x'.repeat(500) });
+    expect(text).toHaveLength(201);
+    expect(text.endsWith('…')).toBe(true);
   });
 });
 
