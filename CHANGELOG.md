@@ -36,11 +36,14 @@ toolchain, with its bugs fixed, every argument validated and logging with
 
 ### Added: hooks
 
-- **`hooks`**: functions in the resize chain, at five points: `afterSourceLoad`
-  (once per source, before its sizes are planned), `beforeResize`,
-  `afterResize` (the image goes down the chain), `beforeEncode` (every
-  file of the size, not the chain) and `beforeFormat` (one file). Each gets
-  a new sharp object and a context (`setting`, `pixels()`, `signal`,
+- **`hooks`**: functions in the resize chain, at six points:
+  `afterSourceLoad` (once per source, before its sizes are planned),
+  `beforeResize`, `afterResize` (the image goes down the chain),
+  `beforeEncode` (every file of the size, not the chain), `beforeFormat`
+  (one file, before its format is set) and `beforeFileWrite` (one file,
+  its format and encoder options set: a lower quality for retina sizes).
+  Each gets a new sharp object (`beforeFileWrite`: the file's own) and a
+  context (`setting`, `pixels()`, `signal`,
   `logger`, …), and returns nothing (`undefined`), a sharp object (baked
   once) or pixels. A hook that returns nothing (it logs, writes to a
   database, detects something) type-checks also when written apart from
@@ -49,7 +52,8 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - Points without hooks do nothing: a run without hooks writes the same
   bytes.
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
-  (`beforeFormat`) or the source (`afterSourceLoad`), under `abortScope`.
+  (`beforeFormat`, `beforeFileWrite`) or the source (`afterSourceLoad`),
+  under `abortScope`.
 - Debug logs when each hook starts and ends, with its time.
 - **`--hooks <file>`**: a JS module whose default export is a list of
   hooks, a hook, or a function returning them, over the config file's.

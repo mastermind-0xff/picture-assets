@@ -12,6 +12,9 @@
  *   before the files.
  * - `beforeFormat`: a little sharpening for AVIF only, which smooths fine
  *   detail.
+ * - `beforeFileWrite`: a lower AVIF quality for the 1600 wide files, which
+ *   a retina screen shows at half their pixels. The run set the format and
+ *   its options before this point: the hook's quality wins.
  *
  * `logger: 'debug'` logs when each hook starts and ends, with its time, and
  * the default logger's timestamps have milliseconds.
@@ -83,6 +86,15 @@ const avifSharpen = {
     format === 'avif' ? image.sharpen({ sigma: 0.5 }) : undefined,
 };
 
+/** @type {import('picture-assets').Hook} */
+const largeAvifQuality = {
+  name: 'largeAvifQuality',
+  beforeFileWrite: (image, { format, width }) =>
+    format === 'avif' && width >= 1600 ?
+      image.avif({ quality: 45 })
+    : undefined,
+};
+
 const result = await generateSingleSourceAssets(
   path.join(import.meta.dirname, 'images', 'house-01.jpg'),
   path.join(import.meta.dirname, 'output', 'hooks', 'house'),
@@ -94,7 +106,7 @@ const result = await generateSingleSourceAssets(
   ['avif', 'webp', 'jpg'],
   {
     logger: 'debug',
-    hooks: [colorGrade, heroCrop, watermark, avifSharpen],
+    hooks: [colorGrade, heroCrop, watermark, avifSharpen, largeAvifQuality],
   }
 );
 

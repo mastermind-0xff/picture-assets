@@ -356,33 +356,43 @@ await generateAssets({
       beforeFormat: (image, { format }) =>
         format === 'avif' ? image.sharpen({ sigma: 0.5 }) : undefined,
     },
+    {
+      name: 'retinaQuality',
+      // shown at half its pixels: a lower quality looks the same
+      beforeFileWrite: (image, { format, setting }) =>
+        format === 'avif' && setting.sizeMultiplier >= 2 ?
+          image.avif({ quality: 45 })
+        : undefined,
+    },
   ],
 });
 ```
 
-| Point             | Runs                                                                            | Changes                                                                      |
-| ----------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `afterSourceLoad` | Once per source, after it is read (EXIF orientation applied)                    | The source: the sizes are planned from what it gives                         |
-| `beforeResize`    | Per size, on the image the size is resized from (the source or a previous size) | This size, and the sizes resized from it                                     |
-| `afterResize`     | Per size, after the resize                                                      | This size, and the sizes resized from it: effects add up down the chain      |
-| `beforeEncode`    | Per size, once the next sizes took it                                           | Every file of this size, not the chain: a watermark at each size's own scale |
-| `beforeFormat`    | Per file, before it is encoded                                                  | That file. The format is set after the hook: it can't change it              |
+| Point             | Runs                                                                             | Changes                                                                      |
+| ----------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `afterSourceLoad` | Once per source, after it is read (EXIF orientation applied)                     | The source: the sizes are planned from what it gives                         |
+| `beforeResize`    | Per size, on the image the size is resized from (the source or a previous size)  | This size, and the sizes resized from it                                     |
+| `afterResize`     | Per size, after the resize                                                       | This size, and the sizes resized from it: effects add up down the chain      |
+| `beforeEncode`    | Per size, once the next sizes took it                                            | Every file of this size, not the chain: a watermark at each size's own scale |
+| `beforeFormat`    | Per file, before the run sets its format                                         | That file's image                                                            |
+| `beforeFileWrite` | Per file, after the run set its format and encoder options, before it is written | That file's encoder options (and image): what the hook sets wins             |
 
 Each function gets a new sharp object over the image, never one the run
-uses, and a context: the `source` path, the image's `width`, `height` and
+uses (but `beforeFileWrite`, see below), and a context: the `source` path, the image's `width`, `height` and
 `channels`, `pixels()` (a copy of its pixels, 8 bits per channel, for JS
 or a model), the run's `signal` and `logger`. The size points add the
 `setting` (planned `width` and `height`, `sizeMultiplier`, `suffix`,
-`resizeOptions`, `extractRegion`), `beforeFormat` the `format`, its
-encoder `options` and the `file`. It returns, or resolves to:
+`resizeOptions`, `extractRegion`), `beforeFormat` and `beforeFileWrite`
+the `format`, its encoder `options` and the `file`. It returns, or resolves to:
 
 - nothing (`undefined`): no change. A hook may only log, write to a
   database or detect something.
 - a sharp object: baked to pixels before the next hook or step, so its
   operations run once, and before what follows (sharp runs a pipeline's
-  operations in its own order, not in call order). At `beforeFormat` it is
-  encoded as it is.
-- pixels, `{ data, info: { width, height, channels } }`: used as they are.
+  operations in its own order, not in call order). At `beforeFormat` and
+  `beforeFileWrite` it is encoded as it is.
+- pixels, `{ data, info: { width, height, channels } }`: used as they are;
+  not at `beforeFileWrite`, as pixels have no format.
 
 **What a point gives is the image from there on**, its size and
 transparency included. An `afterSourceLoad` hook that upscales gets the
@@ -392,13 +402,27 @@ by the new size and hands it to the next sizes. An image of another aspect
 ratio (a hero crop at `beforeResize`) is cropped to the size, as built-in
 crops are, not stretched.
 
+**Encoder options.** `beforeFileWrite` gets the file's own sharp object,
+once the run set its format and options (`toFormat`), right before it is
+written: what the hook sets on it wins (a lower quality for retina sizes,
+lossless for a screenshot), and what it calls on it counts, returned or
+not. At `beforeFormat` the run sets its options after the hook, over the
+keys it sets (`quality`); other keys stay. Its context is `beforeFormat`'s:
+`width`, `height`, `channels` and `pixels()` are the size's image, before
+the `beforeFormat` hooks. The file's name, and its `format` in the results
+and the manifest, are the run's: a hook that changes the format
+(`toFormat('png')` on an AVIF file) writes its bytes under the `.avif`
+name, which only sharp's `fileData.format` tells. That is the hook's
+choice: the run doesn't check it.
+
 **Cost.** A point without hooks does nothing: a run without hooks writes
 the same bytes in the same time. A hook costs its own work and, for a sharp
 object, one bake to pixels, at the image's size: an `afterSourceLoad`
 hook works on the whole source (see [bench/hooks.js](bench/README.md#results)).
 
 **Concurrency.** A hook runs as many times at once as there are sources
-in progress (and formats, at `beforeFormat`): 4 by default, a thread per
+in progress (and formats, at `beforeFormat` and `beforeFileWrite`): 4 by
+default, a thread per
 core from the command line. For a GPU model or a rate limited API, give it
 a `concurrency`: its calls wait their turn, counted across its points and
 every run in the process, while the rest of the run goes on.
@@ -417,7 +441,8 @@ image in memory.
 
 **Failures.** A hook that throws, or returns something else, fails with a
 `HookError` (its `hook`, its `point`, the hook's error as its `cause`): its
-size, its file at `beforeFormat`, its source at `afterSourceLoad`, under
+size, its file at `beforeFormat` and `beforeFileWrite`, its source at
+`afterSourceLoad`, under
 `abortScope` as any failure.
 
 **Logs.** At `'debug'`, each hook call logs when it starts and when it
@@ -436,7 +461,8 @@ a run with hooks can differ from its plan. The plan names them
 (`hooksNotRun`, and a line in `--dry-run`'s output) and warns.
 
 [`examples/hooks.js`](examples/hooks.js) grades, crops around a focal
-point, watermarks and sharpens AVIF;
+point, watermarks, sharpens AVIF and lowers the quality of the largest
+AVIF;
 [`examples/hooks-pixels.js`](examples/hooks-pixels.js) upscales and adds
 alpha through `pixels()`.
 

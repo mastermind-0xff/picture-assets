@@ -31,6 +31,7 @@ import {
   fromRaw,
   hasAlphaChannel,
   rawInput,
+  runFileWriteHooks,
   runFormatHooks,
   runHooks,
   type EncodedInput,
@@ -179,6 +180,9 @@ const FLATTEN_BACKGROUND = '#ffffff';
  * @param hasAlpha Whether the image is transparent: formats without alpha
  * (JPEG) get it flattened on white instead of showing the hidden colors of
  * transparent pixels.
+ * @param beforeFileWrite The file's `beforeFileWrite` hooks, if any: they
+ * get the sharp object once its format and options are set, and give the
+ * one to write.
  * @returns Promise that fulfills with an object containing metadata about the
  * output file and format. Never rejects: an error is consumed and saved in
  * the output object.
@@ -187,16 +191,19 @@ export const sharpToFile = async (
   image: Sharp,
   file: string,
   { format, options }: Encoder,
-  hasAlpha: boolean
+  hasAlpha: boolean,
+  beforeFileWrite?: (image: Sharp) => Promise<Sharp>
 ): Promise<ResultFormat> => {
   try {
     const pipeline =
       hasAlpha && !supportsAlpha(format) ?
         image.flatten({ background: FLATTEN_BACKGROUND })
       : image;
-    const fileData = await pipeline
-      .toFormat(toSharpFormat(format), options)
-      .toFile(file);
+    const encoding = pipeline.toFormat(toSharpFormat(format), options);
+    // the hooks get the format and options set: what they set wins
+    const written =
+      beforeFileWrite ? await beforeFileWrite(encoding) : encoding;
+    const fileData = await written.toFile(file);
     return { status: 'succeed', format, file, fileData };
   } catch (error: unknown) {
     // consume the error and let upper level make the decisions
@@ -204,30 +211,39 @@ export const sharpToFile = async (
   }
 };
 
-/**
- * Runs a file's `beforeFormat` hooks: the sharp object to encode, or
- * undefined to encode the size's image.
- */
-type FormatHooks = (
-  encoder: Encoder,
-  file: string
-) => Promise<Sharp | undefined>;
+/** A file's hooks, each point's if it has any. */
+interface FileHooks {
+  /** The `beforeFormat` hooks: the sharp object to encode, if they gave one. */
+  readonly beforeFormat?:
+    | ((encoder: Encoder, file: string) => Promise<Sharp | undefined>)
+    | undefined;
+  /** The `beforeFileWrite` hooks: the sharp object to write. */
+  readonly beforeFileWrite?:
+    | ((image: Sharp, encoder: Encoder, file: string) => Promise<Sharp>)
+    | undefined;
+}
 
-/** Saves a file whose `beforeFormat` hooks may give the image to encode. */
+/** Saves a file whose hooks may give the image to encode, and to write. */
 const hookedToFile = async (
   pixels: RawImage,
   file: string,
   encoder: Encoder,
   hasAlpha: boolean,
-  beforeFormat: FormatHooks
+  { beforeFormat, beforeFileWrite }: FileHooks
 ): Promise<ResultFormat> => {
   let pipeline: Sharp;
   try {
-    pipeline = (await beforeFormat(encoder, file)) ?? fromRaw(pixels);
+    pipeline = (await beforeFormat?.(encoder, file)) ?? fromRaw(pixels);
   } catch (error: unknown) {
     return { status: 'failed', format: encoder.format, file, error };
   }
-  return sharpToFile(pipeline, file, encoder, hasAlpha);
+  return sharpToFile(
+    pipeline,
+    file,
+    encoder,
+    hasAlpha,
+    beforeFileWrite && ((image) => beforeFileWrite(image, encoder, file))
+  );
 };
 
 /**
@@ -244,8 +260,8 @@ const hookedToFile = async (
  * @param outputIdentifier Full path to the output file without the extension.
  * @param hasAlpha Whether the image is transparent, see `sharpToFile`.
  * @param logger Receives a debug log per file and an error per failure.
- * @param beforeFormat The `beforeFormat` hooks, if any: a failure fails
- * the file.
+ * @param fileHooks The `beforeFormat` and `beforeFileWrite` hooks, if any:
+ * a failure fails the file.
  * @returns Promise that fulfills with a list of objects containing metadata
  * about each format and the output file, in the order of the encoders.
  */
@@ -255,14 +271,14 @@ export const settingToFormats = async (
   outputIdentifier: string,
   hasAlpha: boolean,
   logger: AssetsLogger,
-  beforeFormat?: FormatHooks
+  fileHooks?: FileHooks
 ): Promise<ResultFormat[]> => {
   const results = await Promise.all(
     encoders.map((encoder) => {
       const file = `${outputIdentifier}.${encoder.format}`;
-      return beforeFormat === undefined ?
+      return fileHooks === undefined ?
           sharpToFile(fromRaw(pixels), file, encoder, hasAlpha)
-        : hookedToFile(pixels, file, encoder, hasAlpha, beforeFormat);
+        : hookedToFile(pixels, file, encoder, hasAlpha, fileHooks);
     })
   );
 
@@ -590,25 +606,42 @@ export const sourceToSettings = async (
         );
       identifiers.add(outputIdentifier);
 
+      const fileContext = (encoder: Encoder, file: string) => ({
+        ...sizeContext(setting),
+        format: encoder.format,
+        options: encoder.options,
+        file,
+      });
       const files = await settingToFormats(
         encoded,
         encodersFor(hasAlpha),
         outputIdentifier,
         hasAlpha,
         logger,
-        hooks.beforeFormat.length > 0 ?
-          (encoder, file) =>
-            runFormatHooks(
-              hooks.beforeFormat,
-              rawInput(encoded),
-              {
-                ...sizeContext(setting),
-                format: encoder.format,
-                options: encoder.options,
-                file,
-              },
-              displayPath(file)
-            )
+        hooks.beforeFormat.length > 0 || hooks.beforeFileWrite.length > 0 ?
+          {
+            beforeFormat:
+              hooks.beforeFormat.length > 0 ?
+                (encoder, file) =>
+                  runFormatHooks(
+                    hooks.beforeFormat,
+                    rawInput(encoded),
+                    fileContext(encoder, file),
+                    displayPath(file)
+                  )
+              : undefined,
+            beforeFileWrite:
+              hooks.beforeFileWrite.length > 0 ?
+                (image, encoder, file) =>
+                  runFileWriteHooks(
+                    hooks.beforeFileWrite,
+                    image,
+                    rawInput(encoded),
+                    fileContext(encoder, file),
+                    displayPath(file)
+                  )
+              : undefined,
+          }
         : undefined
       );
       result = {

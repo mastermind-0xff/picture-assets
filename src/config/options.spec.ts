@@ -78,6 +78,7 @@ describe('resolveOptions', () => {
       afterResize: [],
       beforeEncode: [],
       beforeFormat: [crop, mark],
+      beforeFileWrite: [],
     });
     expect(resolveOptions({}, {}).hooks).toBe(NO_HOOKS);
     expect(resolveOptions({ hooks: [] }, {}).hooks).toBe(NO_HOOKS);

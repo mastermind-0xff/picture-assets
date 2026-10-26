@@ -18,6 +18,7 @@ import { createRecordingLogger } from '../test-utils/logger.js';
 import { displayPath } from '../utils/helpers.js';
 import { ssim } from '../test-utils/ssim.js';
 import type {
+  FormatHookContext,
   Hook,
   HookContext,
   HookPoint,
@@ -29,6 +30,7 @@ import {
   encodedInput,
   groupHooks,
   rawInput,
+  runFileWriteHooks,
   runFormatHooks,
   runHooks,
 } from './hooks.js';
@@ -368,6 +370,78 @@ describe('runFormatHooks', () => {
   });
 });
 
+describe('runFileWriteHooks', () => {
+  const context = () => ({
+    ...pointContext(),
+    setting: { width: 4, height: 2, sizeMultiplier: 1 },
+    format: 'webp' as const,
+    options: { quality: 80 },
+    file: 'a@4w.webp',
+  });
+  /** The file's sharp object as the run gives it: its format set. */
+  const encoding = () =>
+    rawInput(smallPixels()).create().toFormat('webp', { quality: 80 });
+
+  test("the file's own object, in order: each hook gets what the previous gave", async () => {
+    const image = encoding();
+    const seen: Sharp[] = [];
+    let other: Sharp | undefined;
+    const hooks: Hook[] = [
+      {
+        name: 'mutates',
+        beforeFileWrite: (given) => {
+          seen.push(given);
+          given.webp({ quality: 20 });
+        },
+      },
+      {
+        name: 'replaces',
+        beforeFileWrite: (given) => {
+          seen.push(given);
+          return (other = encoding());
+        },
+      },
+      {
+        name: 'checks',
+        beforeFileWrite: (given, { width, format, options }) => {
+          seen.push(given);
+          expect([width, format, options]).toEqual([
+            4,
+            'webp',
+            { quality: 80 },
+          ]);
+        },
+      },
+    ];
+    const written = await runFileWriteHooks(
+      hooks,
+      image,
+      rawInput(smallPixels()),
+      context(),
+      'f'
+    );
+    expect(seen).toHaveLength(3);
+    expect(seen[0]).toBe(image);
+    expect(seen[1]).toBe(image);
+    expect(seen[2]).toBe(other);
+    expect(written).toBe(other);
+  });
+
+  test('pixels or anything but a sharp object: a HookError', async () => {
+    await expect(
+      runFileWriteHooks(
+        [{ name: 'raw', beforeFileWrite: () => smallPixels() }],
+        encoding(),
+        rawInput(smallPixels()),
+        context(),
+        'a@4w.webp'
+      )
+    ).rejects.toThrow(
+      'Hook raw failed at beforeFileWrite of a@4w.webp: returned {"data":"Buffer(24 bytes)","info":{"width":4,"height":2,"channels":3}}: expected a sharp object or undefined, as pixels have no format.'
+    );
+  });
+});
+
 describe('groupHooks', () => {
   test('by point, in order', () => {
     const a: Hook = { name: 'a', afterSourceLoad: () => undefined };
@@ -392,6 +466,7 @@ const noOpHook: Hook = {
   afterResize: () => undefined,
   beforeEncode: () => undefined,
   beforeFormat: () => undefined,
+  beforeFileWrite: () => undefined,
 };
 
 describe('hooks in the pipeline', () => {
@@ -445,6 +520,7 @@ describe('hooks in the pipeline', () => {
       afterResize: record('afterResize'),
       beforeEncode: record('beforeEncode'),
       beforeFormat: record('beforeFormat'),
+      beforeFileWrite: record('beforeFileWrite'),
     };
     await generateSingleSourceAssets(
       file('landscape.jpg'),
@@ -454,7 +530,7 @@ describe('hooks in the pipeline', () => {
       { ...silent, hooks: [hook] }
     );
     // the formats of a size are encoded at the same time
-    const sorted = (from: number) => calls.slice(from, from + 2).sort();
+    const sorted = (from: number) => calls.slice(from, from + 4).sort();
     expect(calls.slice(0, 4)).toEqual([
       'afterSourceLoad',
       'beforeResize 400',
@@ -462,19 +538,28 @@ describe('hooks in the pipeline', () => {
       'beforeEncode 400',
     ]);
     expect(sorted(4)).toEqual([
+      'beforeFileWrite 400 png',
+      'beforeFileWrite 400 webp',
       'beforeFormat 400 png',
       'beforeFormat 400 webp',
     ]);
-    expect(calls.slice(6, 9)).toEqual([
+    expect(calls.slice(8, 11)).toEqual([
       'beforeResize 200',
       'afterResize 200',
       'beforeEncode 200',
     ]);
-    expect(sorted(9)).toEqual([
+    expect(sorted(11)).toEqual([
+      'beforeFileWrite 200 png',
+      'beforeFileWrite 200 webp',
       'beforeFormat 200 png',
       'beforeFormat 200 webp',
     ]);
-    expect(calls).toHaveLength(11);
+    // each file: its format set after beforeFormat, then beforeFileWrite
+    for (const file of ['400 png', '400 webp', '200 png', '200 webp'])
+      expect(calls.indexOf(`beforeFormat ${file}`)).toBeLessThan(
+        calls.indexOf(`beforeFileWrite ${file}`)
+      );
+    expect(calls).toHaveLength(15);
   });
 
   test('what hooks are told', async () => {
@@ -517,6 +602,92 @@ describe('hooks in the pipeline', () => {
     expect(formats).toMatchObject([
       { format: 'webp', options: { quality: 70 }, file: 'house@2x.webp' },
     ]);
+  });
+
+  test('encoder options: set at beforeFileWrite they count, at beforeFormat the run sets its own over them', async () => {
+    const run = async (hook?: Hook) => {
+      const result = await generateSingleSourceAssets(
+        file('landscape.jpg'),
+        outDir(),
+        [{ width: 400 }, { width: 200 }],
+        ['webp', 'png'],
+        { ...silent, ...(hook && { hooks: [hook] }) }
+      );
+      return Object.fromEntries(
+        result.outputsBySetting
+          .flatMap(({ files }) => files)
+          .map((written) => [
+            path.basename(written.file),
+            written.status === 'succeed' ? written.fileData.size : -1,
+          ])
+      );
+    };
+    // a lower quality for the largest size only
+    const lowQuality = (
+      image: Sharp,
+      { format, setting }: FormatHookContext
+    ) =>
+      format === 'webp' && setting.width === 400 ?
+        image.webp({ quality: 10 })
+      : undefined;
+    const plain = await run();
+    const atWrite = await run({ name: 'q', beforeFileWrite: lowQuality });
+    expect(atWrite['landscape@400w.webp']).toBeLessThan(
+      plain['landscape@400w.webp']!
+    );
+    for (const name of [
+      'landscape@200w.webp',
+      'landscape@400w.png',
+      'landscape@200w.png',
+    ])
+      expect(atWrite[name], name).toBe(plain[name]);
+    expect(await run({ name: 'q', beforeFormat: lowQuality })).toEqual(plain);
+  });
+
+  test("a format changed at beforeFileWrite is the hook's: its bytes under the run's name", async () => {
+    const result = await generateSingleSourceAssets(
+      file('landscape.jpg'),
+      outDir(),
+      [{ width: 100 }],
+      ['webp'],
+      {
+        ...silent,
+        hooks: [{ name: 'png', beforeFileWrite: (image) => image.png() }],
+      }
+    );
+    const written = result.outputsBySetting[0]!.files[0]!;
+    expect(written).toMatchObject({
+      status: 'succeed',
+      format: 'webp',
+      fileData: { format: 'png' },
+    });
+    expect(written.file.endsWith('.webp')).toBe(true);
+    expect((await metadata(written.file)).format).toBe('png');
+  });
+
+  test('a beforeFileWrite hook that throws fails its file', async () => {
+    const result = await generateSingleSourceAssets(
+      file('landscape.jpg'),
+      outDir(),
+      [{ width: 100 }],
+      ['webp', 'png'],
+      {
+        ...silent,
+        hooks: [
+          {
+            name: 'broken',
+            beforeFileWrite: (_image, { format }) => {
+              if (format === 'png') throw new Error('no PNG');
+            },
+          },
+        ],
+      }
+    );
+    const files = result.outputsBySetting[0]!.files;
+    expect(files.map(({ status }) => status)).toEqual(['succeed', 'failed']);
+    expect(files[1]).toMatchObject({
+      error: { name: 'HookError', hook: 'broken', point: 'beforeFileWrite' },
+    });
   });
 
   test('afterResize goes down the chain, beforeEncode stays in its files', async () => {

@@ -348,7 +348,8 @@ Each item was discussed with examples (plan mode), then decided:
    point). TO DO: a feature for its own branch; the two overlap. Note: a
    `beforeFormat` hook can't change options today, the format and its
    options are set after it; quality by size alone could also be a
-   declarative per-size `formatOptions`.
+   declarative per-size `formatOptions`. Encoder options: done in section
+   8 (`beforeFileWrite`); the results and data are left.
 7. `key`. DONE `528f89e`, option (e): without a key, the hook's code (each
    point's function as text) is in the manifest's hash, so an edit remakes
    the sources; a key replaces the code. What a function closes over (a
@@ -388,3 +389,24 @@ refused).
    which step it follows, and that it runs once per source, like the other
    points' `before` / `after` and a step. Free before 1.0. Manifest hashes
    don't change: a hook's code is hashed by the position of its point.
+2. **`beforeFileWrite`**, a sixth point (the author): per file, in
+   `sharpToFile` after `toFormat(format, options)` and before `toFile`.
+   Found with a sandbox: a hook's `image.avif({ quality: 45 })` at
+   `beforeFormat` had no effect, as the run's `toFormat` comes after the
+   hook and sharp's format methods set only the keys they get (`quality`
+   replaced, `effort`, `lossless`, `palette`, `mozjpeg` kept). The author:
+   `beforeFormat` runs before the format is set, as its name says; options
+   belong to a point after it. The hook gets the file's own sharp object
+   (a new one would lose the format, the options and `beforeFormat`'s
+   operations; `clone()` copies the pixels), so what it calls counts,
+   returned or not; it returns that object, another, or nothing, not pixels
+   (they have no format). Measured: x2 AVIF at quality 45 instead of 60,
+   21527 -> 14011 bytes. No check of a format the hook changes (the
+   author: hooks are the user's responsibility, a last second format change
+   can only be deliberate, and a check is weight on every file): the file's
+   name and the format in the results and manifest stay the run's, sharp's
+   `fileData.format` tells the real one; documented. Without hooks at the
+   point, `sharpToFile` is as before (same bytes). Manifests with hooks
+   without a `key` are remade once: the hashed code lists one more point.
+   The runner's call of a hook (its turn, its logs, its `HookError`) is
+   shared by `run` and `runFileWriteHooks` (`callHook`).

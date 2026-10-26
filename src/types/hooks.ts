@@ -18,14 +18,17 @@ import type {
  *   to the next sizes: the image the hook gives goes down the chain.
  * - `'beforeEncode'`: per size, after the next sizes took it: the hook
  *   changes every file of this size, not the chain (a watermark).
- * - `'beforeFormat'`: per file, before it is encoded.
+ * - `'beforeFormat'`: per file, before the run sets its format.
+ * - `'beforeFileWrite'`: per file, after the run set its format and encoder
+ *   options, right before it is written: the hook can change them.
  */
 export type HookPoint =
   | 'afterSourceLoad'
   | 'beforeResize'
   | 'afterResize'
   | 'beforeEncode'
-  | 'beforeFormat';
+  | 'beforeFormat'
+  | 'beforeFileWrite';
 
 /**
  * Decoded pixels: 8 bits per channel, channels interleaved, rows from the
@@ -99,10 +102,14 @@ export interface SizeHookContext extends HookContext {
   readonly setting: HookSetting;
 }
 
-/** Context of `beforeFormat`. */
+/**
+ * Context of the file points: `beforeFormat`, `beforeFileWrite`. At
+ * `beforeFileWrite`, `width`, `height`, `channels` and `pixels()` are those
+ * of the size's image, before the `beforeFormat` hooks.
+ */
 export interface FormatHookContext extends SizeHookContext {
   readonly format: OutputFormat;
-  /** The format's complete encoder options. */
+  /** The format's complete encoder options, as the run sets them. */
   readonly options: Readonly<OutputFormatsOptions[OutputFormat]>;
   /** The file it will write. */
   readonly file: string;
@@ -111,8 +118,8 @@ export interface FormatHookContext extends SizeHookContext {
 /**
  * Functions run in the resize chain, at the points they implement (see
  * `HookPoint`). Each gets a new sharp object over the image, never one the
- * run uses, and returns the image to go on with (see `HookResult`). Points
- * without hooks cost nothing.
+ * run uses (but `beforeFileWrite`: the file's own), and returns the image to
+ * go on with (see `HookResult`). Points without hooks cost nothing.
  *
  * ```ts
  * const colorGrade: Hook = {
@@ -152,10 +159,24 @@ export interface Hook {
   ) => HookReturn;
   /**
    * Its sharp object is encoded as returned, not baked: its operations run
-   * in the file's encode, and its time is in the encode. The format is set
-   * after it: a hook can't change it.
+   * in the file's encode, and its time is in the encode. The run sets the
+   * format and its options after it (`toFormat`), over the encoder options
+   * a hook sets here: set those at `beforeFileWrite`.
    */
   readonly beforeFormat?: (
+    image: Sharp,
+    context: FormatHookContext
+  ) => HookReturn;
+  /**
+   * Gets the file's own sharp object, its format and encoder options set,
+   * right before it is written: what the hook sets wins, e.g.
+   * `image.avif({ quality: 45 })` for a retina size. What it calls on the
+   * object counts, returned or not. Returns that object, another sharp
+   * object or nothing; not pixels, which have no format. The file's name
+   * and the format in the results and manifest stay the run's: a format
+   * changed here (`toFormat('png')`) writes its bytes under that name.
+   */
+  readonly beforeFileWrite?: (
     image: Sharp,
     context: FormatHookContext
   ) => HookReturn;

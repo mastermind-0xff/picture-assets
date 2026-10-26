@@ -29,6 +29,7 @@ export const NO_HOOKS: ResolvedHooks = Object.freeze({
   afterResize: [],
   beforeEncode: [],
   beforeFormat: [],
+  beforeFileWrite: [],
 });
 
 /** Groups checked hooks by the points they implement, once per run. */
@@ -43,6 +44,7 @@ export const groupHooks = (hooks: readonly Hook[]): ResolvedHooks => {
     afterResize: at('afterResize'),
     beforeEncode: at('beforeEncode'),
     beforeFormat: at('beforeFormat'),
+    beforeFileWrite: at('beforeFileWrite'),
   };
 };
 
@@ -161,7 +163,7 @@ const checkRawImage = (image: RawImage): RawImage => {
 /** What a point tells its hooks, beyond what each image tells. */
 type PointContext<P extends HookPoint> = Omit<
   P extends 'afterSourceLoad' ? HookContext
-  : P extends 'beforeFormat' ? FormatHookContext
+  : P extends 'beforeFormat' | 'beforeFileWrite' ? FormatHookContext
   : SizeHookContext,
   'point' | 'width' | 'height' | 'channels' | 'pixels'
 >;
@@ -211,19 +213,66 @@ const gateOf = (hook: Hook): Gate | undefined => {
 };
 
 /**
- * Runs the hooks of a point, one after the other, each on the image the
- * previous one gave. Each call is logged at debug level when it starts and
- * when it ends, its sharp object baked: its time is the hook's work. A call
- * of a hook at its `concurrency` waits for a turn first (logged too), and
- * doesn't start if the run was stopped meanwhile.
+ * Calls one hook at a point. Logged at debug level when it starts and when
+ * it ends, `take` included: its time is the hook's work. A hook at its
+ * `concurrency` waits for a turn first (logged too), and doesn't start if
+ * the run was stopped meanwhile.
  *
+ * @param image The image the hook gets, made once its turn came.
  * @param label Where, for the logs: the source, its size or the file.
+ * @param take Checks what the hook returned and makes it the image to go on
+ * with (a bake): what it throws fails the hook.
+ * @throws HookError when the hook throws or `take` refuses what it returned.
+ */
+const callHook = async <T>(
+  hook: Hook,
+  point: HookPoint,
+  image: () => Sharp,
+  context: HookContext,
+  label: string,
+  take: (returned: HookResult) => T | Promise<T>
+): Promise<T> => {
+  const call = hook[point] as (
+    image: Sharp,
+    context: HookContext
+  ) => HookReturn;
+  const { logger, signal } = context;
+  const gate = gateOf(hook);
+  if (gate?.full())
+    logger.debug(`Hook ${hook.name} waiting: ${point} of ${label}`);
+  await gate?.acquire();
+  logger.debug(`Hook ${hook.name} start: ${point} of ${label}`);
+  const start = performance.now();
+  let result: T;
+  try {
+    if (gate) signal.throwIfAborted();
+    result = await take(await call.call(hook, image(), context));
+  } catch (error: unknown) {
+    throw new HookError(
+      `Hook ${hook.name} failed at ${point} of ${label}: ${error instanceof Error ? error.message : String(error)}`,
+      hook.name,
+      point,
+      { cause: error }
+    );
+  } finally {
+    gate?.release();
+  }
+  logger.debug(
+    `Hook ${hook.name} end: ${point} of ${label} in ${formatDuration(performance.now() - start)}`
+  );
+  return result;
+};
+
+/**
+ * Runs the hooks of a point, one after the other, each on the image the
+ * previous one gave (see `callHook`).
+ *
  * @param bakeLast Whether the last hook's sharp object is baked: not at
  * `beforeFormat`, whose operations run in the encode.
  * @returns The image the hooks gave, or undefined when none changed it.
  * @throws HookError when a hook throws or returns something else.
  */
-const run = async <P extends HookPoint>(
+const run = async <P extends Exclude<HookPoint, 'beforeFileWrite'>>(
   point: P,
   hooks: readonly Hook[],
   input: HookInput,
@@ -231,51 +280,33 @@ const run = async <P extends HookPoint>(
   label: string,
   bakeLast: boolean
 ): Promise<RawImage | Sharp | undefined> => {
-  const { logger } = context;
   let current = input;
   let changed: RawImage | undefined;
   for (const [index, hook] of hooks.entries()) {
-    const call = hook[point] as
-      ((image: Sharp, context: HookContext) => HookReturn) | undefined;
-    if (call === undefined) continue;
+    if (hook[point] === undefined) continue;
     const toPixels = bakeLast || index < hooks.length - 1;
-    const gate = gateOf(hook);
-    if (gate?.full())
-      logger.debug(`Hook ${hook.name} waiting: ${point} of ${label}`);
-    await gate?.acquire();
-    logger.debug(`Hook ${hook.name} start: ${point} of ${label}`);
-    const start = performance.now();
-    let result: RawImage | Sharp | undefined;
-    try {
-      if (gate) context.signal.throwIfAborted();
-      const returned: HookResult = await call.call(hook, current.create(), {
+    const given = current;
+    const result = await callHook(
+      hook,
+      point,
+      given.create,
+      {
         ...context,
         point,
-        width: current.width,
-        height: current.height,
-        channels: current.channels,
-        pixels: current.pixels,
-      });
-      if (returned === undefined) result = undefined;
-      else if (isRawImage(returned)) result = checkRawImage(returned);
-      else if (isSharp(returned))
-        result = toPixels ? await bake(returned) : returned;
-      else
+        width: given.width,
+        height: given.height,
+        channels: given.channels,
+        pixels: given.pixels,
+      },
+      label,
+      async (returned): Promise<RawImage | Sharp | undefined> => {
+        if (returned === undefined) return undefined;
+        if (isRawImage(returned)) return checkRawImage(returned);
+        if (isSharp(returned)) return toPixels ? bake(returned) : returned;
         throw new TypeError(
           `returned ${describe(returned)}: expected a sharp object, pixels as { data, info } or undefined.`
         );
-    } catch (error: unknown) {
-      throw new HookError(
-        `Hook ${hook.name} failed at ${point} of ${label}: ${error instanceof Error ? error.message : String(error)}`,
-        hook.name,
-        point,
-        { cause: error }
-      );
-    } finally {
-      gate?.release();
-    }
-    logger.debug(
-      `Hook ${hook.name} end: ${point} of ${label} in ${formatDuration(performance.now() - start)}`
+      }
     );
     if (result === undefined) continue;
     if (!isRawImage(result)) return result;
@@ -291,7 +322,9 @@ const run = async <P extends HookPoint>(
  *
  * @returns The image the hooks gave, or undefined when none changed it.
  */
-export const runHooks = async <P extends Exclude<HookPoint, 'beforeFormat'>>(
+export const runHooks = async <
+  P extends Exclude<HookPoint, 'beforeFormat' | 'beforeFileWrite'>,
+>(
   point: P,
   hooks: readonly Hook[],
   input: HookInput,
@@ -316,4 +349,52 @@ export const runFormatHooks = async (
 ): Promise<Sharp | undefined> => {
   const result = await run('beforeFormat', hooks, input, context, label, false);
   return result === undefined || isSharp(result) ? result : fromRaw(result);
+};
+
+/**
+ * Runs the `beforeFileWrite` hooks on the file's own sharp object, its
+ * format and options set, one after the other (see `callHook`): each gets
+ * what the previous one returned, or the same object. Nothing is baked: the
+ * object is what gets written, with its encoder options.
+ *
+ * @param image The file's sharp object, after `toFormat`.
+ * @param input The size's image, for the context's size and `pixels()`.
+ * @returns The sharp object to write.
+ * @throws HookError when a hook throws or returns anything but a sharp
+ * object or nothing.
+ */
+export const runFileWriteHooks = async (
+  hooks: readonly Hook[],
+  image: Sharp,
+  input: HookInput,
+  context: PointContext<'beforeFileWrite'>,
+  label: string
+): Promise<Sharp> => {
+  let current = image;
+  for (const hook of hooks) {
+    if (hook.beforeFileWrite === undefined) continue;
+    const given = current;
+    current = await callHook(
+      hook,
+      'beforeFileWrite',
+      () => given,
+      {
+        ...context,
+        point: 'beforeFileWrite',
+        width: input.width,
+        height: input.height,
+        channels: input.channels,
+        pixels: input.pixels,
+      },
+      label,
+      (returned) => {
+        if (returned === undefined) return given;
+        if (isSharp(returned)) return returned;
+        throw new TypeError(
+          `returned ${describe(returned)}: expected a sharp object or undefined, as pixels have no format.`
+        );
+      }
+    );
+  }
+  return current;
 };

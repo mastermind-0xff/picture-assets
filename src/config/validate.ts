@@ -237,6 +237,7 @@ export const HOOK_POINTS = [
   'afterResize',
   'beforeEncode',
   'beforeFormat',
+  'beforeFileWrite',
 ] as const satisfies readonly HookPoint[];
 
 /**

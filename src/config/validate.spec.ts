@@ -340,7 +340,7 @@ describe('parseHooks', () => {
     );
     // a typo leaves no point
     expect(() => parseHooks([{ name: 'a', beforeresize: none }])).toThrow(
-      'has no function at any point: afterSourceLoad, beforeResize, afterResize, beforeEncode, beforeFormat.'
+      'has no function at any point: afterSourceLoad, beforeResize, afterResize, beforeEncode, beforeFormat, beforeFileWrite.'
     );
     for (const hook of [null, 'a', []])
       expect(() => parseHooks([hook])).toThrow(TypeError);
