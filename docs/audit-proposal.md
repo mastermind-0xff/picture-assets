@@ -11,7 +11,7 @@ Windows laptop of `bench/README.md` (16 GB of RAM), Node 22.22, sharp
 Sections: the threat model, what was fixed, what was checked and found
 sound, what needs the author's decision, performance.
 
-## 1. Threat model (proposed, to confirm)
+## 1. Threat model (the author's decisions build on it)
 
 - **Trusted**: the config (code, a JSON or JS config file), the flags,
   `--hooks` files and `.js` configs (they run code by design, as an ESLint
@@ -91,6 +91,33 @@ sound, what needs the author's decision, performance.
    bin has its shebang.
 
 ## 4. For the author to decide
+
+Decided by the author on 2026-10-27, built on `audit` the same day, one
+commit each:
+
+- **4.1** `limitInputPixels`, sharp's default (2f12dbb): an option and
+  `PICTURE_ASSETS_LIMIT_INPUT_PIXELS`, `false` for none; checked on the
+  header before any decode, so a larger source fails once with its size
+  and the option's name (4 bombs: 28 ms and 52 MB at a 100 MP limit,
+  against 19 s and 4.5 GB). README: a new Untrusted sources section.
+- **4.2** Left to sharp; the README says which decoders are reached.
+- **4.3** A missing input fails as a source, nothing throws (1a14a21): a
+  warning ("Not found: tow.jpg. A misspelled name?"), the batch goes on as
+  `abortScope` says, exit 1; not in the manifest, so the next run makes
+  only the corrected one. A glob that matches nothing, among several
+  inputs, is a warning.
+- **4.4** `overwriteSource`, `false` by default (75f7f5e): such a file
+  fails, the size's other formats are written. `true` resizes in place,
+  and the manifest records the source as written, so the next run skips
+  it.
+- **4.5** Ignored.
+- **4.6** `recordLimit`, optional, 64 kB by default (52b0619): bytes of
+  JSON per `record`, `false` for none; a larger value fails the hook,
+  naming the key. 64 kB holds real data (an embedding of 1024 numbers is
+  about 20 kB); an image recorded by mistake is megabytes, and a manifest
+  over 512 MB can't be written or read back.
+
+The items as proposed:
 
 1. **Decompression bombs and memory.** sharp's default pixel limit,
    268 MP (16383x16383), is the only bound. A 1 MB PNG decodes to 1 GB:
