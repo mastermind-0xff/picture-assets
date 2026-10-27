@@ -209,15 +209,23 @@ export const parseBoolean = (name: string, value: unknown): boolean => {
   throw new TypeError(`${name} must be true or false, got ${describe(value)}.`);
 };
 
+/** A limit's parser: a whole number of `unit` from 1, or false for none. */
+const parseLimit =
+  (name: string, unit: string) =>
+  (value: unknown): number | false => {
+    if (value === false) return false;
+    if (Number.isSafeInteger(value) && (value as number) >= 1)
+      return value as number;
+    throw new RangeError(
+      `Invalid ${name} ${describe(value)}: expected a whole number of ${unit} from 1, or false for no limit.`
+    );
+  };
+
 /** @throws RangeError for anything but a whole number from 1, or false. */
-export const parseLimitInputPixels = (value: unknown): number | false => {
-  if (value === false) return false;
-  if (Number.isSafeInteger(value) && (value as number) >= 1)
-    return value as number;
-  throw new RangeError(
-    `Invalid limitInputPixels ${describe(value)}: expected a whole number of pixels from 1, or false for no limit.`
-  );
-};
+export const parseLimitInputPixels = parseLimit('limitInputPixels', 'pixels');
+
+/** @throws RangeError for anything but a whole number from 1, or false. */
+export const parseRecordLimit = parseLimit('recordLimit', 'bytes');
 
 /** @throws TypeError for anything but an `AbortSignal` or undefined. */
 export const parseSignal = (value: unknown): AbortSignal | undefined => {

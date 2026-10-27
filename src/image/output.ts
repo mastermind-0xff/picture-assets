@@ -422,6 +422,7 @@ export const sourceToSettings = async (
     hooks,
     limitInputPixels,
     overwriteSource,
+    recordLimit,
   } = context;
 
   const shown = displayPath(srcPath);
@@ -449,7 +450,13 @@ export const sourceToSettings = async (
         'afterSourceLoad',
         hooks.afterSourceLoad,
         encoded(),
-        { source: srcPath, signal, logger, recorded: sourceRecorded },
+        {
+          source: srcPath,
+          signal,
+          logger,
+          recorded: sourceRecorded,
+          recordLimit,
+        },
         shown
       )
     : undefined;
@@ -511,6 +518,7 @@ export const sourceToSettings = async (
     logger,
     setting: toHookSetting(setting),
     recorded,
+    recordLimit,
   });
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });

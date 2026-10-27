@@ -404,7 +404,7 @@ describe('generateBatchAssets', () => {
     await expect(
       generateBatchAssets(file('tree'), outDir(), [{ width: 1 }], [], options)
     ).rejects.toThrow(
-      /^Unknown option 'concurency': expected resizeStrategyHint, .*, hooks, concurrency, signal\.$/
+      /^Unknown option 'concurency': expected resizeStrategyHint, .*, recordLimit, concurrency, signal\.$/
     );
     await expect(
       generateBatchAssets(

@@ -87,6 +87,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
   default: it was written over the source. `true` resizes in place; a
   manifest then records the source as written, so the next run skips it
   instead of resizing it again.
+- **`recordLimit`** (`PICTURE_ASSETS_RECORD_LIMIT`): most bytes of JSON one
+  hook `record` may keep, 64 kB by default, `false` for none. A larger
+  value fails the hook, naming the key, instead of a manifest too large
+  for JavaScript to write or read back, after the whole run.
 - README: Untrusted sources.
 
 ### Changed

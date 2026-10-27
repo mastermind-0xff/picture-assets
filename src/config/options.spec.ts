@@ -60,8 +60,19 @@ describe('resolveOptions', () => {
       upscale: true,
       limitInputPixels: 268_402_689,
       overwriteSource: false,
+      recordLimit: 64_000,
       hooks: NO_HOOKS,
     });
+  });
+
+  test('recordLimit: the call, then the variable, then 64 kB', () => {
+    expect(resolveOptions({}, {}).recordLimit).toBe(64_000);
+    const env = { PICTURE_ASSETS_RECORD_LIMIT: '1000' };
+    expect(resolveOptions({}, env).recordLimit).toBe(1000);
+    expect(resolveOptions({ recordLimit: false }, env).recordLimit).toBe(false);
+    expect(() => resolveOptions({ recordLimit: 1.5 }, {})).toThrow(
+      'Invalid recordLimit 1.5: expected a whole number of bytes from 1, or false for no limit.'
+    );
   });
 
   test("limitInputPixels: the call, then the variable, then sharp's default", () => {
@@ -141,7 +152,7 @@ describe('resolveOptions', () => {
   test('unknown options throw, naming the expected ones', () => {
     const options = { sufix: '-{w}', logger: 'error' as const };
     expect(() => resolveOptions(options, {})).toThrow(
-      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, limitInputPixels, overwriteSource, hooks."
+      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, limitInputPixels, overwriteSource, hooks, recordLimit."
     );
     expect(() =>
       resolveOptions({ sufix: '', concurrency: 2 } as never, {})

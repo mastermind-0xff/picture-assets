@@ -284,6 +284,7 @@ unknown options (`sufix`), naming the expected ones.
 | `limitInputPixels`   | `268402689`    | `PICTURE_ASSETS_LIMIT_INPUT_PIXELS`   | Most pixels a source may have (16383 x 16383 by default, sharp's), or `false` for none, see [Untrusted sources](#untrusted-sources)                                                                                                                                                                      |
 | `overwriteSource`    | `false`        |                                       | Let a file replace its source (an empty suffix, the source's name and format), to resize in place; with `false` that file fails                                                                                                                                                                          |
 | `hooks`              | `[]`           |                                       | Functions in the resize chain, see [Hooks](#hooks)                                                                                                                                                                                                                                                       |
+| `recordLimit`        | `64000`        | `PICTURE_ASSETS_RECORD_LIMIT`         | Most bytes of JSON one hook `record` may keep, or `false` for none, see [Data from hooks](#data-from-hooks)                                                                                                                                                                                              |
 
 Load the variables from a file with `node --env-file=.env` (see
 [`.env.example`](.env.example)).
@@ -518,6 +519,13 @@ const placeholder = {
   no hook. JSON gives the rest back its way: a `Map` as `{}`, a `Date` as
   its string, `NaN` as `null`. TypeScript's `JsonValue` refuses those; a
   value typed by an interface needs a spread (`{ ...point }`).
+- **Size**: a value whose JSON is larger than `recordLimit` (64 kB by
+  default) throws too, naming the key. Data goes into the manifest once
+  per source or per file: an image recorded by mistake, megabytes per
+  file, would make a manifest JavaScript can't write or read back
+  (strings stop at 512 MB). 64 kB holds colors, hashes, focal points, alt
+  text, a placeholder data URI or an embedding of 1024 numbers (about
+  20 kB); raise it, or set it to `false`, for more.
 - **During the call**: a `record` called after its hook's call ended
   throws.
 - **Unchanged sources** are skipped: their hooks don't run, and their

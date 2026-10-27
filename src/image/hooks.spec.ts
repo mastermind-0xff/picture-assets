@@ -67,6 +67,7 @@ const pointContext = () => ({
   signal: new AbortController().signal,
   logger: createRecordingLogger().logger,
   recorded: new Map() as Recorded,
+  recordLimit: 64_000 as number | false,
 });
 
 /**
@@ -1037,6 +1038,33 @@ describe('hooks in the pipeline', () => {
     ]);
   });
 
+  test('recordLimit in a run: an oversized record fails its source; the option raises the limit', async () => {
+    const placeholder: Hook = {
+      name: 'placeholder',
+      afterSourceLoad: async (image, { record }) => {
+        // a whole PNG as a data URI, where a few bytes were meant
+        const png = await image.png().toBuffer();
+        record('uri', `data:image/png;base64,${png.toString('base64')}`);
+      },
+    };
+    const run = (options: object) =>
+      generateSingleSourceAssets(
+        file('landscape.jpg'),
+        outDir(),
+        [{ width: 50 }],
+        ['webp'],
+        { ...silent, hooks: [placeholder], ...options }
+      );
+    const limited = await run({});
+    expect(limited.status).toBe('failed');
+    expect(String(limited.error)).toMatch(
+      /^HookError: Hook placeholder failed at afterSourceLoad of .*landscape\.jpg: recorded 'uri' as .* of JSON, more than recordLimit \(64\.0 kB\)/
+    );
+    const raised = await run({ recordLimit: 10_000_000 });
+    expect(raised.status).toBe('succeed');
+    expect(raised.data?.placeholder?.uri).toMatch(/^data:image\/png;base64,/);
+  });
+
   test('generateAssets takes hooks, and logs each call at debug level', async () => {
     const { logger, messages } = createRecordingLogger('debug');
     const out = outDir();
@@ -1240,6 +1268,44 @@ describe('record', () => {
     ).toEqual({
       probe: { map: {}, nan: null, date: '1970-01-01T00:00:00.000Z' },
     });
+  });
+
+  test('recordLimit: a value whose JSON is larger fails the hook, naming the key', async () => {
+    const recording = (value: JsonValue, recordLimit: number | false) => {
+      const context = { ...pointContext(), recordLimit };
+      return runHooks(
+        'afterSourceLoad',
+        [
+          {
+            name: 'big',
+            afterSourceLoad: (_image, { record }) => {
+              record('blob', value);
+            },
+          },
+        ],
+        rawInput(smallPixels()),
+        context,
+        'a.jpg'
+      ).then(() => recordedData(context.recorded));
+    };
+    // 'x' x 10 is 12 bytes of JSON, quotes included
+    await expect(recording('x'.repeat(10), 12)).resolves.toEqual({
+      big: { blob: 'x'.repeat(10) },
+    });
+    await expect(recording('x'.repeat(11), 12)).rejects.toThrow(
+      "Hook big failed at afterSourceLoad of a.jpg: recorded 'blob' as 13 B of JSON, more than recordLimit (12 B): record less, or raise the limit."
+    );
+    // bytes, not characters
+    await expect(recording('é'.repeat(6), 12)).rejects.toThrow(
+      /as 14 B of JSON/
+    );
+    // an encoded image recorded by mistake, against the default
+    await expect(
+      recording(Buffer.alloc(100_000).toString('base64'), 64_000)
+    ).rejects.toThrow(/as 133 kB of JSON, more than recordLimit \(64.0 kB\)/);
+    await expect(
+      recording(Buffer.alloc(100_000).toString('base64'), false)
+    ).resolves.toBeDefined();
   });
 
   test('only during the call: a record after it ended throws', async () => {

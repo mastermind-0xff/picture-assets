@@ -17,6 +17,7 @@ import {
   parseHooks,
   parseLimitInputPixels,
   parseLogger,
+  parseRecordLimit,
   parseResizeStrategyHint,
   parseSuffixOption,
   type FormatOptionsInput,
@@ -32,6 +33,7 @@ export const DEFAULT_OPTIONS = {
   // sharp's own default: 16383 x 16383
   limitInputPixels: 268_402_689,
   overwriteSource: false,
+  recordLimit: 64_000,
   concurrency: 'auto',
 } as const satisfies Required<
   Omit<AssetsOptions, 'formatOptions' | 'hooks'> & { concurrency: Concurrency }
@@ -48,6 +50,7 @@ export const OPTION_KEYS = [
   'limitInputPixels',
   'overwriteSource',
   'hooks',
+  'recordLimit',
 ] as const satisfies readonly (keyof AssetsOptions)[];
 
 /** Keys of `BatchAssetsOptions`. */
@@ -68,6 +71,7 @@ export interface ResolvedOptions {
   readonly limitInputPixels: number | false;
   readonly overwriteSource: boolean;
   readonly hooks: ResolvedHooks;
+  readonly recordLimit: number | false;
 }
 
 /** Merges format options per format, so each layer can set single fields. */
@@ -131,6 +135,9 @@ export const resolveOptions = (
       options.overwriteSource ?? DEFAULT_OPTIONS.overwriteSource
     ),
     hooks: groupHooks(parseHooks(options.hooks ?? [])),
+    recordLimit: parseRecordLimit(
+      options.recordLimit ?? fromEnv.recordLimit ?? DEFAULT_OPTIONS.recordLimit
+    ),
   };
 };
 

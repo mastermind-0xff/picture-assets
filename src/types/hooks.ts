@@ -124,8 +124,9 @@ export interface HookContext {
    * size, a file's own value winning over its size's. The same key again
    * replaces the value. Kept as a JSON copy: a value JSON can't write (a
    * BigInt, a circular object) throws, failing the hook; JSON writes the
-   * rest its way (a `Map` as `{}`, a `Date` as its string). Only during
-   * the hook's call: a call after it ended throws.
+   * rest its way (a `Map` as `{}`, a `Date` as its string). A value whose
+   * JSON is larger than `recordLimit` (64 kB by default) throws too. Only
+   * during the hook's call: a call after it ended throws.
    */
   readonly record: (key: string, value: JsonValue) => void;
 }

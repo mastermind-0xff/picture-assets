@@ -14,7 +14,7 @@ import type {
   RawImage,
   SizeHookContext,
 } from '../types/hooks.js';
-import { formatDuration } from '../utils/helpers.js';
+import { formatBytes, formatDuration } from '../utils/helpers.js';
 
 /** Hooks by point, each list in the given order, and every hook. */
 export interface ResolvedHooks extends Readonly<
@@ -204,11 +204,17 @@ const stringify = (value: unknown): string | undefined => JSON.stringify(value);
 /**
  * A recorded value as JSON gives it back. Checked when recorded: as the
  * manifest is written, after the whole run, a BigInt or a circular object
- * would fail it and name no hook.
+ * would fail it and name no hook, and so would megabytes of data.
  *
- * @throws TypeError when JSON can't write the value.
+ * @param limit Most bytes of JSON (`recordLimit`), or false.
+ * @throws TypeError when JSON can't write the value, RangeError when its
+ * JSON is larger than the limit.
  */
-const jsonCopy = (key: string, value: unknown): JsonValue => {
+const jsonCopy = (
+  key: string,
+  value: unknown,
+  limit: number | false
+): JsonValue => {
   let text: string | undefined;
   try {
     text = stringify(value);
@@ -222,6 +228,13 @@ const jsonCopy = (key: string, value: unknown): JsonValue => {
     throw new TypeError(
       `recorded ${describe(key)} as ${describe(value)}: not JSON.`
     );
+  if (limit !== false) {
+    const bytes = Buffer.byteLength(text);
+    if (bytes > limit)
+      throw new RangeError(
+        `recorded ${describe(key)} as ${formatBytes(bytes)} of JSON, more than recordLimit (${formatBytes(limit)}): record less, or raise the limit.`
+      );
+  }
   return JSON.parse(text) as JsonValue;
 };
 
@@ -234,6 +247,8 @@ type PointContext<P extends HookPoint> = Omit<
 > & {
   /** Where its hooks' `record` keeps their data. */
   readonly recorded: Recorded;
+  /** Most bytes of JSON per `record` call, see `AssetsOptions.recordLimit`. */
+  readonly recordLimit: number | false;
 };
 
 /** At most `limit` calls at once: the others wait, in order. */
@@ -299,7 +314,10 @@ const callHook = async <T>(
   point: HookPoint,
   image: () => Sharp,
   context: Omit<HookContext, 'record'>,
-  recorded: Recorded,
+  {
+    recorded,
+    recordLimit,
+  }: Pick<PointContext<HookPoint>, 'recorded' | 'recordLimit'>,
   label: string,
   take: (returned: HookResult) => T | Promise<T>
 ): Promise<T> => {
@@ -315,7 +333,7 @@ const callHook = async <T>(
       throw new Error(
         `Hook ${hook.name} recorded ${describe(key)} after its ${point} call of ${label} ended.`
       );
-    const copy = jsonCopy(key, value);
+    const copy = jsonCopy(key, value, recordLimit);
     const values = recorded.get(hook.name);
     if (values === undefined) recorded.set(hook.name, new Map([[key, copy]]));
     else values.set(key, copy);
@@ -369,7 +387,7 @@ const run = async <P extends Exclude<HookPoint, 'beforeFileWrite'>>(
   label: string,
   bakeLast: boolean
 ): Promise<RawImage | Sharp | undefined> => {
-  const { recorded, ...shared } = context;
+  const { recorded, recordLimit, ...shared } = context;
   let current = input;
   let changed: RawImage | undefined;
   for (const [index, hook] of hooks.entries()) {
@@ -388,7 +406,7 @@ const run = async <P extends Exclude<HookPoint, 'beforeFileWrite'>>(
         channels: given.channels,
         pixels: given.pixels,
       },
-      recorded,
+      { recorded, recordLimit },
       label,
       async (returned): Promise<RawImage | Sharp | undefined> => {
         if (returned === undefined) return undefined;
@@ -461,7 +479,7 @@ export const runFileWriteHooks = async (
   context: PointContext<'beforeFileWrite'>,
   label: string
 ): Promise<Sharp> => {
-  const { recorded, ...shared } = context;
+  const { recorded, recordLimit, ...shared } = context;
   let current = image;
   for (const hook of hooks) {
     if (hook.beforeFileWrite === undefined) continue;
@@ -478,7 +496,7 @@ export const runFileWriteHooks = async (
         channels: input.channels,
         pixels: input.pixels,
       },
-      recorded,
+      { recorded, recordLimit },
       label,
       (returned) => {
         if (returned === undefined) return given;

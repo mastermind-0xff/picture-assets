@@ -100,6 +100,20 @@ export interface AssetsOptions {
   readonly overwriteSource?: boolean;
 
   /**
+   * Most bytes of JSON one `record` call of a hook may keep (see
+   * `HookContext.record`): a larger value fails the hook, naming the key.
+   * Recorded data goes into the results and the manifest, once per source
+   * or per file: a hook recording an image or a buffer by mistake, megabytes
+   * per file, would make a manifest JavaScript can't write or read again
+   * (strings stop at 512 MB). The default holds colors, hashes, focal
+   * points, alt text, a placeholder data URI or an embedding of 1024
+   * numbers (about 20 kB). `false`: no limit.
+   *
+   * Default: `64000` (`PICTURE_ASSETS_RECORD_LIMIT`).
+   */
+  readonly recordLimit?: number | false;
+
+  /**
    * Functions run in the resize chain, see `Hook`. At each point, in the
    * list's order, each on the image the previous one gave. Hooks come from
    * code or a `.js` config file: there is no environment variable.

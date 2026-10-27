@@ -6,6 +6,7 @@ import {
   parseConcurrency,
   parseFormatOptions,
   parseLimitInputPixels,
+  parseRecordLimit,
   parseResizeStrategyHint,
   parseSuffixOption,
 } from './validate.js';
@@ -41,6 +42,8 @@ export const ENV_VARIABLES = {
   concurrency: 'PICTURE_ASSETS_CONCURRENCY',
   /** `limitInputPixels`: a whole number of pixels, or `false`. */
   limitInputPixels: 'PICTURE_ASSETS_LIMIT_INPUT_PIXELS',
+  /** `recordLimit`: a whole number of bytes, or `false`. */
+  recordLimit: 'PICTURE_ASSETS_RECORD_LIMIT',
 } as const;
 
 /** Options an environment variable can set. */
@@ -134,17 +137,29 @@ export const readEnvOptions = (
       )
     );
 
-  const limit = read(ENV_VARIABLES.limitInputPixels)?.trim();
-  if (limit !== undefined)
-    options.limitInputPixels = fromVariable(
-      ENV_VARIABLES.limitInputPixels,
-      () =>
-        parseLimitInputPixels(
-          limit === 'false' ? false
-          : /^\d+$/.test(limit) ? Number(limit)
-          : limit
+  /** A limit: digits, or `false` for none. */
+  const readLimit = <T>(name: string, parse: (value: unknown) => T) => {
+    const limit = read(name)?.trim();
+    return limit === undefined ? undefined : (
+        fromVariable(name, () =>
+          parse(
+            limit === 'false' ? false
+            : /^\d+$/.test(limit) ? Number(limit)
+            : limit
+          )
         )
-    );
+      );
+  };
+
+  const limitInputPixels = readLimit(
+    ENV_VARIABLES.limitInputPixels,
+    parseLimitInputPixels
+  );
+  if (limitInputPixels !== undefined)
+    options.limitInputPixels = limitInputPixels;
+
+  const recordLimit = readLimit(ENV_VARIABLES.recordLimit, parseRecordLimit);
+  if (recordLimit !== undefined) options.recordLimit = recordLimit;
 
   return options;
 };
