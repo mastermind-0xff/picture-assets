@@ -30,6 +30,7 @@ import type {
 import {
   bake,
   encodedInput,
+  fromRaw,
   groupHooks,
   rawInput,
   recordedData,
@@ -83,6 +84,23 @@ const pixel = async (image: string, x = 0, y = 0) => {
   const offset = (y * info.width + x) * info.channels;
   return [...data.subarray(offset, offset + info.channels)];
 };
+
+describe('fromRaw', () => {
+  test("pixels above sharp's input limit (268 megapixels): read, not refused", async () => {
+    const side = 16_500;
+    const image = fromRaw({
+      data: Buffer.alloc(side * side),
+      info: { width: side, height: side, channels: 1 },
+    });
+    // one pixel: libvips reads no more of the buffer
+    const corner = await image
+      .extract({ left: 0, top: 0, width: 1, height: 1 })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    expect(corner.info).toMatchObject({ width: 1, height: 1 });
+    expect(corner.data.every((byte) => byte === 0)).toBe(true);
+  });
+});
 
 describe('runHooks', () => {
   test('undefined from every hook: no change, nothing baked', async () => {

@@ -54,10 +54,15 @@ export const groupHooks = (hooks: readonly Hook[]): ResolvedHooks => {
 export const hasAlphaChannel = (channels: number) =>
   channels === 2 || channels === 4;
 
-/** A sharp object over pixels: shares their buffer, copies nothing. */
+/**
+ * A sharp object over pixels: shares their buffer, copies nothing. Without
+ * sharp's pixel limit: it guards the decoding of files, and these pixels
+ * are in memory already (a size above 268 megapixels failed its encode).
+ */
 export const fromRaw = ({ data, info }: RawImage): Sharp =>
   sharp(data, {
     raw: { width: info.width, height: info.height, channels: info.channels },
+    limitInputPixels: false,
   });
 
 /** Runs a sharp object's operations into pixels, 8 bits per channel. */
