@@ -270,7 +270,8 @@ other.
 ### Options
 
 Every option falls back to its environment variable, then to its default.
-Invalid values throw, naming the option or the variable.
+Invalid values throw, naming the option or the variable, and so do
+unknown options (`sufix`), naming the expected ones.
 
 | Option               | Default        | Variable                              | Meaning                                                                                                                                                                                                                                                                                                  |
 | -------------------- | -------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -121,6 +121,30 @@ describe('resolveOptions', () => {
     );
   });
 
+  test('unknown options throw, naming the expected ones', () => {
+    const options = { sufix: '-{w}', logger: 'error' as const };
+    expect(() => resolveOptions(options, {})).toThrow(
+      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, hooks."
+    );
+    expect(() =>
+      resolveOptions({ sufix: '', concurrency: 2 } as never, {})
+    ).toThrow(/^Unknown options 'sufix', 'concurrency': expected/);
+    expect(() =>
+      resolveOptions(
+        {
+          resizeStrategyHint: 'x2',
+          suffix: '',
+          formatOptions: {},
+          upscale: false,
+          abortScope: 'source',
+          logger: 'error',
+          hooks: [],
+        },
+        {}
+      )
+    ).not.toThrow();
+  });
+
   test('an invalid variable throws even when the call sets the option', () => {
     expect(() =>
       resolveOptions({ logger: 'silent' }, { PICTURE_ASSETS_LOG_LEVEL: 'warn' })

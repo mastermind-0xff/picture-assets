@@ -4,12 +4,12 @@ import type {
   AbortScope,
   Concurrency,
   AssetsOptions,
+  BatchAssetsOptions,
 } from '../types/options.js';
 import type { ResizeStrategyHint } from '../types/size.js';
 import { readEnvOptions } from './env.js';
 import {
-  describe,
-  isPlainObject,
+  assertOptions,
   parseAbortScope,
   parseBoolean,
   parseConcurrency,
@@ -32,6 +32,24 @@ export const DEFAULT_OPTIONS = {
 } as const satisfies Required<
   Omit<AssetsOptions, 'formatOptions' | 'hooks'> & { concurrency: Concurrency }
 >;
+
+/** Keys of `AssetsOptions`: others are rejected, as typos. */
+export const OPTION_KEYS = [
+  'resizeStrategyHint',
+  'suffix',
+  'formatOptions',
+  'upscale',
+  'abortScope',
+  'logger',
+  'hooks',
+] as const satisfies readonly (keyof AssetsOptions)[];
+
+/** Keys of `BatchAssetsOptions`. */
+export const BATCH_OPTION_KEYS = [
+  ...OPTION_KEYS,
+  'concurrency',
+  'signal',
+] as const satisfies readonly (keyof BatchAssetsOptions)[];
 
 /** Options with every value set and checked. */
 export interface ResolvedOptions {
@@ -61,14 +79,14 @@ const mergeFormatOptions = (
  *
  * @param options Options of the call.
  * @param env Environment variables. Default: `process.env`.
- * @throws TypeError or RangeError for invalid options or variables.
+ * @throws TypeError or RangeError for invalid options or variables, and
+ * TypeError for unknown options.
  */
 export const resolveOptions = (
   options: AssetsOptions = {},
   env: NodeJS.ProcessEnv = process.env
 ): ResolvedOptions => {
-  if (!isPlainObject(options))
-    throw new TypeError(`Options must be an object, got ${describe(options)}.`);
+  assertOptions('Options', options, OPTION_KEYS);
   const fromEnv = readEnvOptions(env);
   const logger = parseLogger(
     options.logger ?? fromEnv.logger ?? DEFAULT_OPTIONS.logger

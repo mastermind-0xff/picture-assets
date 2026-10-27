@@ -134,6 +134,23 @@ const describeUnknownKeys = (
   return `${noun}${unknown.length > 1 ? 's' : ''} ${unknown.map(describe).join(', ')}: expected ${keys.join(', ')}.`;
 };
 
+/**
+ * Checks an options object: no other keys than `keys`.
+ *
+ * @param name What the object is in messages: `'Options'`, `'Config'`.
+ * @throws TypeError for anything but an object, or naming its unknown keys.
+ */
+export function assertOptions(
+  name: string,
+  value: unknown,
+  keys: readonly string[]
+): asserts value is object {
+  if (!isPlainObject(value))
+    throw new TypeError(`${name} must be an object, got ${describe(value)}.`);
+  const unknown = describeUnknownKeys(value, keys, 'option');
+  if (unknown !== undefined) throw new TypeError(`Unknown ${unknown}`);
+}
+
 const isPositiveNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 

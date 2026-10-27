@@ -154,7 +154,10 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
-  config file. They throw, naming the size and the expected keys.
+  config file. They throw, naming the size and the expected keys. So do
+  unknown options of `generateSingleSourceAssets` and
+  `generateBatchAssets` (`{ sufix: '-{w}' }`, `{ concurency: 2 }`), as
+  `generateAssets`' did.
 - Error messages tell binary data and long lists by their size, and cut
   descriptions at 200 characters: a hook that returned an encoded image
   (5.6 MB) made a message of 20 MB, in 150 ms.

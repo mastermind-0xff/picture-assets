@@ -541,6 +541,13 @@ describe('generateSingleSourceAssets: invalid arguments throw before any work', 
         }),
     ],
     [
+      'option name',
+      () =>
+        generateSingleSourceAssets('a.jpg', 'out/', [{ width: 1 }], ['webp'], {
+          sufix: '-{w}',
+        } as never),
+    ],
+    [
       'source path',
       () => generateSingleSourceAssets('', 'out/', [{ width: 1 }]),
     ],

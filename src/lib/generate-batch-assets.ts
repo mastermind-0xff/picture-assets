@@ -4,11 +4,13 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 import {
+  BATCH_OPTION_KEYS,
   resolveConcurrency,
   resolveOptions,
   type ResolvedOptions,
 } from '../config/options.js';
 import {
+  assertOptions,
   assertSettings,
   createEncoders,
   parseFormats,
@@ -435,6 +437,7 @@ export const generateBatchAssets = async (
   const input = assertBatchSource(srcPath);
   assertPath('Destination root', destRoot);
   assertSettings(settings);
+  assertOptions('Options', options, BATCH_OPTION_KEYS);
   const { concurrency: concurrencyOption, signal, ...sourceOptions } = options;
   const concurrency = resolveConcurrency(concurrencyOption);
   const resolvedOptions = resolveOptions(sourceOptions);

@@ -12,9 +12,9 @@ import {
   type SizesInput,
 } from '../config/presets.js';
 import {
+  assertOptions,
   createEncoders,
   describe,
-  isPlainObject,
   parseBoolean,
   parseFormats,
 } from '../config/validate.js';
@@ -119,15 +119,7 @@ const toInputs = (input: unknown): string[] => {
 
 /** Checks a config and finds its sources. */
 const prepare = async (config: unknown) => {
-  if (!isPlainObject(config))
-    throw new TypeError(`Config must be an object, got ${describe(config)}.`);
-  const unknownKeys = Object.keys(config).filter(
-    (key) => !(CONFIG_KEYS as readonly string[]).includes(key)
-  );
-  if (unknownKeys.length > 0)
-    throw new TypeError(
-      `Unknown option${unknownKeys.length > 1 ? 's' : ''} ${unknownKeys.map(describe).join(', ')}: expected ${CONFIG_KEYS.join(', ')}.`
-    );
+  assertOptions('Config', config, CONFIG_KEYS);
   const {
     input,
     output,

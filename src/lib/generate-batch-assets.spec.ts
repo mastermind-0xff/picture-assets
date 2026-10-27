@@ -373,5 +373,21 @@ describe('generateBatchAssets', () => {
     await expect(
       generateBatchAssets(file('tree'), '', [{ width: 1 }])
     ).rejects.toThrow(TypeError);
+    // a variable passes the type check when it shares a key with the options
+    const options = { concurency: 2, logger: 'error' as const };
+    await expect(
+      generateBatchAssets(file('tree'), outDir(), [{ width: 1 }], [], options)
+    ).rejects.toThrow(
+      /^Unknown option 'concurency': expected resizeStrategyHint, .*, hooks, concurrency, signal\.$/
+    );
+    await expect(
+      generateBatchAssets(
+        file('tree'),
+        outDir(),
+        [{ width: 1 }],
+        [],
+        null as never
+      )
+    ).rejects.toThrow('Options must be an object, got null.');
   });
 });
