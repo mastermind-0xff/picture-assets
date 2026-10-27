@@ -173,6 +173,9 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
   with control characters (allowed on Linux and macOS, e.g. in a folder
   of uploads) could drive the terminal (`\x1b]0;…\x07` sets its title) or
   forge a log line. They are escaped as in JSON (`\u001b`).
+- `node --inspect` on the command debugged an idle process: the command
+  ran itself again for its thread pool, and the child failed to open the
+  same port. Under a debugger it runs in the process debugged.
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
   config file. They throw, naming the size and the expected keys. So do

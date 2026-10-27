@@ -11,6 +11,7 @@
  */
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import inspector from 'node:inspector';
 import os from 'node:os';
 
 /**
@@ -86,5 +87,11 @@ const run = async () => {
   }
 };
 
-if (process.env.UV_THREADPOOL_SIZE === undefined) runWithPool();
+// under a debugger (`--inspect`, also from NODE_OPTIONS) the run stays in
+// this process, the one debugged: a child would fail to open the same port
+if (
+  process.env.UV_THREADPOOL_SIZE === undefined &&
+  inspector.url() === undefined
+)
+  runWithPool();
 else await run();
