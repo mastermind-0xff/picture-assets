@@ -349,7 +349,8 @@ Each item was discussed with examples (plan mode), then decided:
    `beforeFormat` hook can't change options today, the format and its
    options are set after it; quality by size alone could also be a
    declarative per-size `formatOptions`. Encoder options: done in section
-   8 (`beforeFileWrite`); the results and data are left.
+   8 (`beforeFileWrite`); data in the results: done in section 9
+   (`record`).
 7. `key`. DONE `528f89e`, option (e): without a key, the hook's code (each
    point's function as text) is in the manifest's hash, so an edit remakes
    the sources; a key replaces the code. What a function closes over (a
@@ -410,3 +411,49 @@ refused).
    without a `key` are remade once: the hashed code lists one more point.
    The runner's call of a hook (its turn, its logs, its `HookError`) is
    shared by `run` and `runFileWriteHooks` (`callHook`).
+
+## 9. Data from hooks (2026-10-27, branch `hook-results`)
+
+Item 3b of the branch's plan, approved by the author after plan mode.
+
+- **Why**: a hook could compute data (a dominant color, a focal point, alt
+  text) but had nowhere to keep it across runs. Collected in the hook's
+  own code, it is lost for the sources an incremental run skips (their
+  hooks don't run), a `--hooks` module has no end of run to write it at,
+  and templates would read a second file next to the manifest. The
+  manifest keeps a skipped source's entry as it is, so data in it survives
+  for free.
+- **API**: `context.record(key, value)` at every point, so hooks that
+  return nothing can record, and `HookResult` stays the image (a returned
+  `{ image, data }` would look like `RawImage`'s `{ data, info }`). Data is
+  by hook name, then key (`data.placeholder.color`): names are unique, so
+  hooks can't collide and nothing is checked. The same key again replaces
+  its value.
+- **Two places** (the author): the source's (`ResultSource.data`,
+  `ManifestEntry.data`) at `afterSourceLoad`, each file's
+  (`ResultFormat.data`, `ManifestOutput.data`) at the other points. A size
+  point's data goes on every file of its size, a file's own value winning
+  for the same key: the results and the manifest have the same shape, and
+  the manifest needs no size level. `ResultSetting` has no data.
+- **JSON check when recorded** (a round trip, which also keeps a copy):
+  unlike a format a hook changes (deliberate, its own file), a BigInt or a
+  circular object is an accident that would throw in `writeManifest`
+  after the whole batch, naming no hook, and leave no manifest, so the
+  next run remakes every changed source again. Measured: 0.6 us for a
+  color, 1.6 us for a focal point, 7.5 us for 5 face boxes; only `record`
+  calls pay it. JSON's own conversions are kept (a `Map` as `{}`, a `Date`
+  as its string, `NaN` as `null`); the `JsonValue` type refuses those at
+  compile time (a value typed by an interface needs a spread).
+- **During the call only**: a `record` kept and called after its hook's
+  call ended throws, instead of landing in the results or not depending
+  on timing.
+- **Dropped**: 3a, results listing which hooks changed a size or a file.
+  Whether a hook changed anything isn't known (a `beforeFileWrite` hook
+  that returns nothing may have), and a hook that wants to be traced
+  records it (`record('applied', true)`).
+- Without records there is no `data` field: files, manifests and results
+  byte-identical to `1a5d8d5` (37 of 37 files with the manifest, without
+  hooks and with a no-op hook at every point). The manifest stays version
+  1: readers ignore the new fields.
+- A hook with a `key` that starts recording needs a new key (or `force`)
+  for unchanged sources to get the data.

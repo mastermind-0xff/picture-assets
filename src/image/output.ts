@@ -11,7 +11,7 @@ import {
 } from '../config/validate.js';
 import { describeFiles, tallyFiles } from '../log/describe.js';
 import type { AssetsLogger } from '../log/logger.js';
-import type { HookSetting, RawImage } from '../types/hooks.js';
+import type { HookData, HookSetting, RawImage } from '../types/hooks.js';
 import type {
   OutputSetting,
   ResultFormat,
@@ -31,10 +31,12 @@ import {
   fromRaw,
   hasAlphaChannel,
   rawInput,
+  recordedData,
   runFileWriteHooks,
   runFormatHooks,
   runHooks,
   type EncodedInput,
+  type Recorded,
 } from './hooks.js';
 import {
   limitToSource,
@@ -349,7 +351,8 @@ const toHookSetting = ({
  * an `afterSourceLoad` hook's image is planned as the source; after
  * `afterResize`, a size's image is what the next sizes resize from; after
  * `beforeEncode`, it is only what this size's files encode. Points without
- * hooks cost nothing.
+ * hooks cost nothing. What hooks record is the source's at
+ * `afterSourceLoad`, each file's at the other points.
  *
  * @param srcPath Source's image full path.
  * @param settings Settings list to generate files.
@@ -359,7 +362,8 @@ const toHookSetting = ({
  * @param context Options of the run and its abort signal.
  * @returns Promise that resolves to a list of objects containing metadata about
  * each setting and its resulting files, whether the source stopped before
- * its last setting, and the source's size.
+ * its last setting, the source's size, and what its `afterSourceLoad` hooks
+ * recorded.
  * @throws When the source can't be read, an `afterSourceLoad` hook fails
  * or the output directory can't be created: nothing was processed.
  */
@@ -374,6 +378,7 @@ export const sourceToSettings = async (
   stopped: boolean;
   width: number;
   height: number;
+  data: HookData | undefined;
 }> => {
   const { logger, suffix, abortScope, signal, hooks } = context;
 
@@ -393,13 +398,14 @@ export const sourceToSettings = async (
 
   // the image an afterSourceLoad hook gives is the source from now on: its
   // size, channels and transparency plan the sizes
+  const sourceRecorded: Recorded = new Map();
   const sourcePixels =
     hooks.afterSourceLoad.length > 0 ?
       await runHooks(
         'afterSourceLoad',
         hooks.afterSourceLoad,
         encoded(),
-        { source: srcPath, signal, logger },
+        { source: srcPath, signal, logger, recorded: sourceRecorded },
         shown
       )
     : undefined;
@@ -452,11 +458,15 @@ export const sourceToSettings = async (
       hasAlpha: hasAlphaChannel(channels),
     };
   };
-  const sizeContext = (setting: ResolvedOutputSettings) => ({
+  const sizeContext = (
+    setting: ResolvedOutputSettings,
+    recorded: Recorded
+  ) => ({
     source: srcPath,
     signal,
     logger,
     setting: toHookSetting(setting),
+    recorded,
   });
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -467,6 +477,7 @@ export const sourceToSettings = async (
     stopped,
     width: srcWidth,
     height: srcHeight,
+    data: recordedData(sourceRecorded),
   });
   const identifiers = new Set<string>();
   const sourceBase: ResizeBase = {
@@ -504,6 +515,8 @@ export const sourceToSettings = async (
     );
     const label = `${shown} at ${width}x${height}`;
     const sizeStart = performance.now();
+    // what this size's hooks record goes on each of its files
+    const sizeRecorded: Recorded = new Map();
 
     let result: ResultSetting;
     try {
@@ -512,7 +525,7 @@ export const sourceToSettings = async (
           'beforeResize',
           hooks.beforeResize,
           inputOf(start),
-          sizeContext(setting),
+          sizeContext(setting, sizeRecorded),
           label
         );
         if (changed) start = toBase(changed, start);
@@ -563,7 +576,7 @@ export const sourceToSettings = async (
           'afterResize',
           hooks.afterResize,
           rawInput(resized),
-          sizeContext(setting),
+          sizeContext(setting, sizeRecorded),
           label
         );
         if (changed) {
@@ -580,7 +593,7 @@ export const sourceToSettings = async (
           'beforeEncode',
           hooks.beforeEncode,
           rawInput(resized),
-          sizeContext(setting),
+          sizeContext(setting, sizeRecorded),
           label
         );
         if (changed) {
@@ -606,13 +619,23 @@ export const sourceToSettings = async (
         );
       identifiers.add(outputIdentifier);
 
+      // a file's beforeFormat and beforeFileWrite hooks record in one store
+      const fileRecorded = new Map<string, Recorded>();
+      const recordedFor = (file: string) => {
+        let recorded = fileRecorded.get(file);
+        if (recorded === undefined) {
+          recorded = new Map();
+          fileRecorded.set(file, recorded);
+        }
+        return recorded;
+      };
       const fileContext = (encoder: Encoder, file: string) => ({
-        ...sizeContext(setting),
+        ...sizeContext(setting, recordedFor(file)),
         format: encoder.format,
         options: encoder.options,
         file,
       });
-      const files = await settingToFormats(
+      const outputs = await settingToFormats(
         encoded,
         encodersFor(hasAlpha),
         outputIdentifier,
@@ -644,6 +667,10 @@ export const sourceToSettings = async (
           }
         : undefined
       );
+      const files = outputs.map((output) => {
+        const data = recordedData(sizeRecorded, fileRecorded.get(output.file));
+        return data ? { ...output, data } : output;
+      });
       result = {
         status: allResultsSucceeded(files) ? 'succeed' : 'failed',
         size: `${fileWidth}x${fileHeight}`,

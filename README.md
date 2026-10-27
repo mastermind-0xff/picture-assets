@@ -156,7 +156,8 @@ largest file keeps every pixel.
 **Manifest.** After each run, the manifest lists every source that
 succeeded or was unchanged, by its path relative to the manifest, with its
 size and files (path relative to the manifest, format, width, height,
-bytes): what templates need to write `<picture>` and `srcset`. Read it with
+bytes), and the `data` hooks recorded for it and its files: what templates
+need to write `<picture>` and `srcset`. Read it with
 `readManifest`. A source is skipped (`'skipped'` in the result) when its
 file, the options deciding its files, and its files are all as the
 manifest recorded.
@@ -380,7 +381,8 @@ await generateAssets({
 Each function gets a new sharp object over the image, never one the run
 uses (but `beforeFileWrite`, see below), and a context: the `source` path, the image's `width`, `height` and
 `channels`, `pixels()` (a copy of its pixels, 8 bits per channel, for JS
-or a model), the run's `signal` and `logger`. The size points add the
+or a model), the run's `signal` and `logger`, and `record` (see
+[Data](#data-from-hooks)). The size points add the
 `setting` (planned `width` and `height`, `sizeMultiplier`, `suffix`,
 `resizeOptions`, `extractRegion`), `beforeFormat` and `beforeFileWrite`
 the `format`, its encoder `options` and the `file`. It returns, or resolves to:
@@ -462,9 +464,47 @@ a run with hooks can differ from its plan. The plan names them
 
 [`examples/hooks.js`](examples/hooks.js) grades, crops around a focal
 point, watermarks, sharpens AVIF and lowers the quality of the largest
-AVIF;
+AVIF, recording the crop and the quality;
 [`examples/hooks-pixels.js`](examples/hooks-pixels.js) upscales and adds
 alpha through `pixels()`.
+
+### Data from hooks
+
+`record(key, value)` keeps a JSON value in the results and the manifest,
+under the hook's name: a placeholder color, a blurhash, a focal point,
+alt text, a database id, for the templates that read them.
+
+```js
+const placeholder = {
+  name: 'placeholder',
+  afterSourceLoad: async (image, { record }) => {
+    const { dominant } = await image.stats();
+    record('color', `rgb(${dominant.r} ${dominant.g} ${dominant.b})`);
+  },
+};
+// the source's result:  data: { placeholder: { color: 'rgb(232 248 248)' } }
+// its manifest entry:   "data": { "placeholder": { "color": "rgb(232 248 248)" } }
+```
+
+- **Where it goes**: at `afterSourceLoad`, to the source (`ResultSource`
+  and its manifest entry); at the other points, to each file
+  (`ResultFormat` and its manifest output). A size point's data goes on
+  every file of its size; for the same key, a file's own value wins. The
+  same key again replaces the value. Without data, there is no `data`
+  field.
+- **JSON**: the value is kept as a JSON copy, checked when recorded. A
+  BigInt or a circular object throws, which fails the hook: written with
+  the manifest, after the whole run, it would fail the manifest and name
+  no hook. JSON gives the rest back its way: a `Map` as `{}`, a `Date` as
+  its string, `NaN` as `null`. TypeScript's `JsonValue` refuses those; a
+  value typed by an interface needs a spread (`{ ...point }`).
+- **During the call**: a `record` called after its hook's call ended
+  throws.
+- **Unchanged sources** are skipped: their hooks don't run, and their
+  result has no data, but the manifest keeps their entry, data included.
+  A hook with a `key` that starts recording needs a new key (or `force`)
+  for the unchanged sources to get the data; without a key, its edited
+  code remakes them.
 
 ## Results
 
@@ -481,9 +521,10 @@ Both functions resolve with a tree of results: batch → sources → settings
 Written files have `fileData`: sharp's output info, with `size` in bytes,
 `width` and `height`. Sources have their `width` and `height`, as shown. A
 batch lists every source found, in path order, and both levels have a
-`duration` in milliseconds.
+`duration` in milliseconds. Sources and files have `data` when hooks
+recorded some (see [Data from hooks](#data-from-hooks)).
 [`examples/picture.js`](examples/picture.js) turns a result into a
-`<picture>` element.
+`<picture>` element, with a placeholder color a hook recorded.
 
 ## Failures
 
@@ -555,9 +596,9 @@ write to `examples/output`.
 | [`quick-start.js`](examples/quick-start.js)       | One photo, 3 widths, AVIF, WebP and JPEG            |
 | [`multipliers.js`](examples/multipliers.js)       | `x1`/`x2`/`x3` sizes and `resizeStrategyHint`       |
 | [`art-direction.js`](examples/art-direction.js)   | Other aspect ratios, `position: 'attention'`, crops |
-| [`hooks.js`](examples/hooks.js)                   | A grade, a hero crop, a watermark, AVIF sharpening  |
+| [`hooks.js`](examples/hooks.js)                   | A grade, a hero crop, a watermark, AVIF quality     |
 | [`hooks-pixels.js`](examples/hooks-pixels.js)     | Hooks on pixels: an upscaler, an alpha vignette     |
-| [`picture.js`](examples/picture.js)               | A `<picture>` element from the result               |
+| [`picture.js`](examples/picture.js)               | A `<picture>` element, a recorded placeholder color |
 | [`format-options.js`](examples/format-options.js) | Defaults, `formatOptions`, per call options         |
 | [`batch.js`](examples/batch.js)                   | A directory tree, mirrored                          |
 | [`errors.js`](examples/errors.js)                 | `abortScope`, results and errors                    |

@@ -63,6 +63,27 @@ export type HookResult = Sharp | RawImage | undefined | void;
 /** A hook's return value, or a promise of it. */
 export type HookReturn = HookResult | Promise<HookResult>;
 
+/**
+ * A value JSON writes and reads back as it is. A value typed by an
+ * interface needs a spread to be one (`{ ...point }`): TypeScript gives
+ * interfaces no index signature.
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly JsonValue[]
+  | { readonly [key: string]: JsonValue };
+
+/**
+ * What hooks recorded (see `HookContext.record`), by hook name, then by
+ * key: `{ placeholder: { color: '#a3b1c2' } }`.
+ */
+export type HookData = Readonly<
+  Record<string, Readonly<Record<string, JsonValue>>>
+>;
+
 /** A size as planned, multipliers resolved. */
 export interface HookSetting {
   /** Planned size in pixels, before `resizeOptions` and `extractRegion`. */
@@ -95,6 +116,18 @@ export interface HookContext {
   /** The run's signal: a long hook can stop when the run is stopped. */
   readonly signal: AbortSignal;
   readonly logger: AssetsLogger;
+  /**
+   * Records data in the results and the manifest, under the hook's name:
+   * `record('color', '#a3b1c2')` gives `data: { placeholder: { color:
+   * '#a3b1c2' } }`. At `afterSourceLoad` the data is the source's; at the
+   * other points it is each file's: a size point's on every file of its
+   * size, a file's own value winning over its size's. The same key again
+   * replaces the value. Kept as a JSON copy: a value JSON can't write (a
+   * BigInt, a circular object) throws, failing the hook; JSON writes the
+   * rest its way (a `Map` as `{}`, a `Date` as its string). Only during
+   * the hook's call: a call after it ended throws.
+   */
+  readonly record: (key: string, value: JsonValue) => void;
 }
 
 /** Context of the size points: `beforeResize`, `afterResize`, `beforeEncode`. */

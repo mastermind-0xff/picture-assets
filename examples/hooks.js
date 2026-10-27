@@ -16,6 +16,11 @@
  *   a retina screen shows at half their pixels. The run set the format and
  *   its options before this point: the hook's quality wins.
  *
+ * Two hooks `record` what they did: the hero crop its box, on each file of
+ * the size it cut, and the quality hook its quality, on the file it set it
+ * for. The data is in the results, and in the manifest with
+ * `generateAssets`.
+ *
  * `logger: 'debug'` logs when each hook starts and ends, with its time, and
  * the default logger's timestamps have milliseconds.
  *
@@ -42,13 +47,13 @@ const colorGrade = {
 /** @type {import('picture-assets').Hook} */
 const heroCrop = {
   name: 'heroCrop',
-  beforeResize: (image, { setting, width, height }) => {
+  beforeResize: (image, { setting, width, height, record }) => {
     const ratio = setting.width / setting.height;
     // the image's own shape: nothing to cut
     if (Math.abs(ratio - width / height) < 0.01) return undefined;
     const cropWidth = Math.min(width, Math.round(height * ratio));
     const cropHeight = Math.min(height, Math.round(cropWidth / ratio));
-    return image.extract({
+    const box = {
       left: clamp(
         Math.round(FOCAL_POINT.x * width - cropWidth / 2),
         0,
@@ -61,7 +66,9 @@ const heroCrop = {
       ),
       width: cropWidth,
       height: cropHeight,
-    });
+    };
+    record('box', box);
+    return image.extract(box);
   },
 };
 
@@ -89,10 +96,11 @@ const avifSharpen = {
 /** @type {import('picture-assets').Hook} */
 const largeAvifQuality = {
   name: 'largeAvifQuality',
-  beforeFileWrite: (image, { format, width }) =>
-    format === 'avif' && width >= 1600 ?
-      image.avif({ quality: 45 })
-    : undefined,
+  beforeFileWrite: (image, { format, width, record }) => {
+    if (format !== 'avif' || width < 1600) return undefined;
+    record('quality', 45);
+    return image.avif({ quality: 45 });
+  },
 };
 
 const result = await generateSingleSourceAssets(
@@ -115,3 +123,9 @@ for (const { size, files } of result.outputsBySetting)
   console.log(
     `${size.padEnd(9)} ${files.map((file) => path.basename(file.file)).join(', ')}`
   );
+
+// what the hooks recorded, by file
+console.log();
+for (const file of result.outputsBySetting.flatMap(({ files }) => files))
+  if (file.data)
+    console.log(`${path.basename(file.file)}: ${JSON.stringify(file.data)}`);

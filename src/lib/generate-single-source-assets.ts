@@ -86,13 +86,14 @@ export const processSource = async (
   if (context.signal.aborted) return sourceResult(srcPath, 'aborted', start);
 
   try {
-    const { outputsBySetting, stopped, width, height } = await sourceToSettings(
-      srcPath,
-      settings,
-      target.encoders,
-      target.outputPath,
-      context
-    );
+    const { outputsBySetting, stopped, width, height, data } =
+      await sourceToSettings(
+        srcPath,
+        settings,
+        target.encoders,
+        target.outputPath,
+        context
+      );
     const status: ResultStatus =
       outputsBySetting.some(({ status }) => status === 'failed') ? 'failed'
       : stopped ? 'aborted'
@@ -102,6 +103,7 @@ export const processSource = async (
       source: srcPath,
       width,
       height,
+      ...(data && { data }),
       outputsBySetting,
       duration: Math.round(performance.now() - start),
     };

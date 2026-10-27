@@ -12,6 +12,7 @@ import type {
   TiffOptions,
   WebpOptions,
 } from 'sharp';
+import type { HookData } from './hooks.js';
 import type { ResizeResolution } from './size.js';
 
 /**
@@ -60,7 +61,15 @@ export type ResultStatus = 'succeed' | 'failed' | 'aborted' | 'skipped';
  * - `'succeed'`: written; `fileData` has its size and dimensions.
  * - `'failed'`: not written; `error` tells why.
  */
-export type ResultFormat = { format: OutputFormat; file: string } & (
+export type ResultFormat = {
+  format: OutputFormat;
+  file: string;
+  /**
+   * What hooks recorded for the file, at its size's points and its own;
+   * absent when none did. See `HookContext.record`.
+   */
+  data?: HookData;
+} & (
   | { status: 'succeed'; fileData: OutputInfo }
   | { status: 'failed'; error: unknown }
 );
@@ -96,6 +105,12 @@ export interface ResultSource {
   /** Size of the source as shown (auto-oriented), when it was read. */
   width?: number;
   height?: number;
+  /**
+   * What `afterSourceLoad` hooks recorded; absent when none did. A source
+   * skipped as unchanged has none here: its data is the manifest's. See
+   * `HookContext.record`.
+   */
+  data?: HookData;
   outputsBySetting: ResultSetting[];
   error?: unknown;
   /** Processing time in milliseconds. */

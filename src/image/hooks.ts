@@ -6,9 +6,11 @@ import type {
   FormatHookContext,
   Hook,
   HookContext,
+  HookData,
   HookPoint,
   HookResult,
   HookReturn,
+  JsonValue,
   RawImage,
   SizeHookContext,
 } from '../types/hooks.js';
@@ -160,13 +162,72 @@ const checkRawImage = (image: RawImage): RawImage => {
   };
 };
 
+/**
+ * What the hooks of a source, a size or a file recorded, by hook name, then
+ * key (see `HookContext.record`). Maps: a key like `__proto__` is data like
+ * any other.
+ */
+export type Recorded = Map<string, Map<string, JsonValue>>;
+
+/**
+ * Recorded data as the results have it, the stores merged in order: for the
+ * same hook and key, a later store's value wins (a file's over its size's).
+ *
+ * @returns The data, or undefined when nothing was recorded.
+ */
+export const recordedData = (
+  ...stores: readonly (Recorded | undefined)[]
+): HookData | undefined => {
+  const merged: Recorded = new Map();
+  for (const store of stores)
+    for (const [hook, values] of store ?? []) {
+      const into = merged.get(hook);
+      if (into === undefined) merged.set(hook, new Map(values));
+      else for (const [key, value] of values) into.set(key, value);
+    }
+  if (merged.size === 0) return undefined;
+  return Object.fromEntries(
+    [...merged].map(([hook, values]) => [hook, Object.fromEntries(values)])
+  );
+};
+
+/** `JSON.stringify` gives undefined for undefined, functions and symbols. */
+const stringify = (value: unknown): string | undefined => JSON.stringify(value);
+
+/**
+ * A recorded value as JSON gives it back. Checked when recorded: as the
+ * manifest is written, after the whole run, a BigInt or a circular object
+ * would fail it and name no hook.
+ *
+ * @throws TypeError when JSON can't write the value.
+ */
+const jsonCopy = (key: string, value: unknown): JsonValue => {
+  let text: string | undefined;
+  try {
+    text = stringify(value);
+  } catch (error: unknown) {
+    throw new TypeError(
+      `recorded ${describe(key)} as ${describe(value)}: not JSON (${error instanceof Error ? error.message : String(error)}).`,
+      { cause: error }
+    );
+  }
+  if (text === undefined)
+    throw new TypeError(
+      `recorded ${describe(key)} as ${describe(value)}: not JSON.`
+    );
+  return JSON.parse(text) as JsonValue;
+};
+
 /** What a point tells its hooks, beyond what each image tells. */
 type PointContext<P extends HookPoint> = Omit<
   P extends 'afterSourceLoad' ? HookContext
   : P extends 'beforeFormat' | 'beforeFileWrite' ? FormatHookContext
   : SizeHookContext,
-  'point' | 'width' | 'height' | 'channels' | 'pixels'
->;
+  'point' | 'width' | 'height' | 'channels' | 'pixels' | 'record'
+> & {
+  /** Where its hooks' `record` keeps their data. */
+  readonly recorded: Recorded;
+};
 
 /** At most `limit` calls at once: the others wait, in order. */
 interface Gate {
@@ -219,6 +280,8 @@ const gateOf = (hook: Hook): Gate | undefined => {
  * the run was stopped meanwhile.
  *
  * @param image The image the hook gets, made once its turn came.
+ * @param context The hook's context but its `record`, made here for the
+ * hook: it keeps the data in `recorded`, under the hook's name.
  * @param label Where, for the logs: the source, its size or the file.
  * @param take Checks what the hook returned and makes it the image to go on
  * with (a bake): what it throws fails the hook.
@@ -228,7 +291,8 @@ const callHook = async <T>(
   hook: Hook,
   point: HookPoint,
   image: () => Sharp,
-  context: HookContext,
+  context: Omit<HookContext, 'record'>,
+  recorded: Recorded,
   label: string,
   take: (returned: HookResult) => T | Promise<T>
 ): Promise<T> => {
@@ -237,6 +301,18 @@ const callHook = async <T>(
     context: HookContext
   ) => HookReturn;
   const { logger, signal } = context;
+  let ended = false;
+  const record = (key: string, value: JsonValue) => {
+    // the results may be made already: the value would be lost, or not
+    if (ended)
+      throw new Error(
+        `Hook ${hook.name} recorded ${describe(key)} after its ${point} call of ${label} ended.`
+      );
+    const copy = jsonCopy(key, value);
+    const values = recorded.get(hook.name);
+    if (values === undefined) recorded.set(hook.name, new Map([[key, copy]]));
+    else values.set(key, copy);
+  };
   const gate = gateOf(hook);
   if (gate?.full())
     logger.debug(`Hook ${hook.name} waiting: ${point} of ${label}`);
@@ -246,7 +322,13 @@ const callHook = async <T>(
   let result: T;
   try {
     if (gate) signal.throwIfAborted();
-    result = await take(await call.call(hook, image(), context));
+    let returned: HookResult;
+    try {
+      returned = await call.call(hook, image(), { ...context, record });
+    } finally {
+      ended = true;
+    }
+    result = await take(returned);
   } catch (error: unknown) {
     throw new HookError(
       `Hook ${hook.name} failed at ${point} of ${label}: ${error instanceof Error ? error.message : String(error)}`,
@@ -280,6 +362,7 @@ const run = async <P extends Exclude<HookPoint, 'beforeFileWrite'>>(
   label: string,
   bakeLast: boolean
 ): Promise<RawImage | Sharp | undefined> => {
+  const { recorded, ...shared } = context;
   let current = input;
   let changed: RawImage | undefined;
   for (const [index, hook] of hooks.entries()) {
@@ -291,13 +374,14 @@ const run = async <P extends Exclude<HookPoint, 'beforeFileWrite'>>(
       point,
       given.create,
       {
-        ...context,
+        ...shared,
         point,
         width: given.width,
         height: given.height,
         channels: given.channels,
         pixels: given.pixels,
       },
+      recorded,
       label,
       async (returned): Promise<RawImage | Sharp | undefined> => {
         if (returned === undefined) return undefined;
@@ -370,6 +454,7 @@ export const runFileWriteHooks = async (
   context: PointContext<'beforeFileWrite'>,
   label: string
 ): Promise<Sharp> => {
+  const { recorded, ...shared } = context;
   let current = image;
   for (const hook of hooks) {
     if (hook.beforeFileWrite === undefined) continue;
@@ -379,13 +464,14 @@ export const runFileWriteHooks = async (
       'beforeFileWrite',
       () => given,
       {
-        ...context,
+        ...shared,
         point: 'beforeFileWrite',
         width: input.width,
         height: input.height,
         channels: input.channels,
         pixels: input.pixels,
       },
+      recorded,
       label,
       (returned) => {
         if (returned === undefined) return given;

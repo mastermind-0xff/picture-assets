@@ -17,11 +17,13 @@ import {
 import { createRecordingLogger } from '../test-utils/logger.js';
 import { displayPath } from '../utils/helpers.js';
 import { ssim } from '../test-utils/ssim.js';
+import { readManifest } from '../lib/manifest.js';
 import type {
   FormatHookContext,
   Hook,
   HookContext,
   HookPoint,
+  JsonValue,
   RawImage,
   SizeHookContext,
 } from '../types/hooks.js';
@@ -30,9 +32,11 @@ import {
   encodedInput,
   groupHooks,
   rawInput,
+  recordedData,
   runFileWriteHooks,
   runFormatHooks,
   runHooks,
+  type Recorded,
 } from './hooks.js';
 
 let dir: string;
@@ -61,6 +65,7 @@ const pointContext = () => ({
   source: 'a.jpg',
   signal: new AbortController().signal,
   logger: createRecordingLogger().logger,
+  recorded: new Map() as Recorded,
 });
 
 /**
@@ -1135,5 +1140,278 @@ describe('hook concurrency', () => {
         message.startsWith('Hook model waiting: afterSourceLoad of ')
       )
     ).toHaveLength(2);
+  });
+});
+
+describe('record', () => {
+  /** Runs afterSourceLoad hooks on small pixels: what they recorded. */
+  const recordAt = async (...hooks: Hook[]) => {
+    const context = pointContext();
+    await runHooks(
+      'afterSourceLoad',
+      hooks,
+      rawInput(smallPixels()),
+      context,
+      'a.jpg'
+    );
+    return recordedData(context.recorded);
+  };
+
+  test("under the hook's name; the same key again replaces; a copy is kept", async () => {
+    const point = { x: 0.62, y: 0.55 };
+    expect(
+      await recordAt(
+        {
+          name: 'focal',
+          afterSourceLoad: (_image, { record }) => {
+            record('point', point);
+            point.x = 0;
+            record('model', 'v1');
+            record('model', 'v2');
+          },
+        },
+        {
+          name: 'color',
+          afterSourceLoad: (_image, context) => {
+            context.record('dominant', '#a3b1c2');
+          },
+        }
+      )
+    ).toEqual({
+      focal: { point: { x: 0.62, y: 0.55 }, model: 'v2' },
+      color: { dominant: '#a3b1c2' },
+    });
+    expect(
+      await recordAt({ name: 'quiet', afterSourceLoad: () => undefined })
+    ).toBeUndefined();
+  });
+
+  test('a value JSON cannot write fails the hook; the rest is kept as JSON gives it back', async () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const recording = (value: unknown) =>
+      recordAt({
+        name: 'probe',
+        afterSourceLoad: (_image, { record }) => {
+          record('value', value as JsonValue);
+        },
+      });
+    await expect(recording(10n)).rejects.toThrow(HookError);
+    await expect(recording(10n)).rejects.toThrow(
+      "Hook probe failed at afterSourceLoad of a.jpg: recorded 'value' as 10: not JSON (Do not know how to serialize a BigInt)."
+    );
+    await expect(recording(circular)).rejects.toThrow(
+      /^Hook probe failed at afterSourceLoad of a\.jpg: recorded 'value' as \[object Object\]: not JSON \(Converting circular structure to JSON/
+    );
+    await expect(recording(undefined)).rejects.toThrow(
+      "recorded 'value' as undefined: not JSON."
+    );
+    expect(
+      await recordAt({
+        name: 'probe',
+        afterSourceLoad: (_image, { record }) => {
+          record('map', new Map([['a', 1]]) as unknown as JsonValue);
+          record('nan', Number.NaN);
+          record('date', new Date(0) as unknown as JsonValue);
+        },
+      })
+    ).toEqual({
+      probe: { map: {}, nan: null, date: '1970-01-01T00:00:00.000Z' },
+    });
+  });
+
+  test('only during the call: a record after it ended throws', async () => {
+    const kept: HookContext['record'][] = [];
+    const context = pointContext();
+    await runHooks(
+      'afterSourceLoad',
+      [
+        {
+          name: 'late',
+          afterSourceLoad: (_image, { record }) => {
+            kept.push(record);
+          },
+        },
+      ],
+      rawInput(smallPixels()),
+      context,
+      'a.jpg'
+    );
+    expect(() => kept[0]?.('color', '#fff')).toThrow(
+      "Hook late recorded 'color' after its afterSourceLoad call of a.jpg ended."
+    );
+    expect(recordedData(context.recorded)).toBeUndefined();
+  });
+
+  test('recordedData: stores merged in order, a later value winning, none changed', () => {
+    const size: Recorded = new Map([
+      [
+        'crop',
+        new Map<string, JsonValue>([
+          ['box', [0, 0, 4, 2]],
+          ['by', 'size'],
+        ]),
+      ],
+    ]);
+    const file: Recorded = new Map([
+      ['crop', new Map<string, JsonValue>([['by', 'file']])],
+      ['__proto__', new Map<string, JsonValue>([['__proto__', 1]])],
+    ]);
+    const data = recordedData(size, file);
+    expect(JSON.stringify(data)).toBe(
+      '{"crop":{"box":[0,0,4,2],"by":"file"},"__proto__":{"__proto__":1}}'
+    );
+    expect(Object.getPrototypeOf(data)).toBe(Object.prototype);
+    expect(size.get('crop')?.get('by')).toBe('size');
+    expect(recordedData(new Map(), undefined)).toBeUndefined();
+  });
+
+  test('where it goes: the source at afterSourceLoad, each file at the other points', async () => {
+    const hook: Hook = {
+      name: 'probe',
+      afterSourceLoad: (_image, { record }) => {
+        record('at', 'source');
+      },
+      beforeResize: (_image, { record, setting }) => {
+        record('width', setting.width);
+        record('at', 'size');
+      },
+      afterResize: (_image, { record }) => {
+        record('resized', true);
+      },
+      beforeEncode: (_image, { record }) => {
+        record('encoded', true);
+      },
+      beforeFormat: (_image, { record, format }) => {
+        if (format === 'webp') record('at', 'file');
+      },
+      beforeFileWrite: (_image, { record, format }) => {
+        record('format', format);
+      },
+    };
+    const result = await generateSingleSourceAssets(
+      file('landscape.jpg'),
+      outDir(),
+      [{ width: 200 }, { width: 100 }],
+      ['webp', 'png'],
+      { ...silent, hooks: [hook, noOpHook] }
+    );
+    expect(result.data).toEqual({ probe: { at: 'source' } });
+    const size = (width: number, at: string, format: string) => ({
+      probe: { width, at, resized: true, encoded: true, format },
+    });
+    expect(
+      Object.fromEntries(
+        result.outputsBySetting
+          .flatMap(({ files }) => files)
+          .map((written) => [path.basename(written.file), written.data])
+      )
+    ).toEqual({
+      'landscape@200w.webp': size(200, 'file', 'webp'),
+      'landscape@200w.png': size(200, 'size', 'png'),
+      'landscape@100w.webp': size(100, 'file', 'webp'),
+      'landscape@100w.png': size(100, 'size', 'png'),
+    });
+    for (const setting of result.outputsBySetting)
+      expect(setting).not.toHaveProperty('data');
+  });
+
+  test('no records, no data; a value JSON refuses fails its file only', async () => {
+    const result = await generateSingleSourceAssets(
+      file('landscape.jpg'),
+      outDir(),
+      [{ width: 100 }],
+      ['webp', 'png'],
+      {
+        ...silent,
+        hooks: [
+          noOpHook,
+          {
+            name: 'big',
+            beforeFileWrite: (_image, { record, format }) => {
+              if (format === 'png') record('n', 10n as unknown as JsonValue);
+            },
+          },
+        ],
+      }
+    );
+    expect(result).not.toHaveProperty('data');
+    const [webp, png] = result.outputsBySetting[0]?.files ?? [];
+    expect(webp?.status).toBe('succeed');
+    expect(webp).not.toHaveProperty('data');
+    expect(png?.status).toBe('failed');
+    expect(png?.status === 'failed' && png.error).toBeInstanceOf(HookError);
+  });
+
+  test('the manifest has the data, and keeps it while the source is unchanged', async () => {
+    const out = outDir();
+    const images = path.join(dir, 'record-input');
+    await fs.mkdir(images, { recursive: true });
+    await opaqueImage(300, 200).png().toFile(path.join(images, 'a.png'));
+    const manifest = path.join(out, 'assets.json');
+    let calls = 0;
+    const placeholder: Hook = {
+      name: 'placeholder',
+      afterSourceLoad: async (image, { record }) => {
+        calls++;
+        const { dominant } = await image.stats();
+        record('color', `rgb(${dominant.r} ${dominant.g} ${dominant.b})`);
+      },
+      beforeFileWrite: (_image, { record, format }) => {
+        record('format', format);
+      },
+    };
+    const config = {
+      input: images,
+      output: out,
+      sizes: [200],
+      formats: ['webp'],
+      manifest,
+      ...silent,
+      hooks: [placeholder],
+    } as const;
+
+    const first = await generateAssets(config);
+    const color = first.sources[0]?.data?.placeholder?.color;
+    expect(color).toMatch(/^rgb\(\d+ \d+ \d+\)$/);
+    const written = (await readManifest(manifest)).manifest;
+    expect(Object.values(written?.sources ?? {})).toMatchObject([
+      {
+        data: { placeholder: { color } },
+        outputs: [
+          { format: 'webp', data: { placeholder: { format: 'webp' } } },
+        ],
+      },
+    ]);
+
+    const second = await generateAssets(config);
+    expect(second.sources[0]?.status).toBe('skipped');
+    expect(second.sources[0]).not.toHaveProperty('data');
+    expect(calls).toBe(1);
+    expect((await readManifest(manifest)).manifest).toEqual(written);
+  });
+
+  test('types: JSON values only; an interface through a spread', () => {
+    interface Point {
+      x: number;
+      y: number;
+    }
+    const point: Point = { x: 1, y: 2 };
+    const hook: Hook = {
+      name: 'types',
+      afterSourceLoad: (_image, { record }) => {
+        record('faces', [{ left: 1, top: 2, score: 0.9 }]);
+        record('point', { ...point });
+        // @ts-expect-error an interface has no index signature
+        record('point', point);
+        // @ts-expect-error a Map is not JSON
+        record('map', new Map());
+        // @ts-expect-error nor a BigInt
+        record('big', 10n);
+        // @ts-expect-error nor undefined
+        record('none', undefined);
+      },
+    };
+    expect(hook.name).toBe('types');
   });
 });

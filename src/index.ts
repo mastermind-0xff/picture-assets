@@ -55,10 +55,12 @@ export type {
   FormatHookContext,
   Hook,
   HookContext,
+  HookData,
   HookPoint,
   HookResult,
   HookReturn,
   HookSetting,
+  JsonValue,
   RawImage,
   SizeHookContext,
 } from './types/hooks.js';

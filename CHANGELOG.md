@@ -51,6 +51,13 @@ toolchain, with its bugs fixed, every argument validated and logging with
   plans the sizes and names the files, its alpha picks `'fallback'`.
 - Points without hooks do nothing: a run without hooks writes the same
   bytes.
+- **`record(key, value)`** in every hook's context: JSON data for the
+  templates (a placeholder color, a focal point, alt text), under the
+  hook's name, in the results and the manifest (`data`): the source's at
+  `afterSourceLoad`, each file's at the other points, a size point's on
+  every file of its size. Checked as JSON when recorded, so a BigInt or a
+  circular object fails the hook, not the manifest. Unchanged sources keep
+  theirs in the manifest. Types `JsonValue` and `HookData`.
 - **`HookError`**, with the `hook` and the `point`: fails the size, the file
   (`beforeFormat`, `beforeFileWrite`) or the source (`afterSourceLoad`),
   under `abortScope`.

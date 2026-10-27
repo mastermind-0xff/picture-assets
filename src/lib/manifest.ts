@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import type { ResolvedOptions } from '../config/options.js';
 import { HOOK_POINTS, isPlainObject } from '../config/validate.js';
-import type { Hook } from '../types/hooks.js';
+import type { Hook, HookData } from '../types/hooks.js';
 import type {
   OutputFormat,
   OutputSetting,
@@ -23,6 +23,8 @@ export interface ManifestOutput {
   readonly width: number;
   readonly height: number;
   readonly bytes: number;
+  /** What hooks recorded for the file, see `ResultFormat.data`. */
+  readonly data?: HookData;
 }
 
 /** What a source gave, and what it was when it gave it. */
@@ -39,6 +41,11 @@ export interface ManifestEntry {
   /** Size of the source, as shown. */
   readonly width?: number;
   readonly height?: number;
+  /**
+   * What the source's hooks recorded, see `ResultSource.data`. Kept while
+   * the source is unchanged: its hooks don't run again.
+   */
+  readonly data?: HookData;
   readonly outputs: readonly ManifestOutput[];
 }
 
@@ -188,6 +195,7 @@ export const manifestEntry = (
   hash,
   ...(result.width !== undefined && { width: result.width }),
   ...(result.height !== undefined && { height: result.height }),
+  ...(result.data && { data: result.data }),
   outputs: result.outputsBySetting.flatMap(({ files }) =>
     files.flatMap((file) =>
       file.status === 'succeed' ?
@@ -198,6 +206,7 @@ export const manifestEntry = (
             width: file.fileData.width,
             height: file.fileData.height,
             bytes: file.fileData.size,
+            ...(file.data && { data: file.data }),
           },
         ]
       : []
