@@ -148,3 +148,64 @@ The items as proposed:
    older one.
 6. **Hook data is unbounded**: a hook recording megabytes per file makes
    a manifest that size. A limit, or docs?
+
+## 5. Performance (branch `perf`, measured, nothing changed yet)
+
+Two workloads: a tree of 10,000 small sources (32x24 JPEGs in 100
+directories; `sizes: [16]`, `formats: ['webp']`, a manifest), where only
+the per-source overhead counts; and the 13 example photos (11 to 18 MP)
+with the defaults (`responsive`, `web`).
+
+1. **Clones**: 0.15 per source (2 of the 13 photos, those resized from
+   their file), 9 to 17 ms in all: nothing to gain.
+2. **Memory per source in flight** (the 13 photos): peak RSS 569 MB at
+   concurrency 1, 1.18 GB at 4, 2.48 GB at 12 (the command's `'auto'`
+   here); pool 12 at concurrency 4: 1.44 GB. About 150 to 200 MB per
+   photo in flight. Bombs: 4.1.
+3. **A default run is AVIF-bound**: the 13 photos took 130 s at
+   concurrency 1, 111 s at 4, 108 s at 12 (pool 12). Concurrency barely
+   helps: AVIF is most of the encode time (`bench/results/formats.txt`:
+   756 ms at 1280 against 116 for WebP and 26 for JPEG), and libaom uses
+   every core already. What its `effort` buys (quality 60, the 3 photos
+   of `bench/weight.js`, best of 2):
+
+   | width | effort      | bytes vs 4 | SSIM   | encode ms | time vs 4 |
+   | ----- | ----------- | ---------- | ------ | --------- | --------- |
+   | 1280  | 2           | 102%       | 0.9692 | 213       | 15%       |
+   | 1280  | 3           | 100%       | 0.9703 | 336       | 23%       |
+   | 1280  | 4 (default) | 100%       | 0.9716 | 1446      | 100%      |
+   | 2560  | 2           | 105%       | 0.9709 | 722       | 17%       |
+   | 2560  | 3           | 102%       | 0.9716 | 1080      | 26%       |
+   | 2560  | 4 (default) | 100%       | 0.9725 | 4189      | 100%      |
+
+   Effort 3 encodes 4 times faster for 0 to 2% more bytes and 0.001 less
+   SSIM. The author's call (defaults are set from `bench/weight.js`):
+   `avif: { quality: 60, effort: 3 }`, measured at equal SSIM first.
+
+4. **Manifest runs (10k sources)**: a first run takes 28 to 31 s, 2.8 to
+   3.1 ms per small source, most of it sharp's own: 0.18 ms of the main
+   thread per pipeline call (3 per source, and the metadata); logging at
+   `info` costs nothing measurable (27.9 s against 28.9 s at `error`). A
+   no-change run takes 2.25 s, and it is not stat-bound: `stat` and
+   `access` are 0.3 s of a 2.8 s profile. The rest:
+   - `planTargets` 586 ms: each source's encoders are created and checked
+     with a new sharp object (200 ms), though they are the same for every
+     source when formats are given; `parsePath` twice per source.
+   - `targetHash` 374 ms: the run's settings, encoders and options are
+     serialized again for each source, 45 µs; with 3 hooks of 2 kB keyed
+     by their code, 103 µs (their code is stringified per source).
+   - `manifestPath` 292 ms: the manifest's directory is resolved again per
+     call, twice per source and once per file.
+     Proposed, with the same results and the same hashes: encoders once
+     per format set, the hash's run-level part serialized once, the
+     manifest's directory resolved once. Expected: about 1.3 s.
+5. **The plan is sequential**: `planAssets` on 10k sources takes 4.1 s
+   with a manifest (slower than the no-change run, which is concurrent)
+   and 10.2 s without (each file is read whole for its header). Proposed:
+   the batch's concurrency.
+6. **Source discovery**: `findSources` on 10k files takes 430 ms, 200 of
+   them `fs.glob`; `isInputFile`'s loop is 1.4 ms per 10k names. Nothing to
+   gain.
+7. **Validation and messages**: checked once per call, but the encoders
+   (4); descriptions of values are built only for errors.
+   `displayPath`'s escaping (2.6) adds 0.6 µs per call.
