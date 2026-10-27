@@ -161,6 +161,11 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 
 ### Fixed
 
+- A misspelled input was skipped without a word: `picture-assets two.jpg
+tow.jpg -o out` made `two.jpg` and exited 0. A path without wildcards
+  that isn't there fails as a source, with a warning ("Not found:
+  tow.jpg. A misspelled name?"); the others go on as `abortScope` says.
+  Among several inputs, a glob that matches nothing is a warning.
 - A size above 268 megapixels failed its encode ("Input image exceeds
   pixel limit"): sharp's limit for decoding files was applied to the
   library's own pixels, already in memory.

@@ -179,7 +179,8 @@ const isOutside = (relative: string) =>
  * destination, mirroring its directory, and its encoders. Two sources
  * writing the same files (`a.jpg` and `a.png`): the later one fails. So
  * does a source outside its root (`..` after a glob's first wildcard):
- * its directory, mirrored, would be outside the destination.
+ * its directory, mirrored, would be outside the destination; and a
+ * `missing` one, with its error.
  *
  * @returns Targets and errors, by source index: one of them for each.
  */
@@ -194,6 +195,7 @@ export const planTargets = (
   const owners = new Map<string, string>();
   sources.forEach((source, index) => {
     try {
+      if (source.missing) throw source.missing;
       if (isOutside(source.relativeDir))
         throw new Error(
           `${displayPath(source.path)} is outside its input's root (${displayPath(source.relativeDir)}): its files would be written outside ${displayPath(destRoot)}. Leave '..' out of the pattern.`
@@ -273,8 +275,9 @@ export const runBatch = async (
   const concurrency = computeConcurrency(run.concurrency, sources.length);
   const formatNames =
     formats.size > 0 ? [...formats.keys()].join(', ') : 'its own format';
+  const missing = sources.filter((source) => source.missing).length;
   logger.info(
-    `Found ${sources.length} source image(s) in ${inputName}: ${settings.length} size(s) each, in ${formatNames}, into ${displayPath(destRoot)}, ${concurrency} at a time.`
+    `Found ${sources.length - missing} source image(s)${missing > 0 ? ` (${missing} not found)` : ''} in ${inputName}: ${settings.length} size(s) each, in ${formatNames}, into ${displayPath(destRoot)}, ${concurrency} at a time.`
   );
 
   const controller = new AbortController();
@@ -315,7 +318,10 @@ export const runBatch = async (
   errors.forEach((error, index) => {
     const source = sources[index];
     if (source === undefined) return;
-    logger.error({ source: displayPath(source.path), error });
+    // a misspelled name: a warning, the run goes on as abortScope says
+    if (source.missing && error === source.missing)
+      logger.warning(source.missing.message);
+    else logger.error({ source: displayPath(source.path), error });
     results[index] = sourceResult(
       source.path,
       'failed',

@@ -310,6 +310,12 @@ chooses it: the pattern is a glob inside the root, and the root is a plain
 path, so a directory named `photos [2024]` works as a root, where a glob
 would read `[2024]` as a wildcard.
 
+A file or directory named without wildcards that isn't there fails as a
+source, with a warning (`Not found: photos/tow.jpg. A misspelled name?`):
+the other sources go on, unless `abortScope` is `'batch'`, and the batch
+is `'failed'` (exit code 1). Corrected, the next run with a manifest makes
+only that one. A glob that matches nothing is a warning.
+
 Files sharp can't read are skipped; outputs inside the source tree are
 never picked up again. Two sources that would write the same files
 (`a.jpg` and `a.png`) fail instead of overwriting each other. So do

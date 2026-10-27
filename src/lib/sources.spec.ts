@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { createTempDir, writeFixtures } from '../test-utils/fixtures.js';
-import { CASE_INSENSITIVE_FS } from '../utils/helpers.js';
+import { CASE_INSENSITIVE_FS, displayPath } from '../utils/helpers.js';
 import { assertBatchSource, findSources, splitGlob } from './sources.js';
 
 describe('splitGlob', () => {
@@ -128,6 +128,22 @@ describe('findSources', () => {
       ]);
     }
   );
+
+  test('a path without wildcards that is not there: a missing source, a misspelled name?', async () => {
+    for (const name of ['lanscape.jpg', 'tre/sub'])
+      expect(await findSources(file(name))).toEqual({
+        root: path.dirname(file(name)),
+        sources: [
+          {
+            path: file(name),
+            relativeDir: '',
+            missing: new Error(
+              `Not found: ${displayPath(file(name))}. A misspelled name?`
+            ),
+          },
+        ],
+      });
+  });
 
   test('nothing found', async () => {
     expect((await findSources(file('tree/*.gif'))).sources).toEqual([]);

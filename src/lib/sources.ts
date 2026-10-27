@@ -1,9 +1,10 @@
+import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { describe, isPlainObject } from '../config/validate.js';
 import { isInputFile } from '../image/formats.js';
-import { fileSystemKey } from '../utils/helpers.js';
+import { displayPath, fileSystemKey } from '../utils/helpers.js';
 
 /**
  * Sources of a batch:
@@ -24,6 +25,13 @@ export interface FoundSource {
   readonly path: string;
   /** Directory of the file relative to the root, mirrored in the destination. */
   readonly relativeDir: string;
+  /**
+   * Why a file an input names can't be read: it doesn't exist (a
+   * misspelled name?). The source fails, with a warning, and the batch
+   * goes on as `abortScope` says: the next run with a manifest makes only
+   * the corrected one.
+   */
+  readonly missing?: Error;
 }
 
 const GLOB_MAGIC = /[*?[\]{}()!]/;
@@ -72,7 +80,9 @@ const byPath = (a: FoundSource, b: FoundSource) =>
 /**
  * Finds the images of a batch: files sharp can read, sorted by path. Files
  * inside `exclude` are left out, so outputs written inside the source tree
- * are never processed again.
+ * are never processed again. A path without wildcards that can't be read
+ * is a source too, `missing`: a misspelled name fails, where a glob that
+ * matches nothing finds nothing.
  *
  * @param input File, directory, glob, or root and pattern.
  * @param exclude Directory to leave out, usually the destination.
@@ -85,7 +95,29 @@ export const findSources = async (
   let root: string;
   let pattern: string;
   if (typeof input === 'string') {
-    const stats = await fs.stat(input).catch(() => undefined);
+    let stats: Stats | undefined;
+    try {
+      stats = await fs.stat(input);
+    } catch (error) {
+      // a path without wildcards names a file or a directory: not there,
+      // it fails as a source rather than being skipped without a word
+      if (!GLOB_MAGIC.test(input))
+        return {
+          root: path.dirname(input),
+          sources: [
+            {
+              path: input,
+              relativeDir: '',
+              missing: new Error(
+                (error as NodeJS.ErrnoException).code === 'ENOENT' ?
+                  `Not found: ${displayPath(input)}. A misspelled name?`
+                : `Can't read ${displayPath(input)}: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error }
+              ),
+            },
+          ],
+        };
+    }
     // a file is taken as is, even with an unusual extension: sharp decides
     if (stats?.isFile())
       return {

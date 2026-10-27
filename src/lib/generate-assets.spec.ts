@@ -11,7 +11,9 @@ import {
   writeFixtures,
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
+import { ResultBatchError } from '../errors/result-errors.js';
 import type { ResultBatch } from '../types/output.js';
+import { displayPath } from '../utils/helpers.js';
 import { generateAssets, planAssets } from './generate-assets.js';
 import { readManifest } from './manifest.js';
 
@@ -341,6 +343,57 @@ describe('generateAssets: manifest and incremental runs', () => {
         ([, status]) => status
       )
     ).toEqual(['succeed', 'succeed', 'succeed']);
+  });
+
+  test('a misspelled input fails with a warning; once corrected, the next run makes only it', async () => {
+    const root = await copyTree();
+    const output = outDir();
+    const inputs = (second: string) => ({
+      input: [path.join(root, 'a.jpg'), path.join(root, second)],
+    });
+    const { logger, logs } = createRecordingLogger('info');
+    const first = await run(root, output, { ...inputs('sub/b.pgn'), logger });
+    expect(first.status).toBe('failed');
+    expect(statuses(first)).toEqual([
+      ['a.jpg', 'succeed'],
+      ['b.pgn', 'failed'],
+    ]);
+    const missing = `Not found: ${displayPath(path.join(root, 'sub/b.pgn'))}. A misspelled name?`;
+    expect(String(first.sources[1]?.error)).toBe(`Error: ${missing}`);
+    expect(logs).toContainEqual({ type: 'warning', data: missing });
+    expect(logs).toContainEqual({
+      type: 'info',
+      data: expect.stringMatching(
+        /^Found 1 source image\(s\) \(1 not found\) in /
+      ) as unknown,
+    });
+    expect(logs.filter(({ type }) => type === 'error')).toEqual([]);
+
+    const corrected = await run(root, output, inputs('sub/b.png'));
+    expect(statuses(corrected)).toEqual([
+      ['a.jpg', 'skipped'],
+      ['b.png', 'succeed'],
+    ]);
+
+    // with abortScope 'batch', it stops the run
+    await expect(
+      run(root, outDir(), { ...inputs('sub/b.pgn'), abortScope: 'batch' })
+    ).rejects.toThrow(ResultBatchError);
+  });
+
+  test('a glob that matches nothing, among other inputs: a warning', async () => {
+    const { logger, messages } = createRecordingLogger('info');
+    const batch = await generateAssets({
+      input: [file('tree'), `${dir.replaceAll('\\', '/')}/tree/*.jgp`],
+      output: outDir(),
+      sizes: [50],
+      formats: ['webp'],
+      logger,
+    });
+    expect(batch.status).toBe('succeed');
+    expect(messages('warning')).toEqual([
+      expect.stringMatching(/^No source images found in .*\/tree\/\*\.jgp\.$/),
+    ]);
   });
 
   test('an unusable manifest is ignored, with a warning', async () => {

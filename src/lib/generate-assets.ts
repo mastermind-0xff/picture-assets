@@ -154,15 +154,26 @@ const prepare = async (config: unknown) => {
   // every input's sources, each file once
   const seen = new Set<string>();
   const sources: FoundSource[] = [];
-  for (const found of await Promise.all(
-    inputs.map((each) => findSources(each, destRoot))
-  ))
-    for (const source of found.sources) {
+  const found = await Promise.all(
+    inputs.map(async (input) => ({
+      input,
+      ...(await findSources(input, destRoot)),
+    }))
+  );
+  for (const { input, sources: inputSources } of found) {
+    // a glob that matches nothing, among others: a misspelled pattern?
+    // (alone, the batch tells it)
+    if (inputSources.length === 0 && inputs.length > 1)
+      options.logger.warning(
+        `No source images found in ${displayPath(input)}.`
+      );
+    for (const source of inputSources) {
       const key = path.resolve(source.path);
       if (seen.has(key)) continue;
       seen.add(key);
       sources.push(source);
     }
+  }
 
   return {
     sources,
