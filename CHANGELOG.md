@@ -155,6 +155,9 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 - A size above 268 megapixels failed its encode ("Input image exceeds
   pixel limit"): sharp's limit for decoding files was applied to the
   library's own pixels, already in memory.
+- Batches took libvips' own `.v` and `.vips` files as sources, which then
+  failed ("unsupported image format"): sharp reads them from files only,
+  and sources are read into a buffer. They are left out, as `.txt` files.
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
   config file. They throw, naming the size and the expected keys. So do

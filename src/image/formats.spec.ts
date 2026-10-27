@@ -106,6 +106,18 @@ describe('input files', () => {
       expect(INPUT_EXTENSIONS.has(extension), extension).toBe(true);
   });
 
+  test('not those sharp reads from files only: sources are read into a buffer', () => {
+    // libvips' own format: `sharp(file)` reads it, `sharp(buffer)` fails
+    // with "unsupported image format"
+    expect(sharp.format.vips.input).toMatchObject({
+      file: true,
+      buffer: false,
+    });
+    expect(INPUT_EXTENSIONS.has('v')).toBe(false);
+    expect(INPUT_EXTENSIONS.has('vips')).toBe(false);
+    expect(isInputFile('image.v')).toBe(false);
+  });
+
   test('isInputFile, case-insensitive', () => {
     expect(isInputFile('photo.JPG')).toBe(true);
     expect(isInputFile('logo.svg')).toBe(true);

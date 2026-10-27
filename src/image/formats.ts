@@ -105,10 +105,12 @@ export const resolveFormatOptions = <F extends OutputFormat>(
 /**
  * File extensions, lower case without the dot, that the installed sharp can
  * read: `jpg`, `jpeg`, `png`, `webp`, `avif`, `tif`, `gif`, `svg`, ….
+ * Sources are read into a buffer first, so formats sharp reads from files
+ * only (libvips' own `.v`) are left out: they could only fail.
  */
 export const INPUT_EXTENSIONS: ReadonlySet<string> = new Set(
   (Object.values(sharp.format) as AvailableFormatInfo[]).flatMap(({ input }) =>
-    input.file ?
+    input.buffer ?
       (input.fileSuffix?.map((suffix) => suffix.slice(1).toLowerCase()) ?? [])
     : []
   )
