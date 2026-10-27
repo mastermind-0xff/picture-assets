@@ -172,10 +172,16 @@ const batchDetails = (
   };
 };
 
+/** Whether a relative path leaves its directory: `..`, or another drive. */
+const isOutside = (relative: string) =>
+  relative.split(path.sep)[0] === '..' || path.isAbsolute(relative);
+
 /**
  * Resolves the target of every source: its output path below the
  * destination, mirroring its directory, and its encoders. Two sources
- * writing the same files (`a.jpg` and `a.png`): the later one fails.
+ * writing the same files (`a.jpg` and `a.png`): the later one fails. So
+ * does a source outside its root (`..` after a glob's first wildcard):
+ * its directory, mirrored, would be outside the destination.
  *
  * @returns Targets and errors, by source index: one of them for each.
  */
@@ -190,6 +196,10 @@ export const planTargets = (
   const owners = new Map<string, string>();
   sources.forEach((source, index) => {
     try {
+      if (isOutside(source.relativeDir))
+        throw new Error(
+          `${displayPath(source.path)} is outside its input's root (${displayPath(source.relativeDir)}): its files would be written outside ${displayPath(destRoot)}. Leave '..' out of the pattern.`
+        );
       const target = resolveTarget(
         source.path,
         path.join(destRoot, source.relativeDir) + path.sep,

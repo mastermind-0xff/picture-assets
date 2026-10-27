@@ -311,7 +311,10 @@ would read `[2024]` as a wildcard.
 
 Files sharp can't read are skipped; outputs inside the source tree are
 never picked up again. Two sources that would write the same files
-(`a.jpg` and `a.png`) fail instead of overwriting each other.
+(`a.jpg` and `a.png`) fail instead of overwriting each other. So do
+sources outside their root, found by a `..` after the first wildcard
+(`'photos/*/../../shared/*.jpg'`): their tree, mirrored, would be outside
+`destRoot`.
 
 `options` are `generateSingleSourceAssets`'s, plus `concurrency`: sources
 processed at the same time. `'auto'` (default) is the libuv thread pool

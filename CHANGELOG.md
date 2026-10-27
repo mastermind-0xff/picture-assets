@@ -158,6 +158,9 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 - Batches took libvips' own `.v` and `.vips` files as sources, which then
   failed ("unsupported image format"): sharp reads them from files only,
   and sources are read into a buffer. They are left out, as `.txt` files.
+- A `..` after a glob's first wildcard wrote files outside the output
+  directory: `'src/*/../../shared/*.jpg'` with `-o out` wrote them in
+  `shared`, next to the sources. Such sources fail, naming the `..`.
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
   config file. They throw, naming the size and the expected keys. So do

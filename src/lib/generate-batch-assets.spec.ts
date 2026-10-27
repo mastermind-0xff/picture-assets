@@ -190,6 +190,25 @@ describe('generateBatchAssets', () => {
     ]);
   });
 
+  test("'..' after the root: those sources fail, nothing is written outside the destination", async () => {
+    const out = outDir();
+    const batch = await generateBatchAssets(
+      { root: file('tree/sub'), pattern: '../*.jpg' },
+      out,
+      [{ width: 50 }],
+      ['png'],
+      silent
+    );
+    expect(sourceStatuses(batch)).toEqual([['tree/a.jpg', 'failed']]);
+    expect(String(batch.sources[0]?.error)).toMatch(
+      /tree\/a\.jpg is outside its input's root \(\.\.\): its files would be written outside .*Leave '\.\.' out of the pattern\.$/
+    );
+    // its directory mirrored: the destination's parent
+    await expect(
+      fs.access(path.join(out, '..', 'a@50w.png'))
+    ).rejects.toThrow();
+  });
+
   test('outputs inside the source tree are not processed again', async () => {
     const root = path.join(dir, `inside-${++testIndex}`);
     await fs.mkdir(root);
