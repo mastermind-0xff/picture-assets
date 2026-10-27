@@ -14,9 +14,9 @@ import {
 import {
   assertOptions,
   createEncoders,
-  describe,
   parseBoolean,
   parseFormats,
+  parseSignal,
 } from '../config/validate.js';
 import { ResultBatchError } from '../errors/result-errors.js';
 import {
@@ -142,12 +142,15 @@ const prepare = async (config: unknown) => {
     // presets are made for any source: don't enlarge small ones
     upscale: upscale ?? !(sizes === undefined || isSizePreset(sizes)),
   });
-  // invalid format options fail before any source is searched
+  // the whole config is checked before any source is searched
   createEncoders(formatsMap, options.formatOptions);
-  if (signal !== undefined && !(signal instanceof AbortSignal))
-    throw new TypeError(
-      `Signal must be an AbortSignal, got ${describe(signal)}.`
-    );
+  const checked = {
+    concurrency: resolveConcurrency(concurrency),
+    signal: parseSignal(signal),
+    manifest:
+      manifest === undefined ? undefined : assertPath('Manifest', manifest),
+    force: parseBoolean('force', force ?? false),
+  };
 
   // every input's sources, each file once
   const seen = new Set<string>();
@@ -168,12 +171,8 @@ const prepare = async (config: unknown) => {
     settings,
     formats: formatsMap,
     options,
-    concurrency: resolveConcurrency(concurrency),
     inputName: inputs.join(', '),
-    signal,
-    manifest:
-      manifest === undefined ? undefined : assertPath('Manifest', manifest),
-    force: parseBoolean('force', force ?? false),
+    ...checked,
   };
 };
 

@@ -151,6 +151,22 @@ describe('generateAssets: defaults', () => {
     await expect(fs.access(output)).rejects.toThrow();
   });
 
+  test('the whole config is checked before any source is searched', async () => {
+    const glob = vi.spyOn(fs, 'glob');
+    const output = outDir();
+    for (const invalid of [
+      { concurrency: 0 },
+      { force: 'yes' },
+      { manifest: '' },
+      { signal: 1 },
+    ])
+      await expect(
+        generateAssets({ input: file('tree'), output, ...invalid } as never)
+      ).rejects.toThrow();
+    expect(glob).not.toHaveBeenCalled();
+    glob.mockRestore();
+  });
+
   test('an aborted signal stops the run', async () => {
     const output = outDir();
     const batch = await generateAssets({

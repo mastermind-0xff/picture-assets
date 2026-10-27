@@ -14,6 +14,7 @@ import {
   assertSettings,
   createEncoders,
   parseFormats,
+  parseSignal,
 } from '../config/validate.js';
 import { ResultBatchError } from '../errors/result-errors.js';
 import type { RunContext } from '../image/output.js';
@@ -442,8 +443,13 @@ export const generateBatchAssets = async (
   assertPath('Destination root', destRoot);
   assertSettings(settings);
   assertOptions('Options', options, BATCH_OPTION_KEYS);
-  const { concurrency: concurrencyOption, signal, ...sourceOptions } = options;
+  const {
+    concurrency: concurrencyOption,
+    signal: signalOption,
+    ...sourceOptions
+  } = options;
   const concurrency = resolveConcurrency(concurrencyOption);
+  const signal = parseSignal(signalOption);
   const resolvedOptions = resolveOptions(sourceOptions);
   const formatsMap = parseFormats(formats);
   // invalid format options fail before any source is searched

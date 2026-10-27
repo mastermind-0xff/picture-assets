@@ -164,6 +164,11 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 - On Windows and macOS, an output directory inside the input named in
   another case (`-o Photos/out` for `photos`) wasn't left out: each run
   processed the files of the previous one again (`a@320w@320w.webp`).
+- `generateBatchAssets` took any `signal`: a string or a look-alike
+  object failed with "signal?.addEventListener is not a function", after
+  the sources were searched (or all processed). It throws "Signal must be
+  an AbortSignal", as `generateAssets` did. `generateAssets` checks its
+  `concurrency`, `manifest` and `force` before searching the sources too.
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
   config file. They throw, naming the size and the expected keys. So do

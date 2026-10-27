@@ -209,6 +209,12 @@ export const parseBoolean = (name: string, value: unknown): boolean => {
   throw new TypeError(`${name} must be true or false, got ${describe(value)}.`);
 };
 
+/** @throws TypeError for anything but an `AbortSignal` or undefined. */
+export const parseSignal = (value: unknown): AbortSignal | undefined => {
+  if (value === undefined || value instanceof AbortSignal) return value;
+  throw new TypeError(`Signal must be an AbortSignal, got ${describe(value)}.`);
+};
+
 /**
  * Why the suffix is invalid: a name in braces that isn't a wildcard, which
  * would end up in the file names (a typo, or a wildcard renamed).

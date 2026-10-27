@@ -13,6 +13,7 @@ import {
   parseHooks,
   parseLogger,
   parseResizeStrategyHint,
+  parseSignal,
   parseSuffixOption,
   selectEncoders,
 } from './validate.js';
@@ -299,6 +300,17 @@ describe('parseBoolean', () => {
     expect(parseBoolean('upscale', false)).toBe(false);
     expect(() => parseBoolean('upscale', 'no')).toThrow(
       "upscale must be true or false, got 'no'."
+    );
+  });
+});
+
+describe('parseSignal', () => {
+  test('an AbortSignal or undefined', () => {
+    const signal = AbortSignal.abort();
+    expect(parseSignal(signal)).toBe(signal);
+    expect(parseSignal(undefined)).toBeUndefined();
+    expect(() => parseSignal({ aborted: true })).toThrow(
+      'Signal must be an AbortSignal, got {"aborted":true}.'
     );
   });
 });

@@ -392,6 +392,13 @@ describe('generateBatchAssets', () => {
     await expect(
       generateBatchAssets(file('tree'), '', [{ width: 1 }])
     ).rejects.toThrow(TypeError);
+    // an object that looks like a signal: the batch can't listen to it
+    for (const signal of ['stop', { aborted: true }])
+      await expect(
+        generateBatchAssets(file('tree'), outDir(), [{ width: 1 }], [], {
+          signal: signal as never,
+        })
+      ).rejects.toThrow(/^Signal must be an AbortSignal, got /);
     // a variable passes the type check when it shares a key with the options
     const options = { concurency: 2, logger: 'error' as const };
     await expect(
