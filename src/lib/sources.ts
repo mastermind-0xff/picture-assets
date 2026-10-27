@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { describe, isPlainObject } from '../config/validate.js';
 import { isInputFile } from '../image/formats.js';
+import { fileSystemKey } from '../utils/helpers.js';
 
 /**
  * Sources of a batch:
@@ -98,10 +99,14 @@ export const findSources = async (
   } else ({ root, pattern } = input);
 
   const absoluteRoot = path.resolve(root);
-  const excluded = exclude === undefined ? undefined : path.resolve(exclude);
-  const isExcluded = (file: string) =>
-    excluded !== undefined &&
-    (file === excluded || file.startsWith(`${excluded}${path.sep}`));
+  // in the file system's case: `-o Public/img` is inside `public`
+  const excluded =
+    exclude === undefined ? undefined : fileSystemKey(path.resolve(exclude));
+  const isExcluded = (file: string) => {
+    if (excluded === undefined) return false;
+    const key = fileSystemKey(file);
+    return key === excluded || key.startsWith(`${excluded}${path.sep}`);
+  };
 
   const sources: FoundSource[] = [];
   for await (const entry of fs.glob(pattern, {

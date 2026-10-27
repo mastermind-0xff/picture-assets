@@ -34,6 +34,7 @@ import type {
 import {
   allResultsSucceeded,
   displayPath,
+  fileSystemKey,
   formatBytes,
   formatDuration,
   sampleCPUUsage,
@@ -54,10 +55,6 @@ import {
 
 /** Milliseconds between the performance probes of a batch. */
 const PROBE_INTERVAL = 100;
-
-/** File systems that don't tell `A.jpg` from `a.jpg` by default. */
-const CASE_INSENSITIVE_FS =
-  process.platform === 'win32' || process.platform === 'darwin';
 
 /**
  * Number of sources to process at the same time, see
@@ -206,10 +203,7 @@ export const planTargets = (
         formats,
         formatOptions
       );
-      const key =
-        CASE_INSENSITIVE_FS ?
-          target.outputPath.toLowerCase()
-        : target.outputPath;
+      const key = fileSystemKey(target.outputPath);
       const owner = owners.get(key);
       if (owner !== undefined)
         throw new Error(

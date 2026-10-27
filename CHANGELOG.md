@@ -161,6 +161,9 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 - A `..` after a glob's first wildcard wrote files outside the output
   directory: `'src/*/../../shared/*.jpg'` with `-o out` wrote them in
   `shared`, next to the sources. Such sources fail, naming the `..`.
+- On Windows and macOS, an output directory inside the input named in
+  another case (`-o Photos/out` for `photos`) wasn't left out: each run
+  processed the files of the previous one again (`a@320w@320w.webp`).
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
   config file. They throw, naming the size and the expected keys. So do

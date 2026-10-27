@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { createTempDir, writeFixtures } from '../test-utils/fixtures.js';
+import { CASE_INSENSITIVE_FS } from '../utils/helpers.js';
 import { assertBatchSource, findSources, splitGlob } from './sources.js';
 
 describe('splitGlob', () => {
@@ -114,6 +115,19 @@ describe('findSources', () => {
       { path: 'tree/a.jpg', relativeDir: '' },
     ]);
   });
+
+  test.runIf(CASE_INSENSITIVE_FS)(
+    'the excluded directory in another case: left out too, where the file system ignores case',
+    async () => {
+      const { sources } = await findSources(
+        file('tree'),
+        file('tree/sub').toUpperCase()
+      );
+      expect(relative(sources)).toEqual([
+        { path: 'tree/a.jpg', relativeDir: '' },
+      ]);
+    }
+  );
 
   test('nothing found', async () => {
     expect((await findSources(file('tree/*.gif'))).sources).toEqual([]);

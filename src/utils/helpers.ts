@@ -41,6 +41,17 @@ export const formatDuration = (ms: number): string =>
 export const displayPath = (file: string): string =>
   path.sep === '\\' ? file.replaceAll('\\', '/') : file;
 
+/** File systems that don't tell `A.jpg` from `a.jpg` by default. */
+export const CASE_INSENSITIVE_FS =
+  process.platform === 'win32' || process.platform === 'darwin';
+
+/**
+ * A path as the file system compares it: lower case where it ignores case
+ * (see `CASE_INSENSITIVE_FS`), so `Out` and `out` are the same directory.
+ */
+export const fileSystemKey = (file: string): string =>
+  CASE_INSENSITIVE_FS ? file.toLowerCase() : file;
+
 /** Formats a size in bytes: `'812 B'`, `'45.3 kB'`, `'1.25 MB'`. */
 export const formatBytes = (bytes: number): string => {
   if (bytes < 1000) return `${bytes} B`;
