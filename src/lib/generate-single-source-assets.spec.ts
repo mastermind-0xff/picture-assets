@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import sharp from 'sharp';
 import {
@@ -488,6 +489,65 @@ describe('generateSingleSourceAssets: failures and abortScope', () => {
         }
       )
     ).rejects.toThrow(ResultSourceError);
+  });
+
+  test('an SVG never loads the files it references: sources are read into a buffer', async () => {
+    // librsvg loads files below an SVG's directory when sharp reads the
+    // SVG from its path; from a buffer it has no directory
+    const svgDir = path.join(dir, `svg-${++testIndex}`);
+    await fs.mkdir(svgDir);
+    const red = path.join(svgDir, 'red.png');
+    await sharp({
+      create: { width: 40, height: 40, channels: 3, background: '#f00' },
+    })
+      .png()
+      .toFile(red);
+    const svg = path.join(svgDir, 'refs.svg');
+    const url = pathToFileURL(red).href;
+    await fs.writeFile(
+      svg,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><image href="red.png" width="40" height="20" preserveAspectRatio="none"/><image href="${url}" y="20" width="40" height="20" preserveAspectRatio="none"/></svg>`
+    );
+    // from its path, both are drawn: the relative one on top, the URL below
+    const fromPath = await sharp(svg).raw().toBuffer();
+    expect([...fromPath.subarray(0, 4)]).toEqual([255, 0, 0, 255]);
+    expect([...fromPath.subarray(-4)]).toEqual([255, 0, 0, 255]);
+
+    const out = outDir();
+    const result = await generateSingleSourceAssets(
+      svg,
+      out,
+      [{ width: 40 }],
+      ['png'],
+      silent
+    );
+    expect(result.status).toBe('succeed');
+    const { data } = await sharp(await fs.readFile(`${out}refs@40w.png`))
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    // every pixel transparent: neither image drawn
+    for (let alpha = 3; alpha < data.length; alpha += 4)
+      expect(data[alpha]).toBe(0);
+  });
+
+  test('a truncated source fails: no file from half its pixels', async () => {
+    const jpeg = await fs.readFile(file('landscape.jpg'));
+    const truncated = path.join(dir, `truncated-${++testIndex}.jpg`);
+    await fs.writeFile(truncated, jpeg.subarray(0, jpeg.length >> 1));
+    const out = outDir();
+    const result = await generateSingleSourceAssets(
+      truncated,
+      out,
+      [{ width: 400 }],
+      ['webp'],
+      silent
+    );
+    expect(result.status).toBe('failed');
+    expect(String(result.error ?? result.outputsBySetting[0]?.error)).toMatch(
+      /premature end of JPEG/
+    );
+    expect(await listFiles(out).catch(() => [])).toEqual([]);
   });
 
   test('a missing source', async () => {

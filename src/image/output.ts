@@ -384,7 +384,9 @@ export const sourceToSettings = async (
 
   const shown = displayPath(srcPath);
   // read once: every size sees the same file, and libvips' file cache never
-  // keeps it open (Windows can't change or delete open files)
+  // keeps it open (Windows can't change or delete open files). And from a
+  // buffer, an SVG has no directory: librsvg loads none of the files it
+  // references, as it does from a path (spec'd)
   const input = await fs.readFile(srcPath);
   // EXIF orientation applied: phone photos are often stored sideways
   const source = sharp(input, { autoOrient: true });
