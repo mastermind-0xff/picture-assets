@@ -34,7 +34,9 @@ export type FormatPreset = keyof typeof FORMAT_PRESETS;
 
 /**
  * Sizes: a preset, or a list of widths in pixels (`1280`), width
- * multipliers (`'x2'`, written with a `@2x` suffix) and settings.
+ * multipliers (`'x2'`) and settings. A width or a multiplier is a setting
+ * with only its width: the run's suffix names its files, as any setting
+ * without its own.
  */
 export type SizesInput =
   SizePreset | readonly (number | SizeMultiplier | OutputSetting)[];
@@ -65,9 +67,7 @@ export const expandSizes = (sizes: unknown): OutputSetting[] => {
       `Sizes must be a preset or a list like [1920, 1280, 'x2'], got ${describe(sizes)}.`
     );
   const settings = list.map((size: unknown) =>
-    typeof size === 'number' ? { width: size }
-    : isSizeMultiplier(size) ? { width: size, suffix: `@${size.slice(1)}x` }
-    : size
+    typeof size === 'number' || isSizeMultiplier(size) ? { width: size } : size
   );
   assertSettings(settings);
   return [...settings];

@@ -14,18 +14,18 @@ describe('expandSizes', () => {
       [2560, 1920, 1280, 960, 640, 320].map((width) => ({ width }))
     );
     expect(expandSizes('retina')).toEqual([
-      { width: 'x3', suffix: '@3x' },
-      { width: 'x2', suffix: '@2x' },
-      { width: 'x1', suffix: '@1x' },
+      { width: 'x3' },
+      { width: 'x2' },
+      { width: 'x1' },
     ]);
   });
 
-  test('widths, multipliers and settings mixed', () => {
+  test('widths, multipliers and settings mixed: only what each sets', () => {
     expect(
       expandSizes([1280, 'x1.5', { height: 300, suffix: '-short' }])
     ).toEqual([
       { width: 1280 },
-      { width: 'x1.5', suffix: '@1.5x' },
+      { width: 'x1.5' },
       { height: 300, suffix: '-short' },
     ]);
   });

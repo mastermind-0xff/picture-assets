@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Sharp } from 'sharp';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
+import type { SizesInput } from '../config/presets.js';
 import {
   createTempDir,
   listFiles,
@@ -396,6 +397,33 @@ describe('planAssets', () => {
       }) as unknown,
     });
     await expect(fs.access(output)).rejects.toThrow();
+  });
+
+  test("one suffix for every size: a shorthand takes the run's, as widths and settings do", async () => {
+    const names = async (sizes: SizesInput, suffix?: string) => {
+      const plan = await planAssets({
+        input: file('landscape.jpg'),
+        output: outDir(),
+        sizes,
+        formats: ['webp'],
+        ...(suffix !== undefined && { suffix }),
+        ...silent,
+      });
+      return plan.sources[0]?.sizes.flatMap(({ files }) =>
+        files.map((name) => path.basename(name))
+      );
+    };
+    // 200 is x1, so x2 is 400 wide
+    const byWidth = ['landscape@400w.webp', 'landscape@200w.webp'];
+    expect(await names(['x2', 200])).toEqual(byWidth);
+    expect(await names([{ width: 'x2' }, { width: 200 }])).toEqual(byWidth);
+    expect(await names(['x2', 200], '-{w}')).toEqual([
+      'landscape-400.webp',
+      'landscape-200.webp',
+    ]);
+    expect(
+      await names([{ width: 'x2', suffix: '@{x}x' }, 200], '-{w}')
+    ).toEqual(['landscape@2x.webp', 'landscape-200.webp']);
   });
 
   test('hooks are not run: listed in the plan, with a warning', async () => {

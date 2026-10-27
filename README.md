@@ -120,30 +120,30 @@ planAssets(config: AssetsConfig): Promise<AssetsPlan>
 The command line's config, as plain data, so it can live in JSON. Only
 `input` and `output` are required.
 
-| Key           | Default        | Meaning                                                                                     |
-| ------------- | -------------- | ------------------------------------------------------------------------------------------- |
-| `input`       |                | A file, directory or glob, or a list of them. Each tree is mirrored in `output`             |
-| `output`      |                | Destination directory                                                                       |
-| `sizes`       | `'responsive'` | A preset, or widths (`1280`), multipliers (`'x2'`, suffixed `@2x`) and settings (see below) |
-| `formats`     | `'web'`        | A preset, or formats as `generateSingleSourceAssets` takes them, `'fallback'` included      |
-| `upscale`     | see meaning    | Sizes larger than the source: not made with a sizes preset, made otherwise                  |
-| `manifest`    |                | A JSON file listing every source and file; makes runs incremental                           |
-| `force`       | `false`        | Process every source, even unchanged ones                                                   |
-| `concurrency` | `'auto'`       | Sources at a time, see `generateBatchAssets`                                                |
-| `signal`      |                | An `AbortSignal` stopping the run                                                           |
+| Key           | Default        | Meaning                                                                                |
+| ------------- | -------------- | -------------------------------------------------------------------------------------- |
+| `input`       |                | A file, directory or glob, or a list of them. Each tree is mirrored in `output`        |
+| `output`      |                | Destination directory                                                                  |
+| `sizes`       | `'responsive'` | A preset, or widths (`1280`), multipliers (`'x2'`) and settings (see below)            |
+| `formats`     | `'web'`        | A preset, or formats as `generateSingleSourceAssets` takes them, `'fallback'` included |
+| `upscale`     | see meaning    | Sizes larger than the source: not made with a sizes preset, made otherwise             |
+| `manifest`    |                | A JSON file listing every source and file; makes runs incremental                      |
+| `force`       | `false`        | Process every source, even unchanged ones                                              |
+| `concurrency` | `'auto'`       | Sources at a time, see `generateBatchAssets`                                           |
+| `signal`      |                | An `AbortSignal` stopping the run                                                      |
 
 Plus the [options](#options) of `generateSingleSourceAssets`: `suffix`,
 `formatOptions`, `resizeStrategyHint`, `abortScope`, `logger`. Unknown
 keys throw: a typo in a config file is an error, not an option silently
 ignored.
 
-| Preset                | Gives                                                                   |
-| --------------------- | ----------------------------------------------------------------------- |
-| `sizes: 'responsive'` | Widths 2560, 1920, 1280, 960, 640, 320                                  |
-| `sizes: 'retina'`     | `x3`, `x2`, `x1` with `@3x`, `@2x`, `@1x` suffixes, the source being 3x |
-| `formats: 'web'`      | `avif`, `webp`, `fallback`                                              |
-| `formats: 'modern'`   | `avif`, `webp`                                                          |
-| `formats: 'lossless'` | Lossless `webp`, and `png`                                              |
+| Preset                | Gives                                  |
+| --------------------- | -------------------------------------- |
+| `sizes: 'responsive'` | Widths 2560, 1920, 1280, 960, 640, 320 |
+| `sizes: 'retina'`     | `x3`, `x2`, `x1`, the source being 3x  |
+| `formats: 'web'`      | `avif`, `webp`, `fallback`             |
+| `formats: 'modern'`   | `avif`, `webp`                         |
+| `formats: 'lossless'` | Lossless `webp`, and `png`             |
 
 **`'fallback'`** is JPEG, or PNG for transparent sources: the format for
 browsers without AVIF and WebP, chosen per source.
@@ -235,8 +235,13 @@ than the photo, the largest multiplier is the photo, as above.
 
 ### Suffix
 
-Files are named `<name><suffix>.<format>`, the suffix being the setting's
-`suffix` or else the `suffix` option, `'@{w}w'` by default. Its wildcards,
+Files are named `<name><suffix>.<format>`. The suffix is the setting's
+`suffix`, or else the run's: the `suffix` option (code, config file,
+`--suffix`), else `PICTURE_ASSETS_SUFFIX`, else `'@{w}w'`. It is the same
+for every size: a width (`1280`) or a multiplier (`'x2'`) given as a
+shorthand is a setting with only its width, so the sizes `'x1'` to `'x3'`
+below write `@1000w`, `@2000w` and `@3000w` files, and with
+`suffix: '@{x}x'`, `@1x`, `@2x` and `@3x`. Its wildcards,
 for `x2` of a 3000x2000 photo with `'downsample'` and sizes `x1` to `x3`
 (the file is 2000x1333):
 

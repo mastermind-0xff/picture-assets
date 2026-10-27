@@ -24,7 +24,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - **`planAssets(config)`**: what a run would write, nothing written.
 - **Presets**: sizes `'responsive'` (default) and `'retina'`; formats
   `'web'` (default), `'modern'` and `'lossless'`. Shorthands: widths
-  `[1280, 640]`, multipliers `['x2']` suffixed `@2x`.
+  `[1280, 640]` and multipliers `['x2']`, named by the run's suffix as
+  any size without its own (`'@{w}w'` by default; `suffix: '@{x}x'` names
+  them by their multiplier).
 - **`'fallback'` format**: JPEG, or PNG for transparent sources.
 - **`upscale`**: with `false`, sizes larger than the source are skipped,
   the largest made at the source's size. `false` with a sizes preset.

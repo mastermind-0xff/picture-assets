@@ -46,8 +46,11 @@ incremental run without the file it needs.
 - `generateSingleSourceAssets` and `generateBatchAssets` stay, as the
   low-level API.
 - **Shorthands** keep configs short: `sizes: [1920, 1280, 640]` means
-  widths, `sizes: ['x1', 'x2', 'x3']` multipliers with `@1x`-style
-  suffixes.
+  widths, `sizes: ['x1', 'x2', 'x3']` multipliers. _Changed 2026-10-27
+  (the author):_ they no longer bring `@1x`-style suffixes, which
+  overrode the run's `suffix` without saying so; like any size without
+  its own suffix, they take the run's, one default for every size
+  (`'@{w}w'`, or `PICTURE_ASSETS_SUFFIX`).
 
 ## 2. Presets: good results without knowing the encoders
 
