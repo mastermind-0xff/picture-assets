@@ -56,8 +56,8 @@ export interface AssetsConfig extends AssetsOptions {
   /** Destination directory. */
   readonly output: string;
   /**
-   * A preset (`'responsive'`, `'retina'`), or widths in pixels, multipliers
-   * (`'x2'`) and settings. Default: `'responsive'`.
+   * The preset `'responsive'`, or widths in pixels, multipliers (`'x2'`)
+   * and settings. Default: `'responsive'`.
    */
   readonly sizes?: SizesInput;
   /**

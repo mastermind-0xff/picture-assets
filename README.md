@@ -21,7 +21,7 @@ srcset (2560 to 320 pixels, never enlarged), in AVIF, WebP and JPEG (PNG
 for transparent images): `public/img/house@1280w.avif`, ….
 
 - **Two settings**: an input and an output. Presets for the rest
-  (`responsive`, `retina`; `web`, `modern`, `lossless`), every detail
+  (`responsive`; `web`, `modern`, `lossless`), every detail
   configurable.
 - **Web-tuned encoders**: AVIF at 53% and WebP at 73% of JPEG's bytes for
   the same SSIM, progressive JPEG (see [Defaults](#defaults)).
@@ -69,16 +69,16 @@ picture-assets src/images -o public/img --dry-run
 Inputs are files, directories or globs (quoted, so the shell leaves them
 alone). The main flags; `picture-assets --help` has them all:
 
-| Flag                  | Meaning                                                                   |
-| --------------------- | ------------------------------------------------------------------------- |
-| `-o, --output <dir>`  | Destination directory                                                     |
-| `-s, --sizes`         | Widths `1920,1280,640`, multipliers `x1,x2,x3`, or `responsive`, `retina` |
-| `-f, --formats`       | `avif,webp,jpg,png,…` and `fallback`, or `web`, `modern`, `lossless`      |
-| `-q, --quality`       | `75` for every lossy format, or `avif=55,webp=75`                         |
-| `--manifest <file>`   | Write a manifest; unchanged sources are skipped by the next runs          |
-| `--hooks <file>`      | A JS module exporting the [hooks](#hooks)                                 |
-| `--dry-run`, `--json` | Print the plan, or the result as JSON, on stdout                          |
-| `-v`, `--silent`      | Debug logs (settings, each size and hook, details, graphs), or none       |
+| Flag                  | Meaning                                                              |
+| --------------------- | -------------------------------------------------------------------- |
+| `-o, --output <dir>`  | Destination directory                                                |
+| `-s, --sizes`         | Widths `1920,1280,640`, multipliers `x1,x2,x3`, or `responsive`      |
+| `-f, --formats`       | `avif,webp,jpg,png,…` and `fallback`, or `web`, `modern`, `lossless` |
+| `-q, --quality`       | `75` for every lossy format, or `avif=55,webp=75`                    |
+| `--manifest <file>`   | Write a manifest; unchanged sources are skipped by the next runs     |
+| `--hooks <file>`      | A JS module exporting the [hooks](#hooks)                            |
+| `--dry-run`, `--json` | Print the plan, or the result as JSON, on stdout                     |
+| `-v`, `--silent`      | Debug logs (settings, each size and hook, details, graphs), or none  |
 
 Logs go to stderr. Exit codes: 0 done, 1 some sources failed, 2 invalid
 arguments or config, 130 interrupted. Ctrl+C lets the files in progress
@@ -140,7 +140,6 @@ ignored.
 | Preset                | Gives                                  |
 | --------------------- | -------------------------------------- |
 | `sizes: 'responsive'` | Widths 2560, 1920, 1280, 960, 640, 320 |
-| `sizes: 'retina'`     | `x3`, `x2`, `x1`, the source being 3x  |
 | `formats: 'web'`      | `avif`, `webp`, `fallback`             |
 | `formats: 'modern'`   | `avif`, `webp`                         |
 | `formats: 'lossless'` | Lossless `webp`, and `png`             |
@@ -363,8 +362,8 @@ await generateAssets({
         format === 'avif' ? image.sharpen({ sigma: 0.5 }) : undefined,
     },
     {
-      name: 'retinaQuality',
-      // shown at half its pixels: a lower quality looks the same
+      name: 'highDensityQuality',
+      // a 2x screen shows it at half its pixels: a lower quality looks the same
       beforeFileWrite: (image, { format, setting }) =>
         format === 'avif' && setting.sizeMultiplier >= 2 ?
           image.avif({ quality: 45 })
@@ -411,7 +410,7 @@ crops are, not stretched.
 
 **Encoder options.** `beforeFileWrite` gets the file's own sharp object,
 once the run set its format and options (`toFormat`), right before it is
-written: what the hook sets on it wins (a lower quality for retina sizes,
+written: what the hook sets on it wins (a lower quality for 2x sizes,
 lossless for a screenshot), and what it calls on it counts, returned or
 not. At `beforeFormat` the run sets its options after the hook, over the
 keys it sets (`quality`); other keys stay. Its context is `beforeFormat`'s:

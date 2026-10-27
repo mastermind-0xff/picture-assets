@@ -22,7 +22,7 @@ toolchain, with its bugs fixed, every argument validated and logging with
   files and flags; only `input` (files, directories, globs, or a list) and
   `output` are required. Unknown keys throw.
 - **`planAssets(config)`**: what a run would write, nothing written.
-- **Presets**: sizes `'responsive'` (default) and `'retina'`; formats
+- **Presets**: sizes `'responsive'` (default); formats
   `'web'` (default), `'modern'` and `'lossless'`. Shorthands: widths
   `[1280, 640]` and multipliers `['x2']`, named by the run's suffix as
   any size without its own (`'@{w}w'` by default; `suffix: '@{x}x'` names
@@ -43,7 +43,7 @@ toolchain, with its bugs fixed, every argument validated and logging with
   `beforeResize`, `afterResize` (the image goes down the chain),
   `beforeEncode` (every file of the size, not the chain), `beforeFormat`
   (one file, before its format is set) and `beforeFileWrite` (one file,
-  its format and encoder options set: a lower quality for retina sizes).
+  its format and encoder options set: a lower quality for 2x sizes).
   Each gets a new sharp object (`beforeFileWrite`: the file's own) and a
   context (`setting`, `pixels()`, `signal`,
   `logger`, …), and returns nothing (`undefined`), a sharp object (baked

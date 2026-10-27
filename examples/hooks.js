@@ -13,8 +13,9 @@
  * - `beforeFormat`: a little sharpening for AVIF only, which smooths fine
  *   detail.
  * - `beforeFileWrite`: a lower AVIF quality for the 1600 wide files, which
- *   a retina screen shows at half their pixels. The run set the format and
- *   its options before this point: the hook's quality wins.
+ *   a 2x screen (two device pixels per CSS pixel) shows at half their
+ *   pixels. The run set the format and its options before this point: the
+ *   hook's quality wins.
  *
  * Two hooks `record` what they did: the hero crop its box, on each file of
  * the size it cut, and the quality hook its quality, on the file it set it

@@ -78,7 +78,7 @@ describe('parseCliArgs', () => {
     expect(
       parseCliArgs([
         '-s',
-        'retina',
+        'responsive',
         '-f',
         'modern',
         '--strategy',
@@ -88,7 +88,7 @@ describe('parseCliArgs', () => {
         '--silent',
       ]).config
     ).toEqual({
-      sizes: 'retina',
+      sizes: 'responsive',
       formats: 'modern',
       resizeStrategyHint: 'x2',
       concurrency: 'max',

@@ -13,11 +13,6 @@ describe('expandSizes', () => {
     expect(expandSizes('responsive')).toEqual(
       [2560, 1920, 1280, 960, 640, 320].map((width) => ({ width }))
     );
-    expect(expandSizes('retina')).toEqual([
-      { width: 'x3' },
-      { width: 'x2' },
-      { width: 'x1' },
-    ]);
   });
 
   test('widths, multipliers and settings mixed: only what each sets', () => {
@@ -32,7 +27,7 @@ describe('expandSizes', () => {
 
   test('invalid sizes', () => {
     expect(() => expandSizes('huge')).toThrow(
-      "Unknown sizes preset 'huge': expected 'responsive', 'retina', or a list of sizes."
+      "Unknown sizes preset 'huge': expected 'responsive', or a list of sizes."
     );
     expect(() => expandSizes(1280)).toThrow(TypeError);
     expect(() => expandSizes([0])).toThrow(/width must be a positive number/);
@@ -58,7 +53,7 @@ describe('expandFormats', () => {
 
 describe('preset guards', () => {
   test('own keys only', () => {
-    expect(isSizePreset('retina')).toBe(true);
+    expect(isSizePreset('responsive')).toBe(true);
     expect(isSizePreset('toString')).toBe(false);
     expect(isFormatPreset('modern')).toBe(true);
     expect(isFormatPreset('constructor')).toBe(false);

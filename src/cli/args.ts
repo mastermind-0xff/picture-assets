@@ -66,7 +66,7 @@ export const parseSizesFlag = (value: string): unknown => {
     if (/^\d+$/.test(item)) return Number(item);
     if (isSizeMultiplier(item)) return item;
     throw new UsageError(
-      `Unknown size ${describe(item)} in --sizes: widths like 1280, multipliers like x2, or a preset: responsive, retina.`
+      `Unknown size ${describe(item)} in --sizes: widths like 1280, multipliers like x2, or the preset responsive.`
     );
   });
 };
@@ -186,8 +186,8 @@ so the shell leaves them to picture-assets: 'photos/**/*.jpg'.
 
 Options:
   -o, --output <dir>       Destination directory (required)
-  -s, --sizes <sizes>      Widths 1920,1280,640, multipliers x1,x2,x3, or a
-                           preset: responsive, retina          [responsive]
+  -s, --sizes <sizes>      Widths 1920,1280,640, multipliers x1,x2,x3, or
+                           the preset responsive               [responsive]
   -f, --formats <formats>  avif,webp,jpg,png,... and fallback (jpg, or png
                            for transparent sources), or a preset: web,
                            modern, lossless                    [web]

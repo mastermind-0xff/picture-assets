@@ -7,12 +7,12 @@ import { assertSettings, describe } from './validate.js';
  * Sizes presets.
  * - `responsive`: the widths of a typical srcset, for images shown at any
  *   width, from 2560 down to 320 pixels.
- * - `retina`: 3x, 2x and 1x of an image shown at a fixed size, the source
- *   being the 3x (with `resizeStrategyHint: 'downsample'`).
+ *
+ * Sizes for an image shown at a fixed size are its multipliers, as short
+ * as a preset: `['x3', 'x2', 'x1']`.
  */
 export const SIZE_PRESETS = {
   responsive: [2560, 1920, 1280, 960, 640, 320],
-  retina: ['x3', 'x2', 'x1'],
 } as const satisfies Record<string, readonly (number | SizeMultiplier)[]>;
 
 export type SizePreset = keyof typeof SIZE_PRESETS;

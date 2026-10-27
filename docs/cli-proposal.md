@@ -57,10 +57,13 @@ incremental run without the file it needs.
 | Preset                | Expands to                                                                   |
 | --------------------- | ---------------------------------------------------------------------------- |
 | `sizes: 'responsive'` | widths 2560, 1920, 1280, 960, 640, 320: those larger than the source skipped |
-| `sizes: 'retina'`     | `x3`, `x2`, `x1` with `@3x`, `@2x`, `@1x` suffixes                           |
 | `formats: 'web'`      | `avif`, `webp`, and a fallback: `jpg`, or `png` for transparent sources      |
 | `formats: 'modern'`   | `avif`, `webp`                                                               |
 | `formats: 'lossless'` | `webp` lossless, `png`                                                       |
+
+_Removed 2026-10-27 (the author):_ `sizes: 'retina'` (`x3`, `x2`, `x1`).
+Its name leans towards one vendor's screens, and the library has no bias;
+`['x3', 'x2', 'x1']` is as short.
 
 Two behaviors the presets need, useful on their own:
 
@@ -96,7 +99,7 @@ Built on `node:util` `parseArgs`: no dependency.
 picture-assets <input...> --output <dir> [options]
 
   -o, --output <dir>          Destination directory (required)
-  -s, --sizes <sizes>         1920,1280,640 | x1,x2,x3 | responsive | retina   [responsive]
+  -s, --sizes <sizes>         1920,1280,640 | x1,x2,x3 | responsive            [responsive]
   -f, --formats <formats>     avif,webp,jpg | web | modern | lossless          [web]
   -q, --quality <f=q,...>     avif=55,webp=75: format options' quality
       --suffix <pattern>      {w} {h} {x} {wx} {hx}                           [@{w}w]

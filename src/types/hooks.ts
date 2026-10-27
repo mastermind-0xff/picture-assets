@@ -203,7 +203,7 @@ export interface Hook {
   /**
    * Gets the file's own sharp object, its format and encoder options set,
    * right before it is written: what the hook sets wins, e.g.
-   * `image.avif({ quality: 45 })` for a retina size. What it calls on the
+   * `image.avif({ quality: 45 })` for a 2x size. What it calls on the
    * object counts, returned or not. Returns that object, another sharp
    * object or nothing; not pixels, which have no format. The file's name
    * and the format in the results and manifest stay the run's: a format
