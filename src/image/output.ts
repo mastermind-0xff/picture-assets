@@ -20,6 +20,7 @@ import type {
 import {
   allResultsSucceeded,
   displayPath,
+  fileSystemKey,
   formatBytes,
   formatDuration,
   isMatchingAspectRatio,
@@ -282,6 +283,8 @@ const hookedToFile = async (
  * @param outputIdentifier Full path to the output file without the extension.
  * @param hasAlpha Whether the image is transparent, see `sharpToFile`.
  * @param logger Receives a debug log per file and an error per failure.
+ * @param source The source's path, when no file may overwrite it (see
+ * `overwriteSource`): such a file fails.
  * @param fileHooks The `beforeFormat` and `beforeFileWrite` hooks, if any:
  * a failure fails the file.
  * @returns Promise that fulfills with a list of objects containing metadata
@@ -293,11 +296,22 @@ export const settingToFormats = async (
   outputIdentifier: string,
   hasAlpha: boolean,
   logger: AssetsLogger,
+  source: string | undefined,
   fileHooks?: FileHooks
 ): Promise<ResultFormat[]> => {
+  const sourceKey = source && fileSystemKey(path.resolve(source));
   const results = await Promise.all(
-    encoders.map((encoder) => {
+    encoders.map((encoder): Promise<ResultFormat> => {
       const file = `${outputIdentifier}.${encoder.format}`;
+      if (sourceKey === fileSystemKey(path.resolve(file)))
+        return Promise.resolve({
+          status: 'failed',
+          format: encoder.format,
+          file,
+          error: new Error(
+            `${displayPath(file)} is the source: set overwriteSource to replace it.`
+          ),
+        });
       return fileHooks === undefined ?
           sharpToFile(fromRaw(pixels), file, encoder, hasAlpha)
         : hookedToFile(pixels, file, encoder, hasAlpha, fileHooks);
@@ -400,8 +414,15 @@ export const sourceToSettings = async (
   height: number;
   data: HookData | undefined;
 }> => {
-  const { logger, suffix, abortScope, signal, hooks, limitInputPixels } =
-    context;
+  const {
+    logger,
+    suffix,
+    abortScope,
+    signal,
+    hooks,
+    limitInputPixels,
+    overwriteSource,
+  } = context;
 
   const shown = displayPath(srcPath);
   // read once: every size sees the same file, and libvips' file cache never
@@ -664,6 +685,7 @@ export const sourceToSettings = async (
         outputIdentifier,
         hasAlpha,
         logger,
+        overwriteSource ? undefined : srcPath,
         hooks.beforeFormat.length > 0 || hooks.beforeFileWrite.length > 0 ?
           {
             beforeFormat:

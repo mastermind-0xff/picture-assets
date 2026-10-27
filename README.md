@@ -282,6 +282,7 @@ unknown options (`sufix`), naming the expected ones.
 | `logger`             | `'info'`       | `PICTURE_ASSETS_LOG_LEVEL`            | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                                                                                                                                                 |
 | `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                                                                                                                                                     |
 | `limitInputPixels`   | `268402689`    | `PICTURE_ASSETS_LIMIT_INPUT_PIXELS`   | Most pixels a source may have (16383 x 16383 by default, sharp's), or `false` for none, see [Untrusted sources](#untrusted-sources)                                                                                                                                                                      |
+| `overwriteSource`    | `false`        |                                       | Let a file replace its source (an empty suffix, the source's name and format), to resize in place; with `false` that file fails                                                                                                                                                                          |
 | `hooks`              | `[]`           |                                       | Functions in the resize chain, see [Hooks](#hooks)                                                                                                                                                                                                                                                       |
 
 Load the variables from a file with `node --env-file=.env` (see
@@ -584,6 +585,10 @@ need not be.
   gives no half-decoded file.
 - **File names** with control characters are escaped in logs and
   messages, so a name can't drive your terminal or forge a log line.
+- **Sources are never written over**: a file that would replace its
+  source (`x.jpg` to `x.jpg`, with an empty suffix) fails, unless
+  `overwriteSource: true`. With a manifest, a source resized in place is
+  recorded as written, so the next run skips it.
 
 ## Logging
 

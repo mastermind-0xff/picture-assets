@@ -89,6 +89,17 @@ export interface AssetsOptions {
   readonly limitInputPixels?: number | false;
 
   /**
+   * Whether a file may replace its source: with an empty suffix and the
+   * source's format in its own directory, `x.jpg` would be written over
+   * `x.jpg`. With `false`, that file fails and the source is kept. With
+   * `true` (resizing in place), a manifest records the source as written,
+   * so the next run doesn't process it again.
+   *
+   * Default: `false`.
+   */
+  readonly overwriteSource?: boolean;
+
+  /**
    * Functions run in the resize chain, see `Hook`. At each point, in the
    * list's order, each on the image the previous one gave. Hooks come from
    * code or a `.js` config file: there is no environment variable.

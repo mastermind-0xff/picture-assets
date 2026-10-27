@@ -566,6 +566,45 @@ describe('generateSingleSourceAssets: failures and abortScope', () => {
       ).toBe('succeed');
   });
 
+  test('a file never replaces its source, unless overwriteSource', async () => {
+    const own = path.join(dir, `own-${++testIndex}`);
+    await fs.mkdir(own);
+    const source = path.join(own, 'photo.jpg');
+    await fs.copyFile(file('landscape.jpg'), source);
+    const width = async () =>
+      (await sharp(await fs.readFile(source)).metadata()).width;
+
+    // an empty suffix, the source's name and format: photo.jpg again
+    const result = await generateSingleSourceAssets(
+      source,
+      source,
+      [{ width: 100, suffix: '' }],
+      ['webp'],
+      silent
+    );
+    expect(result.status).toBe('failed');
+    const [webp, jpg] = result.outputsBySetting[0]?.files ?? [];
+    expect(webp?.status).toBe('succeed');
+    expect(jpg).toMatchObject({
+      status: 'failed',
+      file: source,
+      error: new Error(
+        `${displayPath(source)} is the source: set overwriteSource to replace it.`
+      ),
+    });
+    expect(await width()).toBe(800);
+
+    const inPlace = await generateSingleSourceAssets(
+      source,
+      source,
+      [{ width: 100, suffix: '' }],
+      [],
+      { ...silent, overwriteSource: true }
+    );
+    expect(inPlace.status).toBe('succeed');
+    expect(await width()).toBe(100);
+  });
+
   test('a truncated source fails: no file from half its pixels', async () => {
     const jpeg = await fs.readFile(file('landscape.jpg'));
     const truncated = path.join(dir, `truncated-${++testIndex}.jpg`);

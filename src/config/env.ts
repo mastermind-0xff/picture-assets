@@ -44,7 +44,10 @@ export const ENV_VARIABLES = {
 } as const;
 
 /** Options an environment variable can set. */
-export type EnvOptions = Omit<BatchAssetsOptions, 'upscale' | 'signal'>;
+export type EnvOptions = Omit<
+  BatchAssetsOptions,
+  'upscale' | 'overwriteSource' | 'signal'
+>;
 
 const parseJson = (name: string, value: string): unknown => {
   try {

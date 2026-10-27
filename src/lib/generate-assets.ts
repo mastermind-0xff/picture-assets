@@ -23,8 +23,8 @@ import {
   readSourceInfo,
 } from '../image/output.js';
 import type { Concurrency, AssetsOptions } from '../types/options.js';
-import type { ResultBatch } from '../types/output.js';
-import { displayPath } from '../utils/helpers.js';
+import type { ResultBatch, ResultSource } from '../types/output.js';
+import { displayPath, fileSystemKey } from '../utils/helpers.js';
 import { planTargets, runBatch } from './generate-batch-assets.js';
 import { assertPath } from './generate-single-source-assets.js';
 import {
@@ -100,6 +100,7 @@ export const CONFIG_KEYS = [
   'force',
   'signal',
   'limitInputPixels',
+  'overwriteSource',
   'hooks',
 ] as const satisfies readonly (keyof AssetsConfig)[];
 
@@ -188,6 +189,17 @@ const prepare = async (config: unknown) => {
 
 type Prepared = Awaited<ReturnType<typeof prepare>>;
 
+/** Whether a source wrote one of its files over itself (`overwriteSource`). */
+const isOverwritten = ({ source, outputsBySetting }: ResultSource) => {
+  const key = fileSystemKey(path.resolve(source));
+  return outputsBySetting.some(({ files }) =>
+    files.some(
+      ({ status, file }) =>
+        status === 'succeed' && fileSystemKey(path.resolve(file)) === key
+    )
+  );
+};
+
 /** Reads the manifest of a run, or none (with a warning when unusable). */
 const loadManifest = async ({ manifest, options }: Prepared) => {
   if (manifest === undefined) return undefined;
@@ -259,7 +271,14 @@ export const generateAssets = async (
       const kept = previous?.sources[key];
       if (result.status === 'skipped' && kept) entries[key] = kept;
       else if (result.status === 'succeed' && state)
-        entries[key] = manifestEntry(manifest, result, state, state.hash);
+        entries[key] = manifestEntry(
+          manifest,
+          result,
+          // written over (overwriteSource): the source is that file now,
+          // unchanged for the next run
+          isOverwritten(result) ? await fs.stat(result.source) : state,
+          state.hash
+        );
     }
     const next: Manifest = { version: MANIFEST_VERSION, sources: entries };
     await writeManifest(manifest, next);

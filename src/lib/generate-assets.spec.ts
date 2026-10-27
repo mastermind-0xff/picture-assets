@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import type { Sharp } from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import type { SizesInput } from '../config/presets.js';
@@ -379,6 +379,28 @@ describe('generateAssets: manifest and incremental runs', () => {
     await expect(
       run(root, outDir(), { ...inputs('sub/b.pgn'), abortScope: 'batch' })
     ).rejects.toThrow(ResultBatchError);
+  });
+
+  test('overwriteSource with a manifest: the source written over is unchanged for the next run', async () => {
+    const root = await copyTree();
+    const source = path.join(root, 'a.jpg');
+    const inPlace = {
+      input: source,
+      output: root,
+      sizes: [{ width: 200, suffix: '' }],
+      formats: ['jpg'] as const,
+      overwriteSource: true,
+      manifest: path.join(root, 'assets.json'),
+      ...silent,
+    };
+    expect(statuses(await generateAssets(inPlace))).toEqual([
+      ['a.jpg', 'succeed'],
+    ]);
+    expect((await sharp(await fs.readFile(source)).metadata()).width).toBe(200);
+    // not made again from its own 200 pixels
+    expect(statuses(await generateAssets(inPlace))).toEqual([
+      ['a.jpg', 'skipped'],
+    ]);
   });
 
   test('a glob that matches nothing, among other inputs: a warning', async () => {

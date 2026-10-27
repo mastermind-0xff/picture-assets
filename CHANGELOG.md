@@ -82,6 +82,11 @@ toolchain, with its bugs fixed, every argument validated and logging with
   source fails, once, naming its size and the option. Default 268402689
   (16383 x 16383, sharp's); `false` for none. A 1 MB PNG can decode to
   1 GB, per source in progress.
+- **`overwriteSource`**: a file that would replace its source (an empty
+  suffix, the source's name and format in its directory) fails by
+  default: it was written over the source. `true` resizes in place; a
+  manifest then records the source as written, so the next run skips it
+  instead of resizing it again.
 - README: Untrusted sources.
 
 ### Changed
