@@ -97,6 +97,20 @@ describe('assertSettings', () => {
       /suffix has an unknown wildcard \{sm\} in '@\{sm\}x': the wildcards are \{w\}, \{h\}, \{x\}, \{wx\} and \{hx\}\./,
     ],
     [[{ width: 1, generateFromSource: 'yes' }], /generateFromSource/],
+    [
+      [{ width: 'x2', sufix: '@2x' }],
+      /^Setting 0 \{"width":"x2","sufix":"@2x"\}: unknown key 'sufix': expected width, height, resizeOptions, extractRegion, suffix, generateFromSource, useAsNextResizeIteration\.$/,
+    ],
+    [
+      [{ width: 640, heigth: 640, resizeOption: { fit: 'contain' } }],
+      /unknown keys 'heigth', 'resizeOption': expected width,/,
+    ],
+    // the typo is named, not the missing width it leaves
+    [[{ widht: 640 }], /unknown key 'widht'/],
+    [
+      [{ width: 1, suffix: undefined, sufix: undefined }],
+      /unknown key 'sufix'/,
+    ],
   ])('%j throws', (settings, message) => {
     expect(() => {
       assertSettings(settings);

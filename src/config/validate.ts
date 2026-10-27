@@ -117,6 +117,23 @@ export const isPlainObject = (
 ): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * Names the keys of an object that aren't in `keys`, with the expected
+ * ones: `"option 'sufix': expected …"`. A misspelled key would otherwise be
+ * ignored without a word.
+ *
+ * @returns Undefined when every key is known.
+ */
+const describeUnknownKeys = (
+  value: Record<string, unknown>,
+  keys: readonly string[],
+  noun: string
+): string | undefined => {
+  const unknown = Object.keys(value).filter((key) => !keys.includes(key));
+  if (unknown.length === 0) return undefined;
+  return `${noun}${unknown.length > 1 ? 's' : ''} ${unknown.map(describe).join(', ')}: expected ${keys.join(', ')}.`;
+};
+
 const isPositiveNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
@@ -284,9 +301,21 @@ export const parseHooks = (value: unknown): readonly Hook[] => {
   return [...(value as Hook[])];
 };
 
+/** Keys of an `OutputSetting`: others are rejected, as typos. */
+export const SETTING_KEYS = [
+  'width',
+  'height',
+  'resizeOptions',
+  'extractRegion',
+  'suffix',
+  'generateFromSource',
+  'useAsNextResizeIteration',
+] as const satisfies readonly (keyof OutputSetting)[];
+
 /**
  * Checks the output settings: a non-empty list of objects with a width or a
- * height each, in pixels or as a multiplier.
+ * height each, in pixels or as a multiplier, and no other keys than
+ * `SETTING_KEYS`.
  *
  * @throws TypeError naming the first invalid setting and why.
  */
@@ -302,6 +331,8 @@ export function assertSettings(
       throw new TypeError(`Setting ${index} ${describe(setting)}: ${reason}`);
     };
     if (!isPlainObject(setting)) return fail('must be an object.');
+    const unknown = describeUnknownKeys(setting, SETTING_KEYS, 'key');
+    if (unknown !== undefined) fail(`unknown ${unknown}`);
     const { width, height, resizeOptions, extractRegion, suffix } = setting;
     if (width === undefined && height === undefined)
       fail('needs a width or a height.');

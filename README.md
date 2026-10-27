@@ -193,6 +193,10 @@ another aspect ratio (cropped to fill, see `resizeOptions`).
 | `generateFromSource`       | Resize this size from the source instead of the previous size                            |
 | `useAsNextResizeIteration` | Resize the next size from this one (default for the same aspect ratio, no crop)          |
 
+Other keys throw: `{ width: 'x2', sufix: '@2x' }` is an error, not a size
+named by the default suffix. sharp checks the values of `resizeOptions`
+and the format options, but ignores keys it doesn't know.
+
 Sizes are processed from the largest. Each size is resized from the
 previous one when it has the source's aspect ratio and no crop, otherwise
 from the source: never from an image smaller than the size. A source is
