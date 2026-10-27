@@ -169,6 +169,10 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
   the sources were searched (or all processed). It throws "Signal must be
   an AbortSignal", as `generateAssets` did. `generateAssets` checks its
   `concurrency`, `manifest` and `force` before searching the sources too.
+- File names went into logs, messages and the plan as they were: a name
+  with control characters (allowed on Linux and macOS, e.g. in a folder
+  of uploads) could drive the terminal (`\x1b]0;…\x07` sets its title) or
+  forge a log line. They are escaped as in JSON (`\u001b`).
 - Unknown keys in a size were ignored: `{ width: 'x2', sufix: '@2x' }`
   named its files by the run's suffix, without a warning, also from a
   config file. They throw, naming the size and the expected keys. So do

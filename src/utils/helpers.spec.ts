@@ -20,6 +20,15 @@ describe('displayPath', () => {
       path.sep === '\\' ? 'C:/photos/a.jpg' : 'C:\\photos\\a.jpg'
     );
   });
+
+  test('control characters escaped: a name never drives the terminal or adds a log line', () => {
+    expect(displayPath('up/\u001b]0;title\u0007.jpg')).toBe(
+      'up/\\u001b]0;title\\u0007.jpg'
+    );
+    expect(displayPath('a\nINFO forged.jpg')).toBe('a\\u000aINFO forged.jpg');
+    expect(displayPath('c1-\u009b31m.jpg')).toBe('c1-\\u009b31m.jpg');
+    expect(displayPath('é ü 日本.jpg')).toBe('é ü 日本.jpg');
+  });
 });
 
 describe('isMatchingAspectRatio', () => {

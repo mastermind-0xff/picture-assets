@@ -34,12 +34,24 @@ export const formatDuration = (ms: number): string =>
   formatHighResTime(ms, 'ms', 'ms');
 
 /**
+ * Control characters: C0, DEL and C1. A file name may hold them on POSIX
+ * systems, and a terminal reads them as commands (`\x1b]0;…\x07` sets its
+ * title) or as a new log line.
+ */
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARACTERS = /[\x00-\x1F\x7F-\x9F]/g;
+
+/**
  * A path as logs and messages show it: with `/` on Windows too, as the
- * manifest has it and every shell takes it, the same on every system.
- * Results keep native paths, for `path` and `fs`.
+ * manifest has it and every shell takes it, the same on every system;
+ * control characters escaped as in JSON (`\u001b`). Results keep native
+ * paths, for `path` and `fs`.
  */
 export const displayPath = (file: string): string =>
-  path.sep === '\\' ? file.replaceAll('\\', '/') : file;
+  (path.sep === '\\' ? file.replaceAll('\\', '/') : file).replace(
+    CONTROL_CHARACTERS,
+    (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`
+  );
 
 /** File systems that don't tell `A.jpg` from `a.jpg` by default. */
 export const CASE_INSENSITIVE_FS =

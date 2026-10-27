@@ -100,7 +100,7 @@ const formatPlan = (plan: AssetsPlan) => {
         `  ${size.padEnd(11)} ${
           status === 'skipped' ?
             'skipped: larger than the source'
-          : files.map((file) => path.basename(file)).join(', ')
+          : files.map((file) => displayPath(path.basename(file))).join(', ')
         }`
       );
   }
