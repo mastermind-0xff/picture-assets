@@ -75,6 +75,15 @@ toolchain, with its bugs fixed, every argument validated and logging with
   (`hooksNotRun`) and warns, as the run can differ.
 - `examples/hooks.js`, `examples/hooks-pixels.js`, `bench/hooks.js`.
 
+### Added: untrusted sources
+
+- **`limitInputPixels`** (`PICTURE_ASSETS_LIMIT_INPUT_PIXELS`): most pixels
+  a source may have, checked on its header before any decode; a larger
+  source fails, once, naming its size and the option. Default 268402689
+  (16383 x 16383, sharp's); `false` for none. A 1 MB PNG can decode to
+  1 GB, per source in progress.
+- README: Untrusted sources.
+
 ### Changed
 
 - **Logs by level**: `'info'` tells what a run does: its start (sources,

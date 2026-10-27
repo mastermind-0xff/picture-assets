@@ -26,6 +26,7 @@ describe('readEnvOptions', () => {
         PICTURE_ASSETS_ABORT_SCOPE: ' source ',
         PICTURE_ASSETS_LOG_LEVEL: 'silent',
         PICTURE_ASSETS_CONCURRENCY: ' 6 ',
+        PICTURE_ASSETS_LIMIT_INPUT_PIXELS: '100000000',
       })
     ).toEqual({
       resizeStrategyHint: 'upsample',
@@ -37,7 +38,14 @@ describe('readEnvOptions', () => {
       abortScope: 'source',
       logger: 'silent',
       concurrency: 6,
+      limitInputPixels: 100_000_000,
     });
+  });
+
+  test('limitInputPixels: a number, or false for no limit', () => {
+    expect(
+      readEnvOptions({ PICTURE_ASSETS_LIMIT_INPUT_PIXELS: 'false' })
+    ).toEqual({ limitInputPixels: false });
   });
 
   test('concurrency: a number, auto or max', () => {
@@ -82,6 +90,9 @@ describe('readEnvOptions', () => {
     ['PICTURE_ASSETS_CONCURRENCY', '0', RangeError],
     ['PICTURE_ASSETS_CONCURRENCY', '1.5', RangeError],
     ['PICTURE_ASSETS_CONCURRENCY', 'max_threads', RangeError],
+    ['PICTURE_ASSETS_LIMIT_INPUT_PIXELS', '0', RangeError],
+    ['PICTURE_ASSETS_LIMIT_INPUT_PIXELS', '1e8', RangeError],
+    ['PICTURE_ASSETS_LIMIT_INPUT_PIXELS', 'none', RangeError],
   ])('%s=%s throws, naming the variable', (name, value, ErrorClass) => {
     expect(() => readEnvOptions({ [name]: value })).toThrow(ErrorClass);
     expect(() => readEnvOptions({ [name]: value })).toThrow(name);

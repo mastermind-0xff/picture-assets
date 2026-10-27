@@ -245,7 +245,11 @@ describe('runHooks', () => {
 
   test('an encoded source: auto-oriented, decoded once for every pixels() call', async () => {
     const bytes = await fs.readFile(file('portrait-exif.jpg'));
-    const input = encodedInput(bytes, { width: 600, height: 800, channels: 3 });
+    const input = encodedInput(
+      bytes,
+      { width: 600, height: 800, channels: 3 },
+      false
+    );
     const toBuffer = vi.spyOn(sharp.prototype, 'toBuffer');
     const [first, second] = await Promise.all([input.pixels(), input.pixels()]);
     expect(toBuffer).toHaveBeenCalledTimes(1);

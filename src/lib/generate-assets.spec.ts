@@ -415,6 +415,23 @@ describe('planAssets', () => {
     await expect(fs.access(output)).rejects.toThrow();
   });
 
+  test('limitInputPixels: a larger source fails in the plan too', async () => {
+    const plan = await planAssets({
+      input: [file('landscape.jpg'), file('small.webp')],
+      output: outDir(),
+      sizes: [100],
+      limitInputPixels: 100_000,
+      ...silent,
+    });
+    expect(plan.sources.map(({ status }) => status)).toEqual([
+      'failed',
+      'planned',
+    ]);
+    expect(String(plan.sources[0]?.error)).toMatch(
+      /has 800x600 pixels, more than limitInputPixels \(100000\)/
+    );
+  });
+
   test("one suffix for every size: a shorthand takes the run's, as widths and settings do", async () => {
     const names = async (sizes: SizesInput, suffix?: string) => {
       const plan = await planAssets({

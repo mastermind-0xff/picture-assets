@@ -74,18 +74,38 @@ export interface SourceInfo {
 }
 
 /**
+ * A sharp object over a source's bytes: auto-oriented (EXIF orientation
+ * applied: phone photos are often stored sideways), within the run's
+ * `limitInputPixels`.
+ */
+export const sourceImage = (
+  input: Buffer,
+  limitInputPixels: number | false
+): Sharp => sharp(input, { autoOrient: true, limitInputPixels });
+
+/**
  * Reads a source's size, channels, transparency and file format from its
- * metadata.
+ * metadata: its header, nothing decoded.
+ *
+ * @throws When the source has more pixels than `limitInputPixels`: before
+ * any decode, once for the source rather than once per size. Read without
+ * sharp's limit, which would fail with "Input image exceeds pixel limit",
+ * naming neither the size nor the option.
  */
 export const readSourceInfo = async (
-  source: Sharp
+  input: Buffer,
+  limitInputPixels: number | false
 ): Promise<SourceInfo & { readonly format: string }> => {
   const {
     autoOrient: { width, height },
     channels,
     hasAlpha,
     format,
-  } = await source.metadata();
+  } = await sourceImage(input, false).metadata();
+  if (limitInputPixels !== false && width * height > limitInputPixels)
+    throw new Error(
+      `The source has ${width}x${height} pixels, more than limitInputPixels (${limitInputPixels}): raise the limit, or set it to false, for sources you trust.`
+    );
   return { width, height, channels, hasAlpha, format };
 };
 
@@ -380,7 +400,8 @@ export const sourceToSettings = async (
   height: number;
   data: HookData | undefined;
 }> => {
-  const { logger, suffix, abortScope, signal, hooks } = context;
+  const { logger, suffix, abortScope, signal, hooks, limitInputPixels } =
+    context;
 
   const shown = displayPath(srcPath);
   // read once: every size sees the same file, and libvips' file cache never
@@ -388,13 +409,13 @@ export const sourceToSettings = async (
   // buffer, an SVG has no directory: librsvg loads none of the files it
   // references, as it does from a path (spec'd)
   const input = await fs.readFile(srcPath);
-  // EXIF orientation applied: phone photos are often stored sideways
-  const source = sharp(input, { autoOrient: true });
-  const read = await readSourceInfo(source);
+  const read = await readSourceInfo(input, limitInputPixels);
+  const source = sourceImage(input, limitInputPixels);
   // hooks get the file's bytes until a hook gives pixels, decoded at most
   // once for all of them
   let sourceInput: EncodedInput | undefined;
-  const encoded = () => (sourceInput ??= encodedInput(input, read));
+  const encoded = () =>
+    (sourceInput ??= encodedInput(input, read, limitInputPixels));
   const inputOf = (base: ResizeBase) =>
     base.pixels ? rawInput(base.pixels) : encoded();
 

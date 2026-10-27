@@ -209,6 +209,16 @@ export const parseBoolean = (name: string, value: unknown): boolean => {
   throw new TypeError(`${name} must be true or false, got ${describe(value)}.`);
 };
 
+/** @throws RangeError for anything but a whole number from 1, or false. */
+export const parseLimitInputPixels = (value: unknown): number | false => {
+  if (value === false) return false;
+  if (Number.isSafeInteger(value) && (value as number) >= 1)
+    return value as number;
+  throw new RangeError(
+    `Invalid limitInputPixels ${describe(value)}: expected a whole number of pixels from 1, or false for no limit.`
+  );
+};
+
 /** @throws TypeError for anything but an `AbortSignal` or undefined. */
 export const parseSignal = (value: unknown): AbortSignal | undefined => {
   if (value === undefined || value instanceof AbortSignal) return value;

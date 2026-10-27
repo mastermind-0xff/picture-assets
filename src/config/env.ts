@@ -5,6 +5,7 @@ import {
   parseAbortScope,
   parseConcurrency,
   parseFormatOptions,
+  parseLimitInputPixels,
   parseResizeStrategyHint,
   parseSuffixOption,
 } from './validate.js';
@@ -38,6 +39,8 @@ export const ENV_VARIABLES = {
    * setting more than the project's, so a variable suits it.
    */
   concurrency: 'PICTURE_ASSETS_CONCURRENCY',
+  /** `limitInputPixels`: a whole number of pixels, or `false`. */
+  limitInputPixels: 'PICTURE_ASSETS_LIMIT_INPUT_PIXELS',
 } as const;
 
 /** Options an environment variable can set. */
@@ -126,6 +129,18 @@ export const readEnvOptions = (
       parseConcurrency(
         /^\d+$/.test(concurrency) ? Number(concurrency) : concurrency
       )
+    );
+
+  const limit = read(ENV_VARIABLES.limitInputPixels)?.trim();
+  if (limit !== undefined)
+    options.limitInputPixels = fromVariable(
+      ENV_VARIABLES.limitInputPixels,
+      () =>
+        parseLimitInputPixels(
+          limit === 'false' ? false
+          : /^\d+$/.test(limit) ? Number(limit)
+          : limit
+        )
     );
 
   return options;

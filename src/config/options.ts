@@ -15,6 +15,7 @@ import {
   parseConcurrency,
   parseFormatOptions,
   parseHooks,
+  parseLimitInputPixels,
   parseLogger,
   parseResizeStrategyHint,
   parseSuffixOption,
@@ -28,6 +29,8 @@ export const DEFAULT_OPTIONS = {
   abortScope: 'none',
   logger: 'info',
   upscale: true,
+  // sharp's own default: 16383 x 16383
+  limitInputPixels: 268_402_689,
   concurrency: 'auto',
 } as const satisfies Required<
   Omit<AssetsOptions, 'formatOptions' | 'hooks'> & { concurrency: Concurrency }
@@ -41,6 +44,7 @@ export const OPTION_KEYS = [
   'upscale',
   'abortScope',
   'logger',
+  'limitInputPixels',
   'hooks',
 ] as const satisfies readonly (keyof AssetsOptions)[];
 
@@ -59,6 +63,7 @@ export interface ResolvedOptions {
   readonly formatOptions: FormatOptionsInput;
   readonly abortScope: AbortScope;
   readonly upscale: boolean;
+  readonly limitInputPixels: number | false;
   readonly hooks: ResolvedHooks;
 }
 
@@ -112,6 +117,11 @@ export const resolveOptions = (
     upscale: parseBoolean(
       'upscale',
       options.upscale ?? DEFAULT_OPTIONS.upscale
+    ),
+    limitInputPixels: parseLimitInputPixels(
+      options.limitInputPixels ??
+        fromEnv.limitInputPixels ??
+        DEFAULT_OPTIONS.limitInputPixels
     ),
     hooks: groupHooks(parseHooks(options.hooks ?? [])),
   };

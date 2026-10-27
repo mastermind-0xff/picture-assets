@@ -281,6 +281,7 @@ unknown options (`sufix`), naming the expected ones.
 | `abortScope`         | `'none'`       | `PICTURE_ASSETS_ABORT_SCOPE`          | What a failure stops, see [Failures](#failures)                                                                                                                                                                                                                                                          |
 | `logger`             | `'info'`       | `PICTURE_ASSETS_LOG_LEVEL`            | A log level for the default logger, or a logger, see [Logging](#logging)                                                                                                                                                                                                                                 |
 | `upscale`            | `true`         |                                       | Make sizes larger than the source; with `false` they are skipped, see [`generateAssets`](#one-config-generateassets)                                                                                                                                                                                     |
+| `limitInputPixels`   | `268402689`    | `PICTURE_ASSETS_LIMIT_INPUT_PIXELS`   | Most pixels a source may have (16383 x 16383 by default, sharp's), or `false` for none, see [Untrusted sources](#untrusted-sources)                                                                                                                                                                      |
 | `hooks`              | `[]`           |                                       | Functions in the resize chain, see [Hooks](#hooks)                                                                                                                                                                                                                                                       |
 
 Load the variables from a file with `node --env-file=.env` (see
@@ -551,6 +552,32 @@ any work. Processing failures (a broken file, a full disk) follow
   after the call settles), nothing new starts, and the call rejects with a
   `ResultSourceError` or `ResultBatchError` whose `resultSource` or
   `resultBatch` has the partial result.
+
+## Untrusted sources
+
+Images can come from people you don't know: the uploads of a CMS, built
+into a site. The config, the flags, a `.js` config and hooks are code you
+run, as trusted as your build script; the images, and their file names,
+need not be.
+
+- **Size**: a small file can decode to gigabytes (a 1 MB PNG of 16383 x
+  16383 pixels is 1 GB in memory), once per source in progress.
+  `limitInputPixels` (default 268402689, 16383 x 16383) fails larger
+  sources on their header, before any decode. Lower it when you know
+  your images (`20_000_000` for 20 megapixels), and lower `concurrency`
+  on a machine with little memory: about 150 to 200 MB per 12 to 18
+  megapixel photo in progress, at most `limitInputPixels` x 4 bytes.
+- **Decoders**: sharp picks the decoder from the bytes, not the
+  extension: an SVG named `photo.jpg` is read as SVG. Every format the
+  installed sharp reads is accepted (JPEG, PNG, WebP, GIF, TIFF, AVIF,
+  HEIF, SVG); keep sharp up to date for its decoders' fixes.
+- **SVG**: sources are read into memory first, so an SVG draws none of the
+  files it references (`<image href="…">`); remote references, external
+  entities and entity bombs are refused by librsvg and libxml2.
+- **Broken files** fail (sharp's `failOn: 'warning'`): a truncated JPEG
+  gives no half-decoded file.
+- **File names** with control characters are escaped in logs and
+  messages, so a name can't drive your terminal or forge a log line.
 
 ## Logging
 

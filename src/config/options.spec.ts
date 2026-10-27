@@ -58,8 +58,24 @@ describe('resolveOptions', () => {
       formatOptions: {},
       logger,
       upscale: true,
+      limitInputPixels: 268_402_689,
       hooks: NO_HOOKS,
     });
+  });
+
+  test("limitInputPixels: the call, then the variable, then sharp's default", () => {
+    expect(resolveOptions({}, {}).limitInputPixels).toBe(268_402_689);
+    const env = { PICTURE_ASSETS_LIMIT_INPUT_PIXELS: '1000000' };
+    expect(resolveOptions({}, env).limitInputPixels).toBe(1_000_000);
+    expect(
+      resolveOptions({ limitInputPixels: false }, env).limitInputPixels
+    ).toBe(false);
+    expect(() => resolveOptions({ limitInputPixels: 0 }, {})).toThrow(
+      'Invalid limitInputPixels 0: expected a whole number of pixels from 1, or false for no limit.'
+    );
+    expect(() =>
+      resolveOptions({ limitInputPixels: true as never }, {})
+    ).toThrow(RangeError);
   });
 
   test('hooks: grouped by point, in the given order', () => {
@@ -124,7 +140,7 @@ describe('resolveOptions', () => {
   test('unknown options throw, naming the expected ones', () => {
     const options = { sufix: '-{w}', logger: 'error' as const };
     expect(() => resolveOptions(options, {})).toThrow(
-      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, hooks."
+      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, limitInputPixels, hooks."
     );
     expect(() =>
       resolveOptions({ sufix: '', concurrency: 2 } as never, {})

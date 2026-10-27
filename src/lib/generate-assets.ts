@@ -1,8 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import sharp from 'sharp';
-
 import { resolveConcurrency, resolveOptions } from '../config/options.js';
 import {
   expandFormats,
@@ -101,6 +99,7 @@ export const CONFIG_KEYS = [
   'manifest',
   'force',
   'signal',
+  'limitInputPixels',
   'hooks',
 ] as const satisfies readonly (keyof AssetsConfig)[];
 
@@ -357,7 +356,8 @@ export const planAssets = async (config: AssetsConfig): Promise<AssetsPlan> => {
       }
       const plan = planSource(
         await readSourceInfo(
-          sharp(await fs.readFile(source), { autoOrient: true })
+          await fs.readFile(source),
+          options.limitInputPixels
         ),
         settings,
         target.encoders,

@@ -18,10 +18,16 @@ export const describeSettings = (
     resizeStrategyHint,
     upscale,
     abortScope,
+    limitInputPixels,
     hooks,
   }: Pick<
     ResolvedOptions,
-    'suffix' | 'resizeStrategyHint' | 'upscale' | 'abortScope' | 'hooks'
+    | 'suffix'
+    | 'resizeStrategyHint'
+    | 'upscale'
+    | 'abortScope'
+    | 'limitInputPixels'
+    | 'hooks'
   >
 ): Record<string, unknown> => {
   const options: Record<string, unknown> = {};
@@ -41,6 +47,7 @@ export const describeSettings = (
     resizeStrategyHint,
     upscale,
     abortScope,
+    limitInputPixels,
     hooks:
       hooks.all.length === 0 ?
         'none'

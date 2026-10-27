@@ -77,6 +77,18 @@ export interface AssetsOptions {
   readonly logger?: LogLevel | AssetsLogger;
 
   /**
+   * Most pixels a source may have (width x height), checked on its header
+   * before it is decoded: a larger one fails. Sources may be untrusted (a
+   * folder of uploads), and a small file can decode to gigabytes: a 1 MB
+   * PNG of 16383x16383 pixels is 1 GB in memory, per source in progress
+   * (`concurrency`). `false`: no limit.
+   *
+   * Default: `268402689` (16383 x 16383, sharp's)
+   * (`PICTURE_ASSETS_LIMIT_INPUT_PIXELS`).
+   */
+  readonly limitInputPixels?: number | false;
+
+  /**
    * Functions run in the resize chain, see `Hook`. At each point, in the
    * list's order, each on the image the previous one gave. Hooks come from
    * code or a `.js` config file: there is no environment variable.

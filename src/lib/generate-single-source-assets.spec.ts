@@ -531,6 +531,41 @@ describe('generateSingleSourceAssets: failures and abortScope', () => {
       expect(data[alpha]).toBe(0);
   });
 
+  test('limitInputPixels: a larger source fails once, on its header, before any decode', async () => {
+    const { logger, logs } = createRecordingLogger();
+    const toBuffer = vi.spyOn(sharp.prototype, 'toBuffer');
+    const out = outDir();
+    // landscape.jpg: 800x600, 480000 pixels
+    const result = await generateSingleSourceAssets(
+      file('landscape.jpg'),
+      out,
+      [{ width: 400 }, { width: 200 }],
+      ['webp'],
+      { logger, limitInputPixels: 479_999 }
+    );
+    expect(toBuffer).not.toHaveBeenCalled();
+    toBuffer.mockRestore();
+    expect(result).toMatchObject({ status: 'failed', outputsBySetting: [] });
+    expect(String(result.error)).toBe(
+      'Error: The source has 800x600 pixels, more than limitInputPixels (479999): raise the limit, or set it to false, for sources you trust.'
+    );
+    expect(logs.filter(({ type }) => type === 'error')).toHaveLength(1);
+    expect(await listFiles(out).catch(() => [])).toEqual([]);
+
+    for (const limitInputPixels of [480_000, false] as const)
+      expect(
+        (
+          await generateSingleSourceAssets(
+            file('landscape.jpg'),
+            outDir(),
+            [{ width: 400 }],
+            ['webp'],
+            { ...silent, limitInputPixels }
+          )
+        ).status
+      ).toBe('succeed');
+  });
+
   test('a truncated source fails: no file from half its pixels', async () => {
     const jpeg = await fs.readFile(file('landscape.jpg'));
     const truncated = path.join(dir, `truncated-${++testIndex}.jpg`);
