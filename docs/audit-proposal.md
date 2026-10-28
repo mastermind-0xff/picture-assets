@@ -149,12 +149,100 @@ The items as proposed:
 6. **Hook data is unbounded**: a hook recording megabytes per file makes
    a manifest that size. A limit, or docs?
 
-## 5. Performance (branch `perf`, measured, nothing changed yet)
+## 5. Performance (branch `perf`)
 
-Measured on `main` after the audit (2b8e6f4), on a quiet machine, with
-the scripts of `bench/output/audit`. Two workloads: the 13 example photos
-(11 to 18 MP) with the defaults (`responsive` sizes, the `web` formats),
-which is what a user's run looks like; and a tree of 10,000 small sources
+Decided by the author on 2026-10-28, built on `perf` the same day:
+
+- **5.1** AVIF and HEIF at effort 3 and quality 63, colors at full
+  resolution (`chromaSubsampling: '4:4:4'`, sharp's default, now set)
+  (62da3c5). First checked on 7 images, below: the author added 3
+  photos (a collage, a portrait, a dark scene), and a chart was generated
+  (9911f23). Each option changes alone, by `formatOptions`, a config
+  file, `PICTURE_ASSETS_FORMAT_OPTIONS` or a call's options:
+  `--quality avif=55` keeps effort 3.
+- **5.2** Only the hash is pinned (1cd637f), so a change that would
+  regenerate every source of a manifest shows in a spec; the caches are
+  not built (200 ms per 10k unchanged sources).
+- **5.3** The plan stays as it is; demos of what it does and how it
+  behaves come on a branch of their own, after this one.
+- **5.4** Nothing.
+- **5.5** `'auto'` stays; the README's `concurrency` says what it costs
+  in memory (measured below).
+
+**The check of 5.1, on 7 images** at 320, 640, 1280 and 2560 pixels wide
+(`bench/output/audit/avif-chroma.mjs`): the 3 photos of
+`bench/weight.js`, the dark scene, the portrait, the collage (a 4:2:0
+JPEG, like every photo here) and the chart (a lossless PNG: colored text
+on colored backgrounds, thin colored lines, full-resolution color).
+Luma SSIM, as the defaults were chosen, can't see colors; so also the
+SSIM of the Cb and Cr planes, and CIEDE2000 per pixel (in CIELAB, its
+mean and 99th percentile: color bleeding at edges and in text is local,
+a mean hides it), checked against 3 of Sharma's test pairs. SSIMULACRA2
+(libjxl's tool) would have been the better perceptual metric; running a
+downloaded binary was not allowed here.
+
+The lowest quality at effort 3 reaching the SSIM of effort 4 at q60, and
+its bytes; then q63's:
+
+| image      | 320 px             | 640 px             | 1280 px            | 2560 px            |
+| ---------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| house-01   | q62 103%, q63 107% | q62 105%, q63 109% | q62 105%, q63 109% | q63 109%, q63 109% |
+| house-09   | q63 104%, q63 104% | q63 108%, q63 108% | q63 108%, q63 108% | q62 108%, q63 113% |
+| house-11   | q62 104%, q63 108% | q63 108%, q63 108% | q62 105%, q63 109% | q62 106%, q63 111% |
+| dark scene | q63 107%, q63 107% | q63 109%, q63 109% | q64 112%, q63 107% | q63 108%, q63 108% |
+| portrait   | q63 111%, q63 111% | q60 108%, q63 118% | q55 99%, q63 146%  | q56 96%, q63 121%  |
+| collage    | q64 110%, q63 105% | q64 111%, q63 107% | q63 107%, q63 107% | q63 109%, q63 109% |
+| chart      | q63 109%, q63 109% | q63 106%, q63 106% | q62 109%, q63 111% | q62 113%, q63 115% |
+
+q62 to q64 on 6 of the 7, at every width: q63 is the middle, 104 to 115%
+of the bytes. The portrait is apart: effort 4 smooths its grain (a flat,
+grainy sky, a dark sweater), effort 3 keeps it, so at the same quality
+setting effort 3 gives it more of both: at 1280, SSIM 0.9242 against
+0.9081 for 146% of the bytes; its equal SSIM is at q55 to q56, for 96 to
+99%. No single quality matches every image; q63 errs on the side of
+quality (where it falls short, the dark scene at 1280 and the collage at
+320 and 640, by less than 0.001 of SSIM).
+
+**4:2:0 against 4:4:4**, effort 3, averages of the 7 (bytes against
+effort 4 at q60):
+
+| width | q63 4:4:4: bytes, Cb/Cr SSIM, ΔE00 p99 | q63 4:2:0           | the chart, ΔE00 p99: 4:4:4, 4:2:0 |
+| ----- | -------------------------------------- | ------------------- | --------------------------------- |
+| 320   | 107%, 0.9641, 9.37                     | 101%, 0.9364, 12.12 | 8.15, 14.95                       |
+| 640   | 109%, 0.9724, 8.14                     | 103%, 0.9506, 11.59 | 5.91, 20.20                       |
+| 1280  | 114%, 0.9802, 6.81                     | 108%, 0.9675, 10.88 | 4.54, 27.41                       |
+| 2560  | 112%, 0.9881, 5.26                     | 107%, 0.9823, 7.32  | 3.76, 14.46                       |
+
+4:2:0 saves 5 to 6% at the same quality (17% on the chart), and the same
+luma SSIM; its colors are lost: up to q70, no quality reaches the
+default's Cb/Cr SSIM or ΔE00 at 320 to 1280. libaom spends few bits on
+the chroma planes, so halving them saves little; on the chart the
+colored text bleeds (its 99th percentile 4.5 to 27 at 1280). Not
+subsampled, then; who serves photos only can set it.
+
+**Encode time**, best of 3, one encode at a time, the mean of the 7
+images (`avif-time.mjs`):
+
+| width | effort 4, q60 | effort 3, q63 | effort 3, q63, 4:2:0 |
+| ----- | ------------- | ------------- | -------------------- |
+| 640   | 296 ms        | 84 ms (28%)   | 70 ms (24%)          |
+| 1280  | 962 ms        | 222 ms (23%)  | 187 ms (19%)         |
+| 2560  | 2992 ms       | 679 ms (23%)  | 585 ms (20%)         |
+
+**The whole default run** of the 17 example images (`default-run.mjs`:
+`responsive` sizes, `web` formats, a pool of 12 as the command makes
+it), concurrency 4: 110 s before (2 runs), 29.7 s after (3 runs, 29.5 to
+29.9), 3.7 times faster. AVIF bytes 14.9 to 16.5 MB (+11%, the
+portrait's share included), all files 61.2 to 62.8 MB (+2.6%). Peak
+memory after: 1.06 to 1.31 GB at concurrency 4; 1.91 GB at `'auto'` (12
+here) in the same 29.2 s; 1.23 GB and 31.0 s at `'auto'` with libuv's
+default pool (4).
+
+The proposals, as measured before any change: on `main` after the audit
+(2b8e6f4), on a quiet machine, with the scripts of `bench/output/audit`.
+Two workloads: the 13 example photos (11 to 18 MP) with the defaults
+(`responsive` sizes, the `web` formats), which is what a user's run
+looks like; and a tree of 10,000 small sources
 (32x24 JPEGs in 100 directories, `sizes: [16]`, `formats: ['webp']`, a
 manifest), where the image work is nothing and only the library's own
 cost per source counts. Medians of 3 to 5 runs. The internal changes
@@ -165,8 +253,9 @@ not merged.
 ### 5.1 AVIF's effort: a default run is AVIF-bound (the author's call)
 
 **What**: a default run of the 13 photos takes 88 s, and AVIF is most of
-it: 1079 ms to encode one 1280 pixel photo, against 116 for WebP and 26
-for JPEG (`bench/results/formats.txt`). libaom already uses every core,
+it: 758 ms to encode one 1280 pixel photo, against 116 for WebP and 26
+for JPEG (`bench/results/formats.txt` as recorded before the change;
+1079 here first, a mistake). libaom already uses every core,
 so neither `concurrency` nor the thread pool helps (5.5).
 
 **Why it is slow**: sharp's default `effort` for AVIF is 4 (0 to 9), and

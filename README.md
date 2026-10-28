@@ -330,6 +330,11 @@ processed at the same time. `'auto'` (default) is the libuv thread pool
 size (`UV_THREADPOOL_SIZE`, 4 by default), on which sharp runs; `'max'`
 the machine's parallelism; or a number. `PICTURE_ASSETS_CONCURRENCY` sets
 it for every call, as it depends on the machine more than on the project.
+Each source in progress holds its pixels and its encoders' buffers: with
+the defaults, the 17 example images (1 to 40 megapixels) peaked at 1.1 GB
+4 at a time, and at 1.9 GB 12 at a time (the command's pool on 12
+threads), in the same 30 s, as AVIF already uses every core. Lower it for
+large photos on a machine with little memory.
 
 And `signal`: an `AbortSignal` that stops the batch. The files in progress
 are finished, so none is left half written, and nothing new starts. The
