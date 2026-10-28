@@ -126,6 +126,43 @@ describe('targetHash', () => {
     // concurrency doesn't change the files
     expect(withHooks({ ...grade, concurrency: 1 })).toBe(withHooks(grade));
   });
+
+  // Another hash makes the next run regenerate every source of a manifest
+  // written before: a change that does that should show here.
+  test('the hashes of earlier versions', () => {
+    expect(targetHash(manifest, target, [{ width: 100 }], options)).toBe(
+      '9187f3987837bdef'
+    );
+    expect(
+      targetHash(
+        manifest,
+        {
+          outputPath: path.join('out', 'photos', 'house'),
+          encoders: [
+            { format: 'avif', options: { quality: 60 } },
+            {
+              format: 'fallback',
+              opaque: { format: 'jpg', options: { quality: 80 } },
+              transparent: { format: 'png', options: { compressionLevel: 9 } },
+            },
+          ],
+        },
+        [{ width: 1280 }, { width: 'x2', suffix: '@x2' }],
+        {
+          suffix: '-{w}',
+          resizeStrategyHint: { width: 640, height: 480 },
+          upscale: false,
+          hooks: groupHooks([
+            {
+              name: 'grade',
+              key: '1',
+              afterSourceLoad: (image) => image.modulate({ saturation: 1.1 }),
+            },
+          ]),
+        }
+      )
+    ).toBe('50080e59315589a1');
+  });
 });
 
 describe('readManifest and writeManifest', () => {
