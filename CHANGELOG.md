@@ -79,8 +79,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
   limited API); the others wait their turn, logged at debug.
 - The manifest's hash includes each hook's `name`, and its `key` or, without
   one, its code: editing a hook remakes its sources.
-- `planAssets` and `--dry-run` don't run hooks: the plan names them
-  (`hooksNotRun`) and warns, as the run can differ.
+- `planAssets` and `--dry-run` don't run hooks: the plan names those that
+  can change it (`hooksNotRun`: at `afterSourceLoad`, `beforeResize`,
+  `afterResize`, `beforeEncode`) and warns, as the run can differ.
 - `examples/hooks.js`, `examples/hooks-pixels.js`, `bench/hooks.js`.
 
 ### Added: untrusted sources

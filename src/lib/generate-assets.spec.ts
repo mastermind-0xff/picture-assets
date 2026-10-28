@@ -13,6 +13,7 @@ import {
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
 import { ResultBatchError } from '../errors/result-errors.js';
+import type { Hook } from '../types/hooks.js';
 import type { ResultBatch } from '../types/output.js';
 import { displayPath } from '../utils/helpers.js';
 import { generateAssets, planAssets } from './generate-assets.js';
@@ -586,6 +587,40 @@ describe('planAssets', () => {
     expect(plan.sources[0]?.sizes[0]?.size).toBe('200x150');
     expect(messages('warning')).toEqual([
       expect.stringMatching(/^The plan doesn't run the hooks \(upscale\)/),
+    ]);
+  });
+
+  test('only hooks at points that can change the plan are named', async () => {
+    const { logger, messages } = createRecordingLogger('warning');
+    const plan = (hooks: Hook[]) =>
+      planAssets({
+        input: file('landscape.jpg'),
+        output: outDir(),
+        sizes: [200],
+        formats: ['webp'],
+        logger,
+        hooks,
+      });
+    // the file's points: format and name are the plan's
+    const fileHooks: Hook[] = [
+      { name: 'quality', beforeFileWrite: () => undefined },
+      { name: 'sharpen', beforeFormat: () => undefined },
+    ];
+    expect((await plan(fileHooks)).hooksNotRun).toEqual([]);
+    expect(messages('warning')).toEqual([]);
+    const sizeHooks: Hook[] = [
+      { name: 'crop', beforeResize: () => undefined },
+      { name: 'detail', afterResize: () => undefined },
+      {
+        name: 'mark',
+        beforeEncode: () => undefined,
+        beforeFormat: () => undefined,
+      },
+    ];
+    expect((await plan([...fileHooks, ...sizeHooks])).hooksNotRun).toEqual([
+      'crop',
+      'detail',
+      'mark',
     ]);
   });
 

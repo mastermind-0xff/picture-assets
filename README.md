@@ -182,8 +182,8 @@ names and formats are too, but where:
   multipliers resolve to) and its transparency (`'fallback'`); at
   `afterResize` and `beforeEncode`, a size's own size and transparency; at
   `beforeResize`, its transparency. `beforeFormat` and `beforeFileWrite`
-  change nothing in the plan. It names the hooks (`hooksNotRun`) and warns,
-  whatever their points.
+  change nothing in the plan. It names the hooks at the four points that can
+  change it (`hooksNotRun`) and warns; hooks at the other two only, never.
 - **`resizeOptions`** make another size than the one asked:
   `fit: 'inside'` plans 1280x1280 and makes 1280x960, `withoutEnlargement`
   makes the source's size. The size made names the files (`{w}`, `{h}`).
@@ -514,8 +514,9 @@ a `key`, and change it with them. With a `key`, the code is not hashed.
 on the command line. `planAssets` and
 `--dry-run` don't run them: sizes are planned from the sources as read, so
 a run with hooks can differ from its plan (see What the plan can't know,
-in [One config](#one-config-generateassets)). The plan names them
-(`hooksNotRun`, and a line in `--dry-run`'s output) and warns.
+in [One config](#one-config-generateassets)). The plan names those that
+can change it, all but `beforeFormat` and `beforeFileWrite` (`hooksNotRun`,
+and a line in `--dry-run`'s output), and warns.
 
 [`examples/hooks.js`](examples/hooks.js) grades, crops around a focal
 point, watermarks, sharpens AVIF and lowers the quality of the largest

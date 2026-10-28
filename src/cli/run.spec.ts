@@ -244,7 +244,7 @@ describe('runCli', () => {
         'one.mjs': `export default { name: 'one', afterSourceLoad: () => undefined };`,
         'factory.mjs': `export default async () => [
           { name: 'a', afterSourceLoad: () => undefined },
-          { name: 'b', beforeFormat: () => undefined },
+          { name: 'b', afterResize: () => undefined },
         ];`,
       });
       const dryRun = async (...extra: string[]) =>

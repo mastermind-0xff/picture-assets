@@ -22,6 +22,7 @@ import {
   plannedIdentifier,
   readSourceInfo,
 } from '../image/output.js';
+import type { HookPoint } from '../types/hooks.js';
 import type { Concurrency, AssetsOptions } from '../types/options.js';
 import type { ResultBatch, ResultSource } from '../types/output.js';
 import { displayPath, fileSystemKey } from '../utils/helpers.js';
@@ -329,12 +330,23 @@ export interface AssetsPlan {
   /** Files that would be written. */
   readonly files: number;
   /**
-   * Names of the hooks the run would apply and the plan doesn't: what they
-   * change (a source's size, a size's size, transparency and with it
-   * `'fallback'`) is not in the plan.
+   * Names of the hooks the run would apply where they can change the plan,
+   * which doesn't run them: at `afterSourceLoad`, `beforeResize`,
+   * `afterResize` or `beforeEncode`. What they change (a source's size, a
+   * size's size, transparency and with it `'fallback'`) is not in the plan.
+   * Hooks at `beforeFormat` and `beforeFileWrite` only aren't named: they
+   * change nothing in it.
    */
   readonly hooksNotRun: readonly string[];
 }
+
+/** Points whose hooks can change sizes, file names and formats. */
+const POINTS_CHANGING_PLAN = [
+  'afterSourceLoad',
+  'beforeResize',
+  'afterResize',
+  'beforeEncode',
+] as const satisfies readonly HookPoint[];
 
 /**
  * What `generateAssets` would do with a config, without writing anything:
@@ -342,7 +354,7 @@ export interface AssetsPlan {
  * their files. Sources are read for their size (those with an alpha channel
  * decoded, for their transparency), not resized, and no hook
  * runs: sizes are planned from the sources as read, even where hooks would
- * change them. The plan lists those hooks (`hooksNotRun`) and logs a
+ * change them. The plan lists the hooks that can (`hooksNotRun`) and logs a
  * warning. `resizeOptions` that make another size than the one asked
  * (`fit: 'inside'`, `withoutEnlargement`) are not in the plan either.
  *
@@ -352,7 +364,11 @@ export const planAssets = async (config: AssetsConfig): Promise<AssetsPlan> => {
   const prepared = await prepare(config);
   const { sources, destRoot, settings, formats, options, manifest, force } =
     prepared;
-  const hooksNotRun = options.hooks.all.map(({ name }) => name);
+  const hooksNotRun = options.hooks.all
+    .filter((hook) =>
+      POINTS_CHANGING_PLAN.some((point) => hook[point] !== undefined)
+    )
+    .map(({ name }) => name);
   if (hooksNotRun.length > 0)
     options.logger.warning(
       `The plan doesn't run the hooks (${hooksNotRun.join(', ')}): sizes, file names and formats are planned from the sources as read, and the run's can differ.`
