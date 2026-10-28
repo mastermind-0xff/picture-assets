@@ -52,7 +52,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
   once) or pixels. A hook that returns nothing (it logs, writes to a
   database, detects something) type-checks also when written apart from
   its hook object. What a point gives is the image from there on: its size
-  plans the sizes and names the files, its alpha picks `'fallback'`.
+  plans the sizes and names the files, its transparency picks
+  `'fallback'`: an alpha below 255 somewhere, not an alpha channel opaque
+  all over (sharp's `composite` adds one; it wrote a watermarked 2560w
+  photo as an 8.9 MB PNG instead of a 657 kB JPEG).
 - Points without hooks do nothing: a run without hooks writes the same
   bytes.
 - **`record(key, value)`** in every hook's context: JSON data for the

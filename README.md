@@ -445,8 +445,10 @@ the `format`, its encoder `options` and the `file`. It returns, or resolves to:
 
 **What a point gives is the image from there on**, its size and
 transparency included. An `afterSourceLoad` hook that upscales gets the
-larger sizes made where `upscale: false` would skip them; one that adds
-alpha makes `'fallback'` write PNG. A size whose hooks change its size names its files
+larger sizes made where `upscale: false` would skip them; one that makes
+pixels transparent makes `'fallback'` write PNG. An alpha channel opaque
+all over is no transparency (sharp's `composite` adds one to a watermarked
+image): `'fallback'` stays JPEG. A size whose hooks change its size names its files
 by the new size and hands it to the next sizes. An image of another aspect
 ratio (a hero crop at `beforeResize`) is cropped to the size, as built-in
 crops are, not stretched.

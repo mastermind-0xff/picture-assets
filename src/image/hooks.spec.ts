@@ -32,6 +32,7 @@ import {
   encodedInput,
   fromRaw,
   groupHooks,
+  isTransparent,
   rawInput,
   recordedData,
   runFileWriteHooks,
@@ -100,6 +101,28 @@ describe('fromRaw', () => {
       .toBuffer({ resolveWithObject: true });
     expect(corner.info).toMatchObject({ width: 1, height: 1 });
     expect(corner.data.every((byte) => byte === 0)).toBe(true);
+  });
+});
+
+describe('isTransparent', () => {
+  /** 3 pixels of the given channels, every byte 255 but `alpha`'s last. */
+  const pixels = (channels: 1 | 2 | 3 | 4, alpha = 255): RawImage => {
+    const data = Buffer.alloc(3 * channels, 255);
+    data[data.length - 1] = alpha;
+    return { data, info: { width: 3, height: 1, channels } };
+  };
+
+  test('an alpha below 255 anywhere, the last pixel included', () => {
+    expect(isTransparent(pixels(4, 254))).toBe(true);
+    expect(isTransparent(pixels(2, 0))).toBe(true);
+  });
+
+  test('an alpha channel opaque all over is not, nor no alpha channel', () => {
+    expect(isTransparent(pixels(4))).toBe(false);
+    expect(isTransparent(pixels(2))).toBe(false);
+    // the last byte is a color's
+    expect(isTransparent(pixels(3, 0))).toBe(false);
+    expect(isTransparent(pixels(1, 0))).toBe(false);
   });
 });
 
@@ -909,6 +932,46 @@ describe('hooks in the pipeline', () => {
       'size@200w.webp',
     ]);
     expect((await metadata(`${out}size@100w.webp`)).hasAlpha).toBe(true);
+  });
+
+  test("an alpha channel opaque all over is no transparency: 'fallback' stays JPEG", async () => {
+    const out = outDir();
+    const run = (name: string, hook: Omit<Hook, 'name'>) =>
+      generateSingleSourceAssets(
+        file('landscape.jpg'),
+        `${out}${name}`,
+        [{ width: 200 }, { width: 100 }],
+        ['fallback'],
+        { ...silent, hooks: [{ name, ...hook }] }
+      );
+    await run('source', { afterSourceLoad: (image) => image.ensureAlpha() });
+    await run('chain', { afterResize: (image) => image.ensureAlpha() });
+    // a watermark: sharp's composite gives 4 channels, every pixel opaque
+    await run('mark', {
+      beforeEncode: (image) =>
+        image.composite([
+          {
+            input: {
+              create: { width: 8, height: 8, channels: 3, background: '#f00' },
+            },
+            left: 0,
+            top: 0,
+          },
+        ]),
+    });
+    expect(await listFiles(out)).toEqual([
+      'chain@100w.jpg',
+      'chain@200w.jpg',
+      'mark@100w.jpg',
+      'mark@200w.jpg',
+      'source@100w.jpg',
+      'source@200w.jpg',
+    ]);
+    expect(await pixel(`${out}mark@200w.jpg`, 2, 2)).toEqual([
+      expect.closeTo(255, -1),
+      expect.closeTo(0, -1),
+      expect.closeTo(0, -1),
+    ]);
   });
 
   test("beforeFormat changes one format's file, never its format", async () => {

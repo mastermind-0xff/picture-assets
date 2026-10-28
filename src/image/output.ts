@@ -30,7 +30,7 @@ import {
   bake,
   encodedInput,
   fromRaw,
-  hasAlphaChannel,
+  isTransparent,
   rawInput,
   recordedData,
   runFileWriteHooks,
@@ -462,10 +462,7 @@ export const sourceToSettings = async (
     : undefined;
   const info =
     sourcePixels ?
-      {
-        ...sourcePixels.info,
-        hasAlpha: hasAlphaChannel(sourcePixels.info.channels),
-      }
+      { ...sourcePixels.info, hasAlpha: isTransparent(sourcePixels) }
     : read;
   const plan = planSource(info, settings, targetEncoders, context);
   const { width: srcWidth, height: srcHeight, encoders } = plan;
@@ -495,7 +492,7 @@ export const sourceToSettings = async (
     : selectEncoders(targetEncoders, hasAlpha);
   /** A hook's pixels as the image a size is resized from. */
   const toBase = (pixels: RawImage, previous: ResizeBase): ResizeBase => {
-    const { width, height, channels } = pixels.info;
+    const { width, height } = pixels.info;
     return {
       image: fromRaw(pixels),
       pixels,
@@ -506,7 +503,7 @@ export const sourceToSettings = async (
         width === previous.width && height === previous.height ?
           previous.keepsAspectRatio
         : isMatchingAspectRatio(width, height, srcWidth, srcHeight),
-      hasAlpha: hasAlphaChannel(channels),
+      hasAlpha: isTransparent(pixels),
     };
   };
   const sizeContext = (
@@ -650,7 +647,7 @@ export const sourceToSettings = async (
         );
         if (changed) {
           encoded = changed;
-          hasAlpha = hasAlphaChannel(changed.info.channels);
+          hasAlpha = isTransparent(changed);
         }
       }
       const { width: fileWidth, height: fileHeight } = encoded.info;
