@@ -20,6 +20,7 @@ const EXAMPLES = [
   'generate.js',
   'abort.js',
   'cli.js',
+  'plan-simple.js',
   'plan.js',
 ];
 
