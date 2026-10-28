@@ -15,7 +15,7 @@ import { Logger, messagePlugin } from '@mmutils/logger';
  */
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ARGS_KEY = 'IMAGE_ASSETS_BENCH_ARGS';
+const ARGS_KEY = 'PICTURE_ASSETS_BENCH_ARGS';
 
 /** The sample photos, shared with the examples. */
 export const IMAGES = path.join(HERE, '..', 'examples', 'images');
