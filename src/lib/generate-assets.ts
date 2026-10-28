@@ -342,7 +342,8 @@ export interface AssetsPlan {
  * their files. Sources are read for their size, not resized, and no hook
  * runs: sizes are planned from the sources as read, even where hooks would
  * change them. The plan lists those hooks (`hooksNotRun`) and logs a
- * warning.
+ * warning. `resizeOptions` that make another size than the one asked
+ * (`fit: 'inside'`, `withoutEnlargement`) are not in the plan either.
  *
  * @throws `TypeError | RangeError` for an invalid config.
  */

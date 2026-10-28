@@ -164,7 +164,28 @@ manifest recorded.
 **`planAssets`** tells what `generateAssets` would do, without writing
 anything: each source's size, its sizes in pixels (multipliers resolved)
 and its files, or why it is unchanged or would fail. It is the command's
-`--dry-run`.
+`--dry-run`. It reads headers, not pixels: the 17 example images in 50 ms,
+against 8 s for their run in WebP
+([`examples/plan.js`](examples/plan.js)).
+
+**What the plan can't know.** The sources it lists, which of them are
+unchanged and which can't be read are always the run's. Their sizes, file
+names and formats are too, but where:
+
+- **hooks** change the image: the plan doesn't run them. At
+  `afterSourceLoad`, the source's size (which sizes are skipped, what
+  multipliers resolve to) and its transparency (`'fallback'`); at
+  `afterResize` and `beforeEncode`, a size's own size and transparency; at
+  `beforeResize`, its transparency. `beforeFormat` and `beforeFileWrite`
+  change nothing in the plan. It names the hooks (`hooksNotRun`) and warns,
+  whatever their points.
+- **`resizeOptions`** make another size than the one asked:
+  `fit: 'inside'` plans 1280x1280 and makes 1280x960, `withoutEnlargement`
+  makes the source's size. The size made names the files (`{w}`, `{h}`).
+- two sizes write **the same file**: the plan lists it twice, the run fails
+  the second size.
+- the run fails **as it works**: a hook that throws, an encoder's error, a
+  full disk.
 
 ## One source: `generateSingleSourceAssets`
 
@@ -485,7 +506,8 @@ a `key`, and change it with them. With a `key`, the code is not hashed.
 **Config.** Hooks come from code, a `.js` config file or `--hooks <file>`
 on the command line. `planAssets` and
 `--dry-run` don't run them: sizes are planned from the sources as read, so
-a run with hooks can differ from its plan. The plan names them
+a run with hooks can differ from its plan (see What the plan can't know,
+in [One config](#one-config-generateassets)). The plan names them
 (`hooksNotRun`, and a line in `--dry-run`'s output) and warns.
 
 [`examples/hooks.js`](examples/hooks.js) grades, crops around a focal

@@ -21,7 +21,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
 - **`generateAssets(config)`**: one plain data config for code, config
   files and flags; only `input` (files, directories, globs, or a list) and
   `output` are required. Unknown keys throw.
-- **`planAssets(config)`**: what a run would write, nothing written.
+- **`planAssets(config)`**: what a run would write, nothing written. The
+  README lists what it can't know: hooks, `resizeOptions` that make
+  another size, two sizes writing one file, failures during the run.
 - **Presets**: sizes `'responsive'` (default); formats
   `'web'` (default), `'modern'` and `'lossless'`. Shorthands: widths
   `[1280, 640]` and multipliers `['x2']`, named by the run's suffix as
