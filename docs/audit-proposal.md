@@ -121,7 +121,8 @@ The items as proposed:
 
 1. **Decompression bombs and memory.** sharp's default pixel limit,
    268 MP (16383x16383), is the only bound. A 1 MB PNG decodes to 1 GB:
-   one source took 5.6 s and 1.18 GB of RSS; four at once (`'auto'`, pool 4) 19 s and 4.5 GB. The command sizes the pool to the cores, so
+   one source took 5.6 s and 1.18 GB of RSS; four at once (`'auto'`,
+   pool 4) 19 s and 4.5 GB. The command sizes the pool to the cores, so
    `'auto'` is 12 here: about 13 GB, more than the machine had free (5.8
    GB), not run. The same pixels as JPEG: 108 MB (shrink-on-load to 2560;
    decoded whole when the largest size is within 3x of the source).
@@ -240,7 +241,7 @@ default pool (4).
 
 The proposals, as measured before any change: on `main` after the audit
 (2b8e6f4), on a quiet machine, with the scripts of `bench/output/audit`.
-Two workloads: the 13 example photos (11 to 18 MP) with the defaults
+Two workloads: the 13 example photos (1 to 40 MP) with the defaults
 (`responsive` sizes, the `web` formats), which is what a user's run
 looks like; and a tree of 10,000 small sources
 (32x24 JPEGs in 100 directories, `sizes: [16]`, `formats: ['webp']`, a

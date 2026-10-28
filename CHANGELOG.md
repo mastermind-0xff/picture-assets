@@ -54,15 +54,15 @@ toolchain, with its bugs fixed, every argument validated and logging with
   (one file, before its format is set) and `beforeFileWrite` (one file,
   its format and encoder options set: a lower quality for 2x sizes).
   Each gets a new sharp object (`beforeFileWrite`: the file's own) and a
-  context (`setting`, `pixels()`, `signal`,
-  `logger`, …), and returns nothing (`undefined`), a sharp object (baked
-  once) or pixels. A hook that returns nothing (it logs, writes to a
-  database, detects something) type-checks also when written apart from
-  its hook object. What a point gives is the image from there on: its size
-  plans the sizes and names the files, its transparency picks
-  `'fallback'`: an alpha below 255 somewhere, not an alpha channel opaque
-  all over (sharp's `composite` adds one; it wrote a watermarked 2560w
-  photo as an 8.9 MB PNG instead of a 657 kB JPEG).
+  context (`setting`, `pixels()`, `signal`, `logger`, …), and returns
+  nothing (`undefined`), a sharp object (baked once) or pixels. A hook
+  that returns nothing (it logs, writes to a database, detects something)
+  type-checks also when written apart from its hook object. What a point
+  gives is the image from there on: its size plans the sizes and names
+  the files, its transparency picks `'fallback'`: an alpha below 255
+  somewhere, not an alpha channel opaque all over (sharp's `composite`
+  adds one; it wrote a watermarked 2560w photo as an 8.9 MB PNG instead
+  of a 657 kB JPEG).
 - Points without hooks do nothing: a run without hooks writes the same
   bytes.
 - **`record(key, value)`** in every hook's context: JSON data for the
@@ -183,7 +183,9 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
 - Exports: the types, `DEFAULT_FORMAT_OPTIONS`, `DEFAULT_OPTIONS`,
   `ENV_VARIABLES`, `resolveOptions`, `readEnvOptions`,
   `computeConcurrency`, `parseSuffix`, `createLogger`, `OUTPUT_FORMATS`,
-  `INPUT_EXTENSIONS`, `canWriteFormat`.
+  `INPUT_EXTENSIONS`, `canWriteFormat`; for configs, `CONFIG_KEYS`,
+  `DEFAULT_SIZES`, `DEFAULT_FORMATS`, `SIZE_PRESETS`, `FORMAT_PRESETS`,
+  `expandSizes`, `expandFormats`, `MANIFEST_VERSION` and `HOOK_POINTS`.
 
 ### Fixed
 

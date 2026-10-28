@@ -175,8 +175,8 @@ Breaking changes, cheapest now, while nothing is published.
    license.
 2. **Functions**: `generateAssets`, `planAssets`,
    `generateSingleSourceAssets` (was `imageResize`) and
-   `generateBatchAssets` (was `batchImageResize`): typing `generate` lists
-   them all. They may change again: `generateAssets` and
+   `generateBatchAssets` (was `batchImageResizeAsync`): typing `generate`
+   lists them all. They may change again: `generateAssets` and
    `generateBatchAssets` read alike, though one takes a config and the
    other positional arguments, so the choice between them isn't obvious.
 3. **Environment variables**: `PICTURE_ASSETS_` and the option's name,

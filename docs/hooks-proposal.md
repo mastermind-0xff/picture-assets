@@ -291,12 +291,12 @@ between the raw `toBuffer` (output.ts:303) and
 ## 6. Built (2026-10-23, branch `hooks`)
 
 Commits: `90c09ee` feat: hooks; `d442ff5` perf: decode a source once;
-`5abca18` feat: logs by level; `8d11d7e` fix: fixed width timestamps. Files: `src/types/hooks.ts` (public
-types), `src/image/hooks.ts` (runner), `src/errors/hook-error.ts`,
-`parseHooks` + `HOOK_POINTS` in `src/config/validate.ts`, the points in
-`sourceToSettings` / `settingToFormats` (`src/image/output.ts`),
-`src/log/describe.ts`. `examples/hooks.js`, `examples/hooks-pixels.js`,
-`bench/hooks.js`.
+`5abca18` feat: logs by level; `8d11d7e` fix: fixed width timestamps.
+Files: `src/types/hooks.ts` (public types), `src/image/hooks.ts`
+(runner), `src/errors/hook-error.ts`, `parseHooks` + `HOOK_POINTS` in
+`src/config/validate.ts`, the points in `sourceToSettings` /
+`settingToFormats` (`src/image/output.ts`), `src/log/describe.ts`.
+`examples/hooks.js`, `examples/hooks-pixels.js`, `bench/hooks.js`.
 
 Decided by the author (2026-10-23): point names OK; the end log's
 duration OK; timestamps with ms at every level OK; the logger's elapsed
