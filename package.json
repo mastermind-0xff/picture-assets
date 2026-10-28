@@ -16,6 +16,14 @@
   ],
   "author": "Tihomir Trifonov",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mastermind-0xff/picture-assets.git"
+  },
+  "homepage": "https://github.com/mastermind-0xff/picture-assets#readme",
+  "bugs": {
+    "url": "https://github.com/mastermind-0xff/picture-assets/issues"
+  },
   "type": "module",
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",
