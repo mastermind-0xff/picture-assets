@@ -48,7 +48,8 @@ export type OutputFormats =
   | { readonly [F in OutputFormat]?: OutputFormatsOptions[F] };
 
 /**
- * An output format, or `'fallback'`: JPEG, or PNG for transparent sources,
+ * An output format, or `'fallback'`: JPEG, or PNG for transparent sources
+ * (a pixel with an alpha below 255, not an alpha channel opaque all over),
  * chosen per source. The format for older browsers next to AVIF and WebP.
  */
 export type FormatSelector = OutputFormat | 'fallback';

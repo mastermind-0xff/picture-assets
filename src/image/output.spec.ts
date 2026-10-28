@@ -5,7 +5,11 @@ import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { generateSingleSourceAssets } from '../lib/generate-single-source-assets.js';
-import { createTempDir, writeFixtures } from '../test-utils/fixtures.js';
+import {
+  createTempDir,
+  opaqueImage,
+  writeFixtures,
+} from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
 import { ssim } from '../test-utils/ssim.js';
 import type { Hook } from '../types/hooks.js';
@@ -164,6 +168,44 @@ describe('sources decoded first', () => {
     expect(await run('landscape.jpg', 400)).toEqual({ calls: 2, reused: true });
     // a WebP is never decoded first, but once decoded, its pixels serve
     expect(await run('small.webp', 150)).toEqual({ calls: 2, reused: true });
+  });
+
+  test("a source decoded for its alpha: decoded once, for its sizes and its hooks' pixels", async () => {
+    const source = path.join(dir, 'opaque-alpha.png');
+    await opaqueImage(400, 300).ensureAlpha().png().toFile(source);
+    const run = async (hooks: Hook[]) => {
+      const { logger, messages } = createRecordingLogger();
+      const raw = vi.spyOn(sharp.prototype, 'raw');
+      await generateSingleSourceAssets(
+        source,
+        outDir(),
+        [{ width: 200 }],
+        ['fallback'],
+        { logger, hooks }
+      );
+      const calls = raw.mock.calls.length;
+      raw.mockRestore();
+      return {
+        calls,
+        reused: messages('verbose').some((message) =>
+          /^Decoded .* for its alpha: its sizes resize from its pixels$/.test(
+            message
+          )
+        ),
+      };
+    };
+    // the check's decode, then one resize
+    expect(await run([])).toEqual({ calls: 2, reused: true });
+    expect(
+      await run([
+        {
+          name: 'detector',
+          afterSourceLoad: async (_image, { pixels }) => {
+            await pixels();
+          },
+        },
+      ])
+    ).toEqual({ calls: 2, reused: true });
   });
 
   test('transparency kept', async () => {

@@ -29,7 +29,10 @@ toolchain, with its bugs fixed, every argument validated and logging with
   `[1280, 640]` and multipliers `['x2']`, named by the run's suffix as
   any size without its own (`'@{w}w'` by default; `suffix: '@{x}x'` names
   them by their multiplier).
-- **`'fallback'` format**: JPEG, or PNG for transparent sources.
+- **`'fallback'` format**: JPEG, or PNG for transparent sources: with a
+  pixel whose alpha is below 255. A source whose alpha channel is opaque
+  all over gets JPEG (a 1600w screenshot: 195 kB at 1280w instead of a
+  2.6 MB PNG); it is decoded once to check, for the plan too.
 - **`upscale`**: with `false`, sizes larger than the source are skipped,
   the largest made at the source's size. `false` with a sizes preset.
 - **Manifest and incremental runs** (`manifest`, `force`): unchanged

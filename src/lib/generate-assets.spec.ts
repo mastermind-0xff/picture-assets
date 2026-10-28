@@ -8,6 +8,7 @@ import type { SizesInput } from '../config/presets.js';
 import {
   createTempDir,
   listFiles,
+  opaqueImage,
   writeFixtures,
 } from '../test-utils/fixtures.js';
 import { createRecordingLogger } from '../test-utils/logger.js';
@@ -488,6 +489,41 @@ describe('planAssets', () => {
       }) as unknown,
     });
     await expect(fs.access(output)).rejects.toThrow();
+  });
+
+  test("an alpha channel opaque all over: 'fallback' is JPEG, in the plan as in the run", async () => {
+    const input = path.join(dir, `opaque-alpha-${++testIndex}`);
+    await fs.mkdir(input);
+    await opaqueImage(400, 300)
+      .ensureAlpha()
+      .png()
+      .toFile(path.join(input, 'screenshot.png'));
+    await fs.writeFile(
+      path.join(input, 'drawing.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#08f"/></svg>'
+    );
+    await fs.copyFile(
+      file('transparent.png'),
+      path.join(input, 'transparent.png')
+    );
+    const config = {
+      input,
+      output: outDir(),
+      sizes: [200],
+      formats: ['fallback'],
+      ...silent,
+    } as const;
+    const plan = await planAssets(config);
+    const planned = plan.sources.flatMap(({ sizes }) =>
+      sizes.flatMap(({ files }) => files.map((name) => path.basename(name)))
+    );
+    expect(planned).toEqual([
+      'drawing@200w.jpg',
+      'screenshot@200w.jpg',
+      'transparent@200w.png',
+    ]);
+    await generateAssets(config);
+    expect(await listFiles(config.output)).toEqual(planned);
   });
 
   test('limitInputPixels: a larger source fails in the plan too', async () => {

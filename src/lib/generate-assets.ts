@@ -339,7 +339,8 @@ export interface AssetsPlan {
 /**
  * What `generateAssets` would do with a config, without writing anything:
  * the sources, their sizes resolved to pixels (multipliers included) and
- * their files. Sources are read for their size, not resized, and no hook
+ * their files. Sources are read for their size (those with an alpha channel
+ * decoded, for their transparency), not resized, and no hook
  * runs: sizes are planned from the sources as read, even where hooks would
  * change them. The plan lists those hooks (`hooksNotRun`) and logs a
  * warning. `resizeOptions` that make another size than the one asked

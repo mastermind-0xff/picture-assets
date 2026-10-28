@@ -85,8 +85,11 @@ export const sourceImage = (
 ): Sharp => sharp(input, { autoOrient: true, limitInputPixels });
 
 /**
- * Reads a source's size, channels, transparency and file format from its
- * metadata: its header, nothing decoded.
+ * Reads a source's size, channels and file format from its metadata, its
+ * header, and its transparency. A source with an alpha channel is decoded
+ * to see if a pixel is transparent: screenshots and exports often have an
+ * alpha channel opaque all over, and `'fallback'` stays JPEG for them.
+ * Its pixels are given back for the formats the run decodes first.
  *
  * @throws When the source has more pixels than `limitInputPixels`: before
  * any decode, once for the source rather than once per size. Read without
@@ -96,7 +99,9 @@ export const sourceImage = (
 export const readSourceInfo = async (
   input: Buffer,
   limitInputPixels: number | false
-): Promise<SourceInfo & { readonly format: string }> => {
+): Promise<
+  SourceInfo & { readonly format: string; readonly pixels?: RawImage }
+> => {
   const {
     autoOrient: { width, height },
     channels,
@@ -107,7 +112,16 @@ export const readSourceInfo = async (
     throw new Error(
       `The source has ${width}x${height} pixels, more than limitInputPixels (${limitInputPixels}): raise the limit, or set it to false, for sources you trust.`
     );
-  return { width, height, channels, hasAlpha, format };
+  if (!hasAlpha) return { width, height, channels, hasAlpha, format };
+  const pixels = await bake(sourceImage(input, limitInputPixels));
+  return {
+    width,
+    height,
+    channels,
+    hasAlpha: isTransparent(pixels),
+    format,
+    ...(DECODED_FORMATS.has(format) && { pixels }),
+  };
 };
 
 /**
@@ -431,13 +445,22 @@ export const sourceToSettings = async (
   // buffer, an SVG has no directory: librsvg loads none of the files it
   // references, as it does from a path (spec'd)
   const input = await fs.readFile(srcPath);
-  const read = await readSourceInfo(input, limitInputPixels);
+  // decoded if it has an alpha channel: kept if its sizes resize from pixels
+  const { pixels: decodedForAlpha, ...read } = await readSourceInfo(
+    input,
+    limitInputPixels
+  );
   const source = sourceImage(input, limitInputPixels);
   // hooks get the file's bytes until a hook gives pixels, decoded at most
-  // once for all of them
+  // once for all of them, and for its alpha
   let sourceInput: EncodedInput | undefined;
   const encoded = () =>
-    (sourceInput ??= encodedInput(input, read, limitInputPixels));
+    (sourceInput ??= encodedInput(
+      input,
+      read,
+      limitInputPixels,
+      decodedForAlpha
+    ));
   const inputOf = (base: ResizeBase) =>
     base.pixels ? rawInput(base.pixels) : encoded();
 
@@ -478,11 +501,16 @@ export const sourceToSettings = async (
   const pixels =
     sourcePixels ??
     (decodedForHooks ? await decodedForHooks
-    : decodesFirst(read.format, plan) ? await bake(source)
+    : decodesFirst(read.format, plan) ?
+      (decodedForAlpha ?? (await bake(source)))
     : undefined);
   if (pixels && !sourcePixels)
     logger.verbose(
-      `Decoded ${shown}${decodedForHooks ? ' for its hooks' : ''}: its sizes resize from its pixels`
+      `Decoded ${shown}${
+        decodedForAlpha ? ' for its alpha'
+        : decodedForHooks ? ' for its hooks'
+        : ''
+      }: its sizes resize from its pixels`
     );
 
   /** Encoders of an image: `'fallback'` follows its transparency. */

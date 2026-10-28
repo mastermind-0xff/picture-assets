@@ -145,7 +145,11 @@ ignored.
 | `formats: 'lossless'` | Lossless `webp`, and `png`             |
 
 **`'fallback'`** is JPEG, or PNG for transparent sources: the format for
-browsers without AVIF and WebP, chosen per source.
+browsers without AVIF and WebP, chosen per source. Transparent means a
+pixel with an alpha below 255: a source whose alpha channel is opaque all
+over (screenshots and exports often have one) gets JPEG. Such a source is
+decoded to check it: for PNG, GIF, TIFF and AVIF, the decode the run makes
+anyway; WebP and SVG are decoded once more.
 
 **Without upscaling**, sizes larger than the source are `'skipped'`, but the
 largest of them is made at the source's size, unless a size already is: a
@@ -164,8 +168,9 @@ manifest recorded.
 **`planAssets`** tells what `generateAssets` would do, without writing
 anything: each source's size, its sizes in pixels (multipliers resolved)
 and its files, or why it is unchanged or would fail. It is the command's
-`--dry-run`. It reads headers, not pixels: the 17 example images in 50 ms,
-against 8 s for their run in WebP
+`--dry-run`. It reads headers, and decodes only the sources with an alpha
+channel, for their transparency: the 17 example images (none with alpha)
+in 50 ms, against 8 s for their run in WebP
 ([`examples/plan.js`](examples/plan.js)).
 
 **What the plan can't know.** The sources it lists, which of them are
