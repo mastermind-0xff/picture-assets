@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.os }}, Node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # the engines floor and the two newer LTS lines
+        node: ['22.17', '24', '26']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      # prettier, eslint, tsc, vitest
+      - run: npm run check
+      # builds dist, then runs every example (cli.js among them)
+      - run: npm run examples
+      - name: Install the packed tarball, run the bin
+        shell: bash
+        run: |
+          npm pack
+          npm install -g ./picture-assets-*.tgz
+          picture-assets --version
