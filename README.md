@@ -160,8 +160,9 @@ largest file keeps every pixel.
 succeeded or was unchanged, by its path relative to the manifest, with its
 size and files (path relative to the manifest, format, width, height,
 bytes), and the `data` hooks recorded for it and its files: what templates
-need to write `<picture>` and `srcset`. Read it with
-`readManifest`. A source is skipped (`'skipped'` in the result) when its
+need to write `<picture>` and `srcset`. `readManifest(file)` resolves to
+`{ manifest }`, `{}` when there is no file yet, or `{ problem }` for a
+file it can't use. A source is skipped (`'skipped'` in the result) when its
 file, the options deciding its files, and its files are all as the
 manifest recorded.
 
@@ -211,14 +212,14 @@ generateSingleSourceAssets(srcPath, destPath, settings, formats?, options?): Pro
 **`settings`**: one object per size. Give a width or a height, or both for
 another aspect ratio (cropped to fill, see `resizeOptions`).
 
-| Field                      | Meaning                                                                                  |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| `width`, `height`          | Pixels, or a multiplier: `'x1'`, `'x2'`, `'x1.5'` (see [Multipliers](#multipliers))      |
-| `suffix`                   | File name suffix, default `'@{w}w'`, with wildcards (see [Suffix](#suffix))              |
-| `resizeOptions`            | sharp's resize options: `fit`, `position`, `background`, `kernel`, `withoutEnlargement`… |
-| `extractRegion`            | `{ left, top, width, height }` cut from the resized image                                |
-| `generateFromSource`       | Resize this size from the source instead of the previous size                            |
-| `useAsNextResizeIteration` | Resize the next size from this one (default for the same aspect ratio, no crop)          |
+| Field                      | Meaning                                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `width`, `height`          | Pixels, or a multiplier: `'x1'`, `'x2'`, `'x1.5'` (see [Multipliers](#multipliers))                |
+| `suffix`                   | File name suffix, default `'@{w}w'`, with wildcards (see [Suffix](#suffix))                        |
+| `resizeOptions`            | sharp's resize options: `fit`, `position`, `background`, `kernel`, `withoutEnlargement`…           |
+| `extractRegion`            | `{ left, top, width, height }` cut from the resized image                                          |
+| `generateFromSource`       | Resize this size from the source (default for sizes larger than the source)                        |
+| `useAsNextResizeIteration` | Resize the next sizes from this one (default for the source's aspect ratio, no crop, not enlarged) |
 
 Other keys throw: `{ width: 'x2', sufix: '@2x' }` is an error, not a size
 named by the default suffix. sharp checks the values of `resizeOptions`
@@ -296,9 +297,9 @@ other.
 
 ### Options
 
-Every option falls back to its environment variable, then to its default.
-Invalid values throw, naming the option or the variable, and so do
-unknown options (`sufix`), naming the expected ones.
+An option not given falls back to its environment variable, if it has
+one, then to its default. Invalid values throw, naming the option or the
+variable, and so do unknown options (`sufix`), naming the expected ones.
 
 | Option               | Default        | Variable                              | Meaning                                                                                                                                                                                                                                                                                                  |
 | -------------------- | -------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -344,7 +345,8 @@ A file or directory named without wildcards that isn't there fails as a
 source, with a warning (`Not found: photos/tow.jpg. A misspelled name?`):
 the other sources go on, unless `abortScope` is `'batch'`, and the batch
 is `'failed'` (exit code 1). Corrected, the next run with a manifest makes
-only that one. A glob that matches nothing is a warning.
+only that one. A glob that matches nothing is a warning, and a batch that
+finds no source at all is `'failed'`.
 
 Files sharp can't read are skipped; outputs inside the source tree are
 never picked up again. Two sources that would write the same files
@@ -359,10 +361,10 @@ size (`UV_THREADPOOL_SIZE`, 4 by default), on which sharp runs; `'max'`
 the machine's parallelism; or a number. `PICTURE_ASSETS_CONCURRENCY` sets
 it for every call, as it depends on the machine more than on the project.
 Each source in progress holds its pixels and its encoders' buffers: with
-the defaults, the 17 example images (1 to 40 megapixels) peaked at 1.1 GB
-4 at a time, and at 1.9 GB 12 at a time (the command's pool on 12
-threads), in the same 30 s, as AVIF already uses every core. Lower it for
-large photos on a machine with little memory.
+the defaults, the 17 example images (1 to 40 megapixels) peaked at 1.1 to
+1.4 GB 4 at a time, and at 1.7 to 1.9 GB 12 at a time (the command's pool
+on 12 threads), in the same 30 s, as AVIF already uses every core. Lower
+it for large photos on a machine with little memory.
 
 And `signal`: an `AbortSignal` that stops the batch. The files in progress
 are finished, so none is left half written, and nothing new starts. The
@@ -400,6 +402,7 @@ list's order, each on the image the previous one gave.
 await generateAssets({
   input: 'src/images',
   output: 'public/img',
+  sizes: ['x3', 'x2', 'x1'],
   hooks: [
     {
       name: 'grade',
@@ -433,13 +436,14 @@ await generateAssets({
 | `beforeFileWrite` | Per file, after the run set its format and encoder options, before it is written | That file's encoder options (and image): what the hook sets wins             |
 
 Each function gets a new sharp object over the image, never one the run
-uses (but `beforeFileWrite`, see below), and a context: the `source` path, the image's `width`, `height` and
-`channels`, `pixels()` (a copy of its pixels, 8 bits per channel, for JS
-or a model), the run's `signal` and `logger`, and `record` (see
-[Data](#data-from-hooks)). The size points add the
-`setting` (planned `width` and `height`, `sizeMultiplier`, `suffix`,
-`resizeOptions`, `extractRegion`), `beforeFormat` and `beforeFileWrite`
-the `format`, its encoder `options` and the `file`. It returns, or resolves to:
+uses (but `beforeFileWrite`, see below), and a context: the `point`, the
+`source` path, the image's `width`, `height` and `channels`, `pixels()` (a
+copy of its pixels, 8 bits per channel, for JS or a model), the run's
+`signal` and `logger`, and `record` (see [Data](#data-from-hooks)). The
+size points add the `setting` (planned `width` and `height`,
+`sizeMultiplier`, `suffix`, `resizeOptions`, `extractRegion`),
+`beforeFormat` and `beforeFileWrite` the `format`, its encoder `options`
+and the `file`. It returns, or resolves to:
 
 - nothing (`undefined`): no change. A hook may only log, write to a
   database or detect something.
@@ -455,10 +459,10 @@ transparency included. An `afterSourceLoad` hook that upscales gets the
 larger sizes made where `upscale: false` would skip them; one that makes
 pixels transparent makes `'fallback'` write PNG. An alpha channel opaque
 all over is no transparency (sharp's `composite` adds one to a watermarked
-image): `'fallback'` stays JPEG. A size whose hooks change its size names its files
-by the new size and hands it to the next sizes. An image of another aspect
-ratio (a hero crop at `beforeResize`) is cropped to the size, as built-in
-crops are, not stretched.
+image): `'fallback'` stays JPEG. A size whose hooks change its size names
+its files by the new size and hands it to the next sizes. An image of
+another aspect ratio (a hero crop at `beforeResize`) is cropped to the
+size, as built-in crops are, not stretched.
 
 **Encoder options.** `beforeFileWrite` gets the file's own sharp object,
 once the run set its format and options (`toFormat`), right before it is
@@ -480,10 +484,10 @@ hook works on the whole source (see [bench/hooks.js](bench/README.md#results)).
 
 **Concurrency.** A hook runs as many times at once as there are sources
 in progress (and formats, at `beforeFormat` and `beforeFileWrite`): 4 by
-default, a thread per
-core from the command line. For a GPU model or a rate limited API, give it
-a `concurrency`: its calls wait their turn, counted across its points and
-every run in the process, while the rest of the run goes on.
+default, a thread per core from the command line. For a GPU model or a
+rate limited API, give it a `concurrency`: its calls wait their turn,
+counted across its points and every run in the process, while the rest of
+the run goes on.
 
 ```js
 const upscaler = {
@@ -500,8 +504,7 @@ image in memory.
 **Failures.** A hook that throws, or returns something else, fails with a
 `HookError` (its `hook`, its `point`, the hook's error as its `cause`): its
 size, its file at `beforeFormat` and `beforeFileWrite`, its source at
-`afterSourceLoad`, under
-`abortScope` as any failure.
+`afterSourceLoad`, under `abortScope` as any failure.
 
 **Logs.** At `'debug'`, each hook call logs when it starts and when it
 ends, with its time, its bake included; see [Logging](#logging).
@@ -513,11 +516,11 @@ run. What a function closes over isn't in its code, a factory's options
 a `key`, and change it with them. With a `key`, the code is not hashed.
 
 **Config.** Hooks come from code, a `.js` config file or `--hooks <file>`
-on the command line. `planAssets` and
-`--dry-run` don't run them: sizes are planned from the sources as read, so
-a run with hooks can differ from its plan (see What the plan can't know,
-in [One config](#one-config-generateassets)). The plan names those that
-can change it, all but `beforeFormat` and `beforeFileWrite` (`hooksNotRun`,
+on the command line. `planAssets` and `--dry-run` don't run them: sizes
+are planned from the sources as read, so a run with hooks can differ from
+its plan (see What the plan can't know, in
+[One config](#one-config-generateassets)). The plan names those that can
+change it, all but `beforeFormat` and `beforeFileWrite` (`hooksNotRun`,
 and a line in `--dry-run`'s output), and warns.
 
 [`examples/hooks.js`](examples/hooks.js) grades, crops around a focal
@@ -576,18 +579,19 @@ const placeholder = {
 Both functions resolve with a tree of results: batch → sources → settings
 → files, each with a `status`.
 
-| Status      | Meaning                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------- |
-| `'succeed'` | Everything below was written, or skipped                                                                |
-| `'failed'`  | Something below failed: see the `error` of the source, setting or file                                  |
-| `'aborted'` | Stopped before it was done, because another source failed (`abortScope: 'batch'`) or the `signal` fired |
-| `'skipped'` | A size larger than the source (`upscale: false`), or a source unchanged since the manifest              |
+| Status      | Meaning                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `'succeed'` | Everything below was written, or skipped                                                                      |
+| `'failed'`  | Something below failed: see the `error` of the source, setting or file. A batch also when no source was found |
+| `'aborted'` | Stopped before it was done, because another source failed (`abortScope: 'batch'`) or the `signal` fired       |
+| `'skipped'` | A size larger than the source (`upscale: false`), or a source unchanged since the manifest                    |
 
 Written files have `fileData`: sharp's output info, with `size` in bytes,
 `width` and `height`. Sources have their `width` and `height`, as shown. A
-batch lists every source found, in path order, and both levels have a
-`duration` in milliseconds. Sources and files have `data` when hooks
-recorded some (see [Data from hooks](#data-from-hooks)).
+batch lists every source found, in path order (input by input, for
+`generateAssets`), and both levels have a `duration` in milliseconds.
+Sources and files have `data` when hooks recorded some (see
+[Data from hooks](#data-from-hooks)).
 [`examples/picture.js`](examples/picture.js) turns a result into a
 `<picture>` element, with a placeholder color a hook recorded.
 
@@ -617,8 +621,9 @@ need not be.
   `limitInputPixels` (default 268402689, 16383 x 16383) fails larger
   sources on their header, before any decode. Lower it when you know
   your images (`20_000_000` for 20 megapixels), and lower `concurrency`
-  on a machine with little memory: about 150 to 200 MB per 12 to 18
-  megapixel photo in progress, at most `limitInputPixels` x 4 bytes.
+  on a machine with little memory: each source in progress holds its
+  pixels, at most `limitInputPixels` x 4 bytes, and its encoders' buffers
+  (see [Many sources](#many-sources-generatebatchassets)).
 - **Decoders**: sharp picks the decoder from the bytes, not the
   extension: an SVG named `photo.jpg` is read as SVG. Every format the
   installed sharp reads is accepted (JPEG, PNG, WebP, GIF, TIFF, AVIF,
@@ -644,15 +649,16 @@ see:
 | Level       | Logs                                                                                                                                                                                                                                                                         |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `'error'`   | Failures: a source, a size or a file, with the error                                                                                                                                                                                                                         |
-| `'warning'` | Sources and batches with failures, an unusable manifest, a plan that can't run the hooks                                                                                                                                                                                     |
+| `'warning'` | Sources and batches with failures, a missing input or a glob matching nothing, an unusable manifest, a plan that can't run the hooks                                                                                                                                         |
 | `'info'`    | The run: its sources, sizes, formats, output and concurrency when it starts; each source when it starts and when it ends; the manifest written; files, bytes, time and CPU at the end                                                                                        |
 | `'debug'`   | The settings, resolved (sizes, each format's options, hooks, threads); each size, with its files, bytes and time; each hook's start and end; after the summary, files and bytes by format, the slowest source, peak memory, and graphs of a batch's CPU, memory and progress |
 | `'verbose'` | Each file; what each size is resized from; whether a source is decoded first                                                                                                                                                                                                 |
 
-`'info'` (the default) tells what a run did; `--silent`, or the level
-`'error'`, leaves only the failures for a pipe or CI. Timestamps have
-milliseconds, at a fixed width (`HH:mm:ss.SSS` on the command line): with
-the debug lines around each hook and size, they tell where the time goes.
+`'info'` (the default) tells what a run did; the level `'error'` leaves
+only the failures, for a pipe or CI, and `'silent'` (`--silent`) logs
+nothing. Timestamps have milliseconds, at a fixed width (`HH:mm:ss.SSS` on
+the command line): with the debug lines around each hook and size, they
+tell where the time goes.
 
 Paths in logs, messages and `--dry-run` use `/`, on Windows too: the
 manifest's form, which every shell takes, the same on every system.
@@ -683,8 +689,9 @@ about 4 times faster than sharp's default, 4, which reaches the same SSIM
 at quality 60 with 4 to 15% fewer bytes: a default run of the 17 example
 images takes 30 s instead of 110 s, for 11% more AVIF bytes. Colors stay
 at full resolution (`chromaSubsampling: '4:4:4'`): 4:2:0 saves about 5%
-and blurs colored text and edges. Checked on 7 images from 320 to 2560 pixels wide, a collage and
-a chart among them ([docs/audit-proposal.md](docs/audit-proposal.md) 5.1).
+and blurs colored text and edges. Checked on 7 images from 320 to 2560
+pixels wide, a collage and a chart among them
+([docs/audit-proposal.md](docs/audit-proposal.md) 5.1).
 For the smallest files whatever the build time:
 `formatOptions: { avif: { effort: 4, quality: 60 } }`, in code or in the
 config file, or
