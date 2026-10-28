@@ -683,6 +683,7 @@ write to `examples/output`.
 | [`generate.js`](examples/generate.js)             | `generateAssets`, a manifest, an incremental run    |
 | [`abort.js`](examples/abort.js)                   | A run stopped by an `AbortSignal`, then finished    |
 | [`cli.js`](examples/cli.js)                       | The command with a config file, `--dry-run`         |
+| [`plan.js`](examples/plan.js)                     | The plan against the run, in 10 scenarios; a page   |
 
 ## Benchmarks
 
