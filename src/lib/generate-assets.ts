@@ -18,6 +18,7 @@ import {
 } from '../config/validate.js';
 import { ResultBatchError } from '../errors/result-errors.js';
 import {
+  duplicateOutputError,
   planSource,
   plannedIdentifier,
   readSourceInfo,
@@ -304,9 +305,14 @@ export const generateAssets = async (
 export interface PlannedSize {
   /** Planned width x height. */
   readonly size: string;
-  /** `'skipped'`: larger than the source, with `upscale: false`. */
-  readonly status: 'planned' | 'skipped';
+  /**
+   * - `'skipped'`: larger than the source, with `upscale: false`.
+   * - `'failed'`: an earlier size of the source writes its files, as the
+   *   run's error says (`error`): nothing written.
+   */
+  readonly status: 'planned' | 'skipped' | 'failed';
   readonly files: readonly string[];
+  readonly error?: unknown;
 }
 
 /** What a source would give. */
@@ -315,7 +321,10 @@ export interface PlannedSource {
   /**
    * - `'planned'`: its sizes would be made.
    * - `'unchanged'`: it would be skipped, see `manifest`.
-   * - `'failed'`: it can't be: `error` tells why.
+   * - `'failed'`: it can't be: `error` tells why. Or a size of it fails (its
+   *   `error`), as the run reports it: the other sizes are made, unless
+   *   `abortScope` stops the source there; then the plan lists no size
+   *   after it.
    */
   readonly status: 'planned' | 'unchanged' | 'failed';
   readonly width?: number;
@@ -412,26 +421,47 @@ export const planAssets = async (config: AssetsConfig): Promise<AssetsPlan> => {
         target.encoders,
         options
       );
+      // as the run: a size whose files an earlier size writes fails, and
+      // stops the source unless abortScope is 'none'
+      const identifiers = new Set<string>();
+      const sizes: PlannedSize[] = [];
+      for (const setting of plan.settings) {
+        const size = `${setting.width}x${setting.height}`;
+        if (setting.skipped) {
+          sizes.push({ size, status: 'skipped', files: [] });
+          continue;
+        }
+        const identifier = plannedIdentifier(
+          target.outputPath,
+          setting,
+          options.suffix
+        );
+        if (identifiers.has(identifier)) {
+          sizes.push({
+            size,
+            status: 'failed',
+            files: [],
+            error: duplicateOutputError(identifier),
+          });
+          if (options.abortScope === 'none') continue;
+          break;
+        }
+        identifiers.add(identifier);
+        sizes.push({
+          size,
+          status: 'planned',
+          files: plan.encoders.map(({ format }) => `${identifier}.${format}`),
+        });
+      }
       planned.push({
         source,
-        status: 'planned',
+        status:
+          sizes.some(({ status }) => status === 'failed') ? 'failed' : (
+            'planned'
+          ),
         width: plan.width,
         height: plan.height,
-        sizes: plan.settings.map((setting) => {
-          const identifier = plannedIdentifier(
-            target.outputPath,
-            setting,
-            options.suffix
-          );
-          return {
-            size: `${setting.width}x${setting.height}`,
-            status: setting.skipped ? 'skipped' : 'planned',
-            files:
-              setting.skipped ?
-                []
-              : plan.encoders.map(({ format }) => `${identifier}.${format}`),
-          };
-        }),
+        sizes,
       });
     } catch (error) {
       planned.push({ source, status: 'failed', sizes: [], error });

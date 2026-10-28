@@ -8,8 +8,9 @@
  * 1. A first run. 2. Nothing changed, with a manifest. 3. One source
  * replaced. 4. A size added. 5. A small source: larger sizes skipped.
  * 6. Multipliers. 7. A transparent source and `'fallback'`. 8. Sources
- * that fail. 9. Hooks, which the plan doesn't run. 10. The whole example
- * folder: the plan's cost against the run's.
+ * that fail. 9. Two sizes writing one file. 10. Hooks, which the plan
+ * doesn't run. 11. The whole example folder: the plan's cost against the
+ * run's.
  *
  * Prints the command's own `--dry-run` for the first scenario, then a
  * verdict for each. Writes examples/output/plan/index.html: plan and run
@@ -139,6 +140,12 @@ const SCENARIOS = [
     },
   },
   {
+    title: 'Two sizes, one file',
+    note: 'A 640 pixel square and the 640 width both write house-01@640w: the second fails, in the plan as in the run, and 320 is still made (abortScope none).',
+    sources: ['house-01.jpg'],
+    config: { sizes: [1280, { width: 640, height: 640 }, 640, 320] },
+  },
+  {
     title: "Hooks the plan doesn't run",
     note: "Two afterSourceLoad hooks: a square crop of every source, rounded corners for the chart. The plan reads the sources as they are, the run the hooks' images: other sizes, other names ({w}x{h} in the suffix), and the chart's fallback is PNG.",
     sources: ['house-01.jpg', 'portrait.jpg', 'chart.png'],
@@ -163,7 +170,11 @@ const SOURCE_STATUS = {
   unchanged: 'skipped',
   failed: 'failed',
 };
-const SIZE_STATUS = { planned: 'succeed', skipped: 'skipped' };
+const SIZE_STATUS = {
+  planned: 'succeed',
+  skipped: 'skipped',
+  failed: 'failed',
+};
 
 const message = (error) =>
   error instanceof Error ? error.message : String(error);
@@ -370,12 +381,16 @@ const sizeRows = (source) => {
       const planned = size.plannedSize;
       const done = size.doneSize;
       const sizeBad = planned?.size !== done?.size ? ' bad' : '';
-      const files = (planned?.files ?? [])
-        .map(
-          (file) =>
-            `<div class="${size.notWritten.includes(file) ? 'bad' : ''}">${escape(path.basename(file))}</div>`
-        )
-        .join('');
+      const files =
+        (planned?.files ?? [])
+          .map(
+            (file) =>
+              `<div class="${size.notWritten.includes(file) ? 'bad' : ''}">${escape(path.basename(file))}</div>`
+          )
+          .join('') +
+        (planned?.error ?
+          `<div class="error">${escape(message(planned.error))}</div>`
+        : '');
       const thumbs = size.written
         .map(
           ({ file, bytes }) =>

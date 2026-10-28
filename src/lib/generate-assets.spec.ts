@@ -527,6 +527,64 @@ describe('planAssets', () => {
     expect(await listFiles(config.output)).toEqual(planned);
   });
 
+  test('two sizes writing one file: the second fails, in the plan as in the run', async () => {
+    const run = async (abortScope: 'none' | 'source') => {
+      const config = {
+        input: file('landscape.jpg'),
+        output: outDir(),
+        // 400x400 and 400 both write landscape@400w
+        sizes: [{ width: 400, height: 400 }, 400, 200],
+        formats: ['webp'],
+        abortScope,
+        ...silent,
+      } as const;
+      const plan = await planAssets(config);
+      const batch = await generateAssets(config).catch(
+        (error: unknown) => (error as ResultBatchError).resultBatch
+      );
+      const [planned] = plan.sources;
+      const [done] = batch.sources;
+      expect(planned?.status).toBe(done?.status);
+      expect(planned?.sizes.map(({ status }) => status)).toEqual(
+        done?.outputsBySetting.map(({ status }) =>
+          status === 'succeed' ? 'planned' : status
+        )
+      );
+      expect(String(planned?.sizes[1]?.error)).toBe(
+        String(done?.outputsBySetting[1]?.error)
+      );
+      return { planned, files: plan.files };
+    };
+    // the third size is still made
+    expect(await run('none')).toMatchObject({
+      planned: {
+        status: 'failed',
+        sizes: [
+          { size: '400x400', status: 'planned' },
+          {
+            size: '400x300',
+            status: 'failed',
+            files: [],
+            error: expect.objectContaining({
+              message: expect.stringMatching(
+                /^Another setting already writes .*landscape@400w\.\*/
+              ) as unknown,
+            }) as unknown,
+          },
+          { size: '200x150', status: 'planned' },
+        ],
+      },
+      files: 2,
+    });
+    // the source stops at the failure: no size listed after it
+    const stopped = await run('source');
+    expect(stopped.planned?.sizes.map(({ size }) => size)).toEqual([
+      '400x400',
+      '400x300',
+    ]);
+    expect(stopped.files).toBe(1);
+  });
+
   test('limitInputPixels: a larger source fails in the plan too', async () => {
     const plan = await planAssets({
       input: [file('landscape.jpg'), file('small.webp')],

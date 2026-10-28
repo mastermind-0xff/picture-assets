@@ -86,7 +86,8 @@ const formatPlan = (plan: AssetsPlan) => {
       lines.push(`${displayPath(source.source)}: unchanged, skipped`);
       continue;
     }
-    if (source.status === 'failed') {
+    // failed with no size: it can't be read; with sizes, one of them fails
+    if (source.status === 'failed' && source.sizes.length === 0) {
       lines.push(
         `${displayPath(source.source)}: fails: ${errorMessage(source.error)}`
       );
@@ -95,11 +96,11 @@ const formatPlan = (plan: AssetsPlan) => {
     lines.push(
       `${displayPath(source.source)} (${source.width}x${source.height})`
     );
-    for (const { size, status, files } of source.sizes)
+    for (const { size, status, files, error } of source.sizes)
       lines.push(
         `  ${size.padEnd(11)} ${
-          status === 'skipped' ?
-            'skipped: larger than the source'
+          status === 'skipped' ? 'skipped: larger than the source'
+          : status === 'failed' ? `fails: ${errorMessage(error)}`
           : files.map((file) => displayPath(path.basename(file))).join(', ')
         }`
       );

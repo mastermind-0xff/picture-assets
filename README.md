@@ -167,8 +167,11 @@ manifest recorded.
 
 **`planAssets`** tells what `generateAssets` would do, without writing
 anything: each source's size, its sizes in pixels (multipliers resolved)
-and its files, or why it is unchanged or would fail. It is the command's
-`--dry-run`. It reads headers, and decodes only the sources with an alpha
+and its files, or why it is unchanged or would fail. A size whose files an
+earlier size of the source writes fails, as in the run (`'failed'`, its
+`error`), and with `abortScope` other than `'none'` no size after it is
+listed. It is the command's `--dry-run`, which exits 1 when a source or a
+size fails. It reads headers, and decodes only the sources with an alpha
 channel, for their transparency: the 17 example images (none with alpha)
 in 50 ms, against 8 s for their run in WebP
 ([`examples/plan.js`](examples/plan.js)).
@@ -187,8 +190,6 @@ names and formats are too, but where:
 - **`resizeOptions`** make another size than the one asked:
   `fit: 'inside'` plans 1280x1280 and makes 1280x960, `withoutEnlargement`
   makes the source's size. The size made names the files (`{w}`, `{h}`).
-- two sizes write **the same file**: the plan lists it twice, the run fails
-  the second size.
 - the run fails **as it works**: a hook that throws, an encoder's error, a
   full disk.
 
@@ -714,7 +715,7 @@ write to `examples/output`.
 | [`abort.js`](examples/abort.js)                   | A run stopped by an `AbortSignal`, then finished    |
 | [`cli.js`](examples/cli.js)                       | The command with a config file, `--dry-run`         |
 | [`plan-simple.js`](examples/plan-simple.js)       | `planAssets` on a folder, the plan printed as is    |
-| [`plan.js`](examples/plan.js)                     | The plan against the run, in 10 scenarios; a page   |
+| [`plan.js`](examples/plan.js)                     | The plan against the run, in 11 scenarios; a page   |
 
 ## Benchmarks
 

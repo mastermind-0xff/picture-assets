@@ -169,6 +169,30 @@ describe('runCli', () => {
     ]);
   });
 
+  test('--dry-run: two sizes writing one file, the second fails, exit 1', async () => {
+    const output = outDir();
+    const { code, stdout } = await run([
+      file('landscape.jpg'),
+      '-o',
+      output,
+      '-s',
+      '300,200',
+      '-f',
+      'png',
+      '--suffix=-same',
+      '--dry-run',
+      '--silent',
+    ]);
+    expect(code).toBe(EXIT_CODES.failed);
+    expect(stdout.split('\n')).toEqual([
+      `${displayPath(path.relative(process.cwd(), file('landscape.jpg')))} (800x600)`,
+      '  300x225     landscape-same.png',
+      `  200x150     fails: Another setting already writes ${displayPath(path.relative(process.cwd(), path.join(output, 'landscape-same')))}.*: give the settings different suffixes, e.g. with {w}.`,
+      '1 source(s), 1 file(s) to write.',
+      '',
+    ]);
+  });
+
   test('--dry-run with hooks from a .js config: a note, as they are not run', async () => {
     const site = path.join(dir, `site-${++testIndex}`);
     await fs.mkdir(site);

@@ -205,6 +205,12 @@ export const plannedIdentifier = (
     sizeMultiplier: setting.sizeMultiplier,
   })}`;
 
+/** The error of a size whose files an earlier size of the source writes. */
+export const duplicateOutputError = (outputIdentifier: string) =>
+  new Error(
+    `Another setting already writes ${displayPath(outputIdentifier)}.*: give the settings different suffixes, e.g. with {w}.`
+  );
+
 /** Background of transparent images written to formats without alpha. */
 const FLATTEN_BACKGROUND = '#ffffff';
 
@@ -691,9 +697,7 @@ export const sourceToSettings = async (
         }
       )}`;
       if (identifiers.has(outputIdentifier))
-        throw new Error(
-          `Another setting already writes ${displayPath(outputIdentifier)}.*: give the settings different suffixes, e.g. with {w}.`
-        );
+        throw duplicateOutputError(outputIdentifier);
       identifiers.add(outputIdentifier);
 
       // a file's beforeFormat and beforeFileWrite hooks record in one store
