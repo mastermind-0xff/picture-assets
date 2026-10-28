@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (unreleased)
 
 A revamp of the unreleased 0.0.1: the same pipeline (sizes resolved from
 pixels or multipliers, each size resized from the previous one, formats

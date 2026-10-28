@@ -1,6 +1,6 @@
 {
   "name": "picture-assets",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Turns source images into web-ready assets: every resolution (pixels or x2-style multipliers) and format you need, from a single image or a whole directory tree, with high quality, low weight defaults.",
   "keywords": [
     "image",
