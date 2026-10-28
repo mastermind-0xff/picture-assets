@@ -30,6 +30,7 @@ import {
   bake,
   encodedInput,
   fromRaw,
+  hasAlphaChannel,
   isTransparent,
   rawInput,
   recordedData,
@@ -215,14 +216,24 @@ export const duplicateOutputError = (outputIdentifier: string) =>
 const FLATTEN_BACKGROUND = '#ffffff';
 
 /**
+ * What an encode does with an image's alpha:
+ *
+ * - `'transparent'`: kept; formats without alpha (JPEG) get the image
+ *   flattened on white instead of showing the hidden colors of
+ *   transparent pixels.
+ * - `'opaque'`: nothing, an alpha channel opaque all over included.
+ * - `'removed'`: an alpha channel opaque all over is left out
+ *   (`removeOpaqueAlpha`).
+ */
+export type EncodeAlpha = 'transparent' | 'opaque' | 'removed';
+
+/**
  * Saves the contents of a sharp object to a file of specific format.
  *
  * @param image Sharp object containing the image data.
  * @param file Full file path of the output.
  * @param encoder Format of the file and its complete options.
- * @param hasAlpha Whether the image is transparent: formats without alpha
- * (JPEG) get it flattened on white instead of showing the hidden colors of
- * transparent pixels.
+ * @param alpha What the encode does with the image's alpha.
  * @param beforeFileWrite The file's `beforeFileWrite` hooks, if any: they
  * get the sharp object once its format and options are set, and give the
  * one to write.
@@ -234,13 +245,14 @@ export const sharpToFile = async (
   image: Sharp,
   file: string,
   { format, options }: Encoder,
-  hasAlpha: boolean,
+  alpha: EncodeAlpha,
   beforeFileWrite?: (image: Sharp) => Promise<Sharp>
 ): Promise<ResultFormat> => {
   try {
     const pipeline =
-      hasAlpha && !supportsAlpha(format) ?
+      alpha === 'transparent' && !supportsAlpha(format) ?
         image.flatten({ background: FLATTEN_BACKGROUND })
+      : alpha === 'removed' ? image.removeAlpha()
       : image;
     const encoding = pipeline.toFormat(toSharpFormat(format), options);
     // the hooks get the format and options set: what they set wins
@@ -271,7 +283,7 @@ const hookedToFile = async (
   pixels: RawImage,
   file: string,
   encoder: Encoder,
-  hasAlpha: boolean,
+  alpha: EncodeAlpha,
   { beforeFormat, beforeFileWrite }: FileHooks
 ): Promise<ResultFormat> => {
   let pipeline: Sharp;
@@ -284,7 +296,7 @@ const hookedToFile = async (
     pipeline,
     file,
     encoder,
-    hasAlpha,
+    alpha,
     beforeFileWrite && ((image) => beforeFileWrite(image, encoder, file))
   );
 };
@@ -301,7 +313,8 @@ const hookedToFile = async (
  * @param encoders Formats to write and their options, `'fallback'` resolved
  * once the source tells if it is transparent.
  * @param outputIdentifier Full path to the output file without the extension.
- * @param hasAlpha Whether the image is transparent, see `sharpToFile`.
+ * @param alpha What the encodes do with the image's alpha, see
+ * `EncodeAlpha`.
  * @param logger Receives a debug log per file and an error per failure.
  * @param source The source's path, when no file may overwrite it (see
  * `overwriteSource`): such a file fails.
@@ -314,7 +327,7 @@ export const settingToFormats = async (
   pixels: RawImage,
   encoders: readonly Encoder[],
   outputIdentifier: string,
-  hasAlpha: boolean,
+  alpha: EncodeAlpha,
   logger: AssetsLogger,
   source: string | undefined,
   fileHooks?: FileHooks
@@ -333,8 +346,8 @@ export const settingToFormats = async (
           ),
         });
       return fileHooks === undefined ?
-          sharpToFile(fromRaw(pixels), file, encoder, hasAlpha)
-        : hookedToFile(pixels, file, encoder, hasAlpha, fileHooks);
+          sharpToFile(fromRaw(pixels), file, encoder, alpha)
+        : hookedToFile(pixels, file, encoder, alpha, fileHooks);
     })
   );
 
@@ -442,6 +455,7 @@ export const sourceToSettings = async (
     hooks,
     limitInputPixels,
     overwriteSource,
+    removeOpaqueAlpha,
     recordLimit,
   } = context;
 
@@ -720,7 +734,10 @@ export const sourceToSettings = async (
         encoded,
         encodersFor(hasAlpha),
         outputIdentifier,
-        hasAlpha,
+        hasAlpha ? 'transparent'
+        : removeOpaqueAlpha && hasAlphaChannel(encoded.info.channels) ?
+          'removed'
+        : 'opaque',
         logger,
         overwriteSource ? undefined : srcPath,
         hooks.beforeFormat.length > 0 || hooks.beforeFileWrite.length > 0 ?

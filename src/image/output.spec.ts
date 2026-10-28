@@ -4,6 +4,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
+import { generateAssets } from '../lib/generate-assets.js';
 import { generateSingleSourceAssets } from '../lib/generate-single-source-assets.js';
 import {
   createTempDir,
@@ -220,5 +221,84 @@ describe('sources decoded first', () => {
     expect(data[3]).toBe(0);
     const middle = (100 * 200 + 100) * 4;
     expect([...data.subarray(middle, middle + 4)]).toEqual([220, 30, 30, 255]);
+  });
+});
+
+describe('removeOpaqueAlpha', () => {
+  const read = (image: string) => fs.readFile(image);
+  const metadata = async (image: string) => sharp(await read(image)).metadata();
+  const rgb = async (image: string) =>
+    sharp(await read(image))
+      .removeAlpha()
+      .raw()
+      .toBuffer();
+
+  test('off by default: an opaque alpha channel is kept; on: left out, the same pixels', async () => {
+    const source = path.join(dir, 'opaque-rgba.png');
+    await opaqueImage(400, 300).ensureAlpha().png().toFile(source);
+    const run = async (options: { removeOpaqueAlpha?: boolean }) => {
+      const out = outDir();
+      await generateSingleSourceAssets(
+        source,
+        out,
+        [{ width: 200 }],
+        ['png', 'avif'],
+        { logger: 'silent', ...options }
+      );
+      return (format: string) => `${out}opaque-rgba@200w.${format}`;
+    };
+    const kept = await run({});
+    const removed = await run({ removeOpaqueAlpha: true });
+    expect(await metadata(kept('png'))).toMatchObject({ channels: 4 });
+    expect(await metadata(kept('avif'))).toMatchObject({ hasAlpha: true });
+    expect(await metadata(removed('png'))).toMatchObject({ channels: 3 });
+    expect(await metadata(removed('avif'))).toMatchObject({ hasAlpha: false });
+    expect(await rgb(removed('png'))).toEqual(await rgb(kept('png')));
+  });
+
+  test("on: a transparent source keeps its alpha; a hook's opaque one is left out, from generateAssets' config", async () => {
+    const transparent = outDir();
+    await generateSingleSourceAssets(
+      file('transparent.png'),
+      transparent,
+      [{ width: 200 }],
+      ['png'],
+      { logger: 'silent', removeOpaqueAlpha: true }
+    );
+    expect(await metadata(`${transparent}transparent@200w.png`)).toMatchObject({
+      channels: 4,
+    });
+
+    const output = outDir();
+    await generateAssets({
+      input: file('landscape.jpg'),
+      output,
+      sizes: [200],
+      formats: ['png'],
+      removeOpaqueAlpha: true,
+      logger: 'silent',
+      hooks: [
+        {
+          name: 'mark',
+          // sharp's composite adds an alpha channel, opaque all over
+          beforeEncode: (image) =>
+            image.composite([
+              {
+                input: {
+                  create: {
+                    width: 8,
+                    height: 8,
+                    channels: 3,
+                    background: '#f00',
+                  },
+                },
+              },
+            ]),
+        },
+      ],
+    });
+    expect(
+      await metadata(path.join(output, 'landscape@200w.png'))
+    ).toMatchObject({ channels: 3 });
   });
 });

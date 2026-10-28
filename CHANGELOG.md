@@ -34,6 +34,9 @@ toolchain, with its bugs fixed, every argument validated and logging with
   pixel whose alpha is below 255. A source whose alpha channel is opaque
   all over gets JPEG (a 1600w screenshot: 195 kB at 1280w instead of a
   2.6 MB PNG); it is decoded once to check, for the plan too.
+- **`removeOpaqueAlpha`**, `false` by default: an alpha channel opaque all
+  over is left out of the files (PNG 7 to 11% smaller on the example
+  images, AVIF up to 3%; WebP and JPEG leave it out anyway).
 - **`upscale`**: with `false`, sizes larger than the source are skipped,
   the largest made at the source's size. `false` with a sizes preset.
 - **Manifest and incremental runs** (`manifest`, `force`): unchanged

@@ -103,6 +103,7 @@ export const CONFIG_KEYS = [
   'signal',
   'limitInputPixels',
   'overwriteSource',
+  'removeOpaqueAlpha',
   'recordLimit',
   'hooks',
 ] as const satisfies readonly (keyof AssetsConfig)[];

@@ -100,6 +100,21 @@ export interface AssetsOptions {
   readonly overwriteSource?: boolean;
 
   /**
+   * Whether an alpha channel opaque all over is left out of the files: a
+   * screenshot saved as RGBA, an image a hook composited. It holds no
+   * transparency, only bytes: without it, PNG was 7 to 11% and AVIF 0.2 to
+   * 3% smaller on the example images, though not on every image (a
+   * synthetic gradient's PNG grew 6%); WebP and JPEG leave it out anyway.
+   * Transparent images keep their alpha. The transparency is the size's,
+   * as `'fallback'` reads it: an image a `beforeFormat` hook makes
+   * transparent loses its alpha too, while `beforeFileWrite` hooks come
+   * after.
+   *
+   * Default: `false`: files keep the channels of their image.
+   */
+  readonly removeOpaqueAlpha?: boolean;
+
+  /**
    * Most bytes of JSON one `record` call of a hook may keep (see
    * `HookContext.record`): a larger value fails the hook, naming the key.
    * Recorded data goes into the results and the manifest, once per source

@@ -33,6 +33,7 @@ export const DEFAULT_OPTIONS = {
   // sharp's own default: 16383 x 16383
   limitInputPixels: 268_402_689,
   overwriteSource: false,
+  removeOpaqueAlpha: false,
   recordLimit: 64_000,
   concurrency: 'auto',
 } as const satisfies Required<
@@ -49,6 +50,7 @@ export const OPTION_KEYS = [
   'logger',
   'limitInputPixels',
   'overwriteSource',
+  'removeOpaqueAlpha',
   'hooks',
   'recordLimit',
 ] as const satisfies readonly (keyof AssetsOptions)[];
@@ -70,6 +72,7 @@ export interface ResolvedOptions {
   readonly upscale: boolean;
   readonly limitInputPixels: number | false;
   readonly overwriteSource: boolean;
+  readonly removeOpaqueAlpha: boolean;
   readonly hooks: ResolvedHooks;
   readonly recordLimit: number | false;
 }
@@ -133,6 +136,10 @@ export const resolveOptions = (
     overwriteSource: parseBoolean(
       'overwriteSource',
       options.overwriteSource ?? DEFAULT_OPTIONS.overwriteSource
+    ),
+    removeOpaqueAlpha: parseBoolean(
+      'removeOpaqueAlpha',
+      options.removeOpaqueAlpha ?? DEFAULT_OPTIONS.removeOpaqueAlpha
     ),
     hooks: groupHooks(parseHooks(options.hooks ?? [])),
     recordLimit: parseRecordLimit(

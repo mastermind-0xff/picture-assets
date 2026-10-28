@@ -60,6 +60,7 @@ describe('resolveOptions', () => {
       upscale: true,
       limitInputPixels: 268_402_689,
       overwriteSource: false,
+      removeOpaqueAlpha: false,
       recordLimit: 64_000,
       hooks: NO_HOOKS,
     });
@@ -152,7 +153,7 @@ describe('resolveOptions', () => {
   test('unknown options throw, naming the expected ones', () => {
     const options = { sufix: '-{w}', logger: 'error' as const };
     expect(() => resolveOptions(options, {})).toThrow(
-      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, limitInputPixels, overwriteSource, hooks, recordLimit."
+      "Unknown option 'sufix': expected resizeStrategyHint, suffix, formatOptions, upscale, abortScope, logger, limitInputPixels, overwriteSource, removeOpaqueAlpha, hooks, recordLimit."
     );
     expect(() =>
       resolveOptions({ sufix: '', concurrency: 2 } as never, {})

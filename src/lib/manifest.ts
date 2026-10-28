@@ -102,9 +102,10 @@ export const targetHash = (
     resizeStrategyHint,
     upscale,
     hooks,
+    removeOpaqueAlpha,
   }: Pick<
     ResolvedOptions,
-    'suffix' | 'resizeStrategyHint' | 'upscale' | 'hooks'
+    'suffix' | 'resizeStrategyHint' | 'upscale' | 'hooks' | 'removeOpaqueAlpha'
   >
 ) =>
   createHash('sha256')
@@ -119,6 +120,8 @@ export const targetHash = (
         upscale,
         // left out without hooks: their hashes stay those of earlier runs
         ...(hooks.all.length > 0 && { hooks: hooks.all.map(hookIdentity) }),
+        // the same, left out when off: its default
+        ...(removeOpaqueAlpha && { removeOpaqueAlpha }),
       })
     )
     .digest('hex')

@@ -33,6 +33,7 @@ const options = {
   resizeStrategyHint: 'downsample',
   upscale: true,
   hooks: NO_HOOKS,
+  removeOpaqueAlpha: false,
 } as const;
 
 describe('manifestPath', () => {
@@ -77,6 +78,12 @@ describe('targetHash', () => {
       targetHash(manifest, target, [{ width: 100 }], {
         ...options,
         upscale: false,
+      })
+    ).not.toBe(hash);
+    expect(
+      targetHash(manifest, target, [{ width: 100 }], {
+        ...options,
+        removeOpaqueAlpha: true,
       })
     ).not.toBe(hash);
     expect(
@@ -152,6 +159,7 @@ describe('targetHash', () => {
           suffix: '-{w}',
           resizeStrategyHint: { width: 640, height: 480 },
           upscale: false,
+          removeOpaqueAlpha: false,
           hooks: groupHooks([
             {
               name: 'grade',
