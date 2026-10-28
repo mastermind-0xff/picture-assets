@@ -3,11 +3,12 @@
  * pipeline.js, with a hook at one point per case.
  *
  * - `no hooks`: the baseline. A point without hooks does no work.
- * - `every point, no change`: a hook at all 5 points returning undefined,
- *   so nothing is baked: the cost of calling hooks (and their debug logs,
+ * - `every point, no change`: a hook at every point but `beforeFileWrite`
+ *   (added after these results were recorded) returning undefined, so
+ *   nothing is baked: the cost of calling hooks (and their debug logs,
  *   filtered here).
- * - `afterSourceLoad: modulate`: a color grade, baked once at the source's full
- *   size.
+ * - `afterSourceLoad: modulate`: a color grade, baked once at the source's
+ *   full size.
  * - `afterSourceLoad: pixels() loop`: the same place in JS: a copy of the
  *   decoded source (32.7 MB), a gain on every byte, the pixels returned as
  *   they are.

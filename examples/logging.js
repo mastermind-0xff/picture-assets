@@ -24,7 +24,8 @@ const images = path.join(import.meta.dirname, 'images', 'group-1');
 const output = path.join(import.meta.dirname, 'output', 'logging');
 fs.mkdirSync(output, { recursive: true });
 
-// the default logger at debug level: files, then graphs
+// the default logger at debug level: the settings, a line per size, then
+// the details and graphs
 await generateBatchAssets(
   images,
   path.join(output, 'debug'),

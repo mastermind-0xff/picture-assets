@@ -1,6 +1,6 @@
 /**
- * Batch concurrency: the 10 photos of examples/images/group-* (12 to
- * 40 megapixels) to 2 sizes in WebP, 1, 2, 4 and all cores' worth of sources
+ * Batch concurrency: the 10 photos of examples/images/group-* (9 to 40
+ * megapixels) to 2 sizes in WebP, 1, 2, 4 and all cores' worth of sources
  * at a time.
  *
  * Sharp runs each operation on a thread of libuv's pool (`UV_THREADPOOL_SIZE`,

@@ -67,7 +67,7 @@ The library before and after, on a quiet machine:
 
 The decoded source is kept for the source's run: peak memory 179MB instead
 of 160MB for one photo, 788MB instead of 711MB for the 5 photos of
-`group-2` (12 to 40 megapixels) at once. A size resized from pixels gets a
+`group-2` (9 to 40 megapixels) at once. A size resized from pixels gets a
 new sharp object over them: `clone()` would copy them (217MB and 998MB).
 Since, each format of a size gets a new sharp object over its pixels too,
 instead of a copy: the batch's peak is 704MB, below the 711MB of before.
@@ -93,14 +93,15 @@ from the source is then exactly the reference, nearly as fast as
 chaining. house-10 (to 1920, a shrink of 4) is not: from the source,
 sharp's JPEG shrink-on-load decodes its small sizes approximately, and
 before sources were decoded first house-01 dipped to 0.9563 at 320w too,
-for 59% more time than chaining. This
-benchmark also found a bug in the chain: each size was resized with
+for 59% more time than chaining.
+
+This benchmark also found a bug in the chain: each size was resized with
 sharp's default `fit: 'cover'`, which crops the fraction of a pixel by
 which a rounded size misses the aspect ratio, and the crops added up to a
 shift of up to a pixel: down to 0.905 at 320w on house-10. Sizes with the
 source's aspect ratio are now scaled to fill, which fixed it.
 
-**concurrency.js**: the 10 photos of `examples/images/group-*` (12 to 40
+**concurrency.js**: the 10 photos of `examples/images/group-*` (9 to 40
 megapixels) to 1024 and 512 pixels wide in WebP.
 
 | Concurrency                 | Mean, pool of 4 (default) | Mean, `UV_THREADPOOL_SIZE=12` |
@@ -165,7 +166,8 @@ image, not a perceptual metric for every kind of artifact (AVIF smooths
 fine texture, JPEG blocks).
 
 **hooks.js**: pipeline.js's photo, sizes and formats (2048, 1024, 512;
-WebP and JPEG), with one hook per case.
+WebP and JPEG), with one hook per case. `beforeFileWrite` came after
+these results: "every point" is the other five.
 
 | Case                                   | Mean  | vs no hooks |
 | -------------------------------------- | ----- | ----------- |
@@ -180,8 +182,8 @@ WebP and JPEG), with one hook per case.
 Recorded with other processes busy: no hooks ran in 582ms in pipeline.js
 the same minutes, and before sources were decoded first, hooks that change
 nothing measured 746ms against 748ms without hooks. An `afterSourceLoad`
-hook costs its work at the photo's full size (11.4 megapixels): a `modulate` and its
-bake about 200ms, a copy of the pixels and a loop over 34 million bytes
-about 80ms. A sharpen costs about as much baked per size (`afterResize`,
-for both formats) as run in the WebP encodes (`beforeFormat`): three
-sharpens either way, the bakes on top.
+hook costs its work at the photo's full size (11.4 megapixels): a
+`modulate` and its bake about 200ms, a copy of the pixels and a loop over
+34 million bytes about 80ms. A sharpen costs about as much baked per size
+(`afterResize`, for both formats) as run in the WebP encodes
+(`beforeFormat`): three sharpens either way, the bakes on top.

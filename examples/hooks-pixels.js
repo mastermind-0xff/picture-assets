@@ -4,12 +4,14 @@
  *
  * - `upscaler` at `afterSourceLoad`: a stand-in for an AI upscaler
  *   (onnxruntime, an external binary), which takes pixels and gives back
- *   pixels twice the size. The sizes are planned after it: the 1300 pixels wide photo gets
- *   the `responsive` preset's 2560 and 1920, which the preset skips without
- *   the hook (`upscale: false` is its default).
+ *   pixels twice the size. The sizes are planned after it: the 1300 pixels
+ *   wide photo gets the `responsive` preset's 2560 and 1920. Without the
+ *   hook, the preset doesn't enlarge it (`upscale: false` is its default):
+ *   1920 is skipped, and 2560 is made at the photo's own 1300.
  * - `vignette` at `afterSourceLoad`, after the upscaler: a loop over the
- *   pixels that fades the edges to transparent. The source has alpha from then on, so
- *   every size keeps it, and `'fallback'` writes PNG instead of JPEG.
+ *   pixels that fades the edges to transparent. The source has alpha from
+ *   then on, so every size keeps it, and `'fallback'` writes PNG instead of
+ *   JPEG.
  *
  * Run: npm run build && node examples/hooks-pixels.js
  */
