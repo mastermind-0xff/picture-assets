@@ -159,8 +159,12 @@ formats?, options?)` take `resizeStrategyHint`, `suffix`,
   (was `{ root, resource }`). The tree below the root is mirrored in the
   destination, also for globs; files sharp can't read are skipped.
 - **Default format options** are applied (they never were): progressive
-  JPEG q80, WebP q80, AVIF q60, lossless PNG at zlib 9, chosen with
-  bench/weight.js. `png: { quality: 100 }` turned on a lossy palette.
+  JPEG q80, WebP q80, AVIF and HEIF q63 at effort 3 with full-resolution
+  colors (4:4:4), lossless PNG at zlib 9, chosen with bench/weight.js.
+  AVIF at effort 3 encodes about 4 times faster than sharp's effort 4, for
+  4 to 15% more bytes at the same SSIM: a default run of the 17 example
+  images takes 30 s instead of 110 s. `png: { quality: 100 }` turned on a
+  lossy palette.
 - `formats` accepts any list (`OutputFormat[]`), validated at runtime,
   instead of a non-empty tuple type.
 - Exports: the types, `DEFAULT_FORMAT_OPTIONS`, `DEFAULT_OPTIONS`,

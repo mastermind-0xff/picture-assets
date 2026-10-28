@@ -38,14 +38,25 @@ const OPAQUE_FORMATS: ReadonlySet<OutputFormat> = new Set(['jpeg', 'jpg']);
  *   and shown while it loads. mozjpeg (`{ mozjpeg: true }`) was not smaller
  *   at the same SSIM, and encodes about 5 times slower.
  * - `webp`: quality 80, 73% of the JPEG's bytes at the same SSIM.
- * - `avif`, `heif`: quality 60, 53% of the JPEG's bytes, SSIM within 0.002.
+ * - `avif`, `heif`: quality 63 at effort 3, 58% of the JPEG's bytes, SSIM
+ *   within 0.001. sharp's effort 4 reaches the same SSIM at quality 60
+ *   with 4 to 15% fewer bytes, and encodes about 4 times slower (checked
+ *   on 7 images from 320 to 2560 pixels wide, a collage and a chart among
+ *   them). Colors at full resolution (`chromaSubsampling` 4:4:4, sharp's
+ *   default, set so it stays): 4:2:0 saves about 5% and blurs colored text
+ *   and edges. Smaller files for a longer build: `{ effort: 4 }` (to 9).
  * - `png`: lossless, zlib level 9: 4% smaller than level 6. Its `quality`
  *   option is not set on purpose: it turns on a lossy palette.
  */
 export const DEFAULT_FORMAT_OPTIONS = {
-  avif: { quality: 60 },
+  avif: { quality: 63, effort: 3, chromaSubsampling: '4:4:4' },
   gif: {},
-  heif: { quality: 60, compression: 'av1' },
+  heif: {
+    quality: 63,
+    effort: 3,
+    chromaSubsampling: '4:4:4',
+    compression: 'av1',
+  },
   jpeg: { quality: 80, progressive: true },
   jpg: {},
   jp2: {},

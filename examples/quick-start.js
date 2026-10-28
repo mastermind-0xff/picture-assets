@@ -3,9 +3,9 @@
  * JPEG, named after the photo: `house-01@1920w.avif`, ….
  *
  * The defaults do the rest: the photo is auto-oriented, every format gets
- * web-tuned options (AVIF q60, WebP q80, progressive JPEG q80), and each
- * size is resized from the previous one, the formats of a size encoded in
- * parallel.
+ * web-tuned options (`DEFAULT_FORMAT_OPTIONS`, see the README's Defaults),
+ * and each size is resized from the previous one, the formats of a size
+ * encoded in parallel.
  *
  * Run: npm run build && node examples/quick-start.js
  */

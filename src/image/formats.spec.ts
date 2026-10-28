@@ -98,6 +98,24 @@ describe('resolveFormatOptions', () => {
       )
     ).toEqual({ quality: 50, effort: 6 });
   });
+
+  test('avif and heif: quality, effort and chroma each change alone', () => {
+    const { avif, heif } = DEFAULT_FORMAT_OPTIONS;
+    expect(resolveFormatOptions('avif', { avif: { effort: 4 } })).toEqual({
+      ...avif,
+      effort: 4,
+    });
+    expect(resolveFormatOptions('avif', {}, { quality: 50 })).toEqual({
+      ...avif,
+      quality: 50,
+    });
+    expect(
+      resolveFormatOptions('heif', { heif: { chromaSubsampling: '4:2:0' } })
+    ).toEqual({ ...heif, chromaSubsampling: '4:2:0' });
+    // the defaults are valid sharp options
+    expect(() => sharp().avif(avif)).not.toThrow();
+    expect(() => sharp().heif(heif)).not.toThrow();
+  });
 });
 
 describe('input files', () => {

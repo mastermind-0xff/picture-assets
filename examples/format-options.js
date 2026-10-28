@@ -21,8 +21,9 @@ import {
 
 console.log('defaults:', JSON.stringify(DEFAULT_FORMAT_OPTIONS.webp));
 
-// shared by the build: smaller WebP with more effort, faster AVIF
-const formatOptions = { webp: { quality: 72, effort: 6 }, avif: { effort: 3 } };
+// shared by the build: smaller WebP and AVIF with more effort, a longer
+// build (AVIF keeps its default quality: options merge field by field)
+const formatOptions = { webp: { quality: 72, effort: 6 }, avif: { effort: 4 } };
 
 const result = await generateSingleSourceAssets(
   path.join(import.meta.dirname, 'images', 'house-01.jpg'),

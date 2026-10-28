@@ -11,7 +11,13 @@
 import { bench, compare } from '@mmutils/bench';
 import sharp from 'sharp';
 
-import { LIBRARY, PHOTO, reporter, timedMeasureOptions } from './shared.js';
+import {
+  describeOptions,
+  LIBRARY,
+  PHOTO,
+  reporter,
+  timedMeasureOptions,
+} from './shared.js';
 
 const { DEFAULT_FORMAT_OPTIONS: DEFAULTS } = await import(LIBRARY.href);
 
@@ -27,15 +33,27 @@ const image = () =>
 
 await compare(
   bench('jpeg q80 baseline', () => image().jpeg({ quality: 80 }).toBuffer()),
-  bench('jpeg q80 progressive (default)', () =>
+  bench(`jpeg ${describeOptions(DEFAULTS.jpeg)} (default)`, () =>
     image().jpeg(DEFAULTS.jpeg).toBuffer()
   ),
   bench('jpeg q86 mozjpeg', () =>
     image().jpeg({ quality: 86, mozjpeg: true }).toBuffer()
   ),
-  bench('webp q80 (default)', () => image().webp(DEFAULTS.webp).toBuffer()),
-  bench('avif q60 (default)', () => image().avif(DEFAULTS.avif).toBuffer()),
+  bench(`webp ${describeOptions(DEFAULTS.webp)} (default)`, () =>
+    image().webp(DEFAULTS.webp).toBuffer()
+  ),
+  bench(`avif ${describeOptions(DEFAULTS.avif)} (default)`, () =>
+    image().avif(DEFAULTS.avif).toBuffer()
+  ),
+  // sharp's effort
+  bench('avif q60 effort 4', () =>
+    image()
+      .avif({ ...DEFAULTS.avif, quality: 60, effort: 4 })
+      .toBuffer()
+  ),
   bench('png zlib 6', () => image().png().toBuffer()),
-  bench('png zlib 9 (default)', () => image().png(DEFAULTS.png).toBuffer()),
+  bench(`png ${describeOptions(DEFAULTS.png)} (default)`, () =>
+    image().png(DEFAULTS.png).toBuffer()
+  ),
   { ...timedMeasureOptions(), output: reporter() }
 );

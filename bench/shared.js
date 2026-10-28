@@ -175,6 +175,22 @@ export const pixels = async (sharp, input) => {
   return { data, info };
 };
 
+/**
+ * A short name of encoder options, so labels follow the library's defaults:
+ * `{ quality: 63, effort: 3, chromaSubsampling: '4:4:4' }` is
+ * `q63 effort 3 4:4:4`.
+ */
+export const describeOptions = (options) =>
+  Object.entries(options)
+    .map(([key, value]) =>
+      key === 'quality' ? `q${value}`
+      : key === 'compressionLevel' ? `zlib ${value}`
+      : key === 'chromaSubsampling' ? value
+      : value === true ? key
+      : `${key} ${value}`
+    )
+    .join(' ');
+
 /** Text table: the first row is the header, numbers are right aligned. */
 export const table = (rows) => {
   const widths = rows[0].map((_, column) =>

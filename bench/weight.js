@@ -14,7 +14,15 @@ import path from 'node:path';
 
 import sharp from 'sharp';
 
-import { IMAGES, LIBRARY, logger, pixels, ssim, table } from './shared.js';
+import {
+  describeOptions,
+  IMAGES,
+  LIBRARY,
+  logger,
+  pixels,
+  ssim,
+  table,
+} from './shared.js';
 
 const { DEFAULT_FORMAT_OPTIONS: DEFAULTS } = await import(LIBRARY.href);
 
@@ -25,18 +33,21 @@ const PHOTOS = [
 ];
 const WIDTH = 1280;
 
+// format, options, the library's default; named after their options. The
+// first is the baseline.
 const SETTINGS = [
-  ['jpeg', 'q80 baseline', { quality: 80 }],
-  ['jpeg', 'q80 progressive', DEFAULTS.jpeg, true],
-  ['jpeg', 'q80 mozjpeg', { quality: 80, mozjpeg: true }],
-  ['jpeg', 'q86 mozjpeg', { quality: 86, mozjpeg: true }],
-  ['webp', 'q80', DEFAULTS.webp, true],
-  ['webp', 'q75', { ...DEFAULTS.webp, quality: 75 }],
-  ['avif', 'q65', { ...DEFAULTS.avif, quality: 65 }],
-  ['avif', 'q60', DEFAULTS.avif, true],
-  ['avif', 'q50', { ...DEFAULTS.avif, quality: 50 }],
-  ['png', 'zlib 6', {}],
-  ['png', 'zlib 9', DEFAULTS.png, true],
+  ['jpeg', { quality: 80 }],
+  ['jpeg', DEFAULTS.jpeg, true],
+  ['jpeg', { quality: 80, mozjpeg: true }],
+  ['jpeg', { quality: 86, mozjpeg: true }],
+  ['webp', DEFAULTS.webp, true],
+  ['webp', { ...DEFAULTS.webp, quality: 75 }],
+  // sharp's effort: the same SSIM, fewer bytes, 4 times the encode time
+  ['avif', { ...DEFAULTS.avif, quality: 60, effort: 4 }],
+  ['avif', DEFAULTS.avif, true],
+  ['avif', { ...DEFAULTS.avif, quality: 50 }],
+  ['png', { compressionLevel: 6 }],
+  ['png', DEFAULTS.png, true],
 ];
 
 const resized = await Promise.all(
@@ -54,7 +65,7 @@ logger.info(
 );
 const baseline = { bytes: 0 };
 const rows = [['format', 'setting', 'kB', 'vs baseline', 'SSIM', 'encode ms']];
-for (const [format, name, options, isDefault] of SETTINGS) {
+for (const [index, [format, options, isDefault]] of SETTINGS.entries()) {
   let bytes = 0;
   let quality = 0;
   let time = 0;
@@ -74,7 +85,7 @@ for (const [format, name, options, isDefault] of SETTINGS) {
   if (baseline.bytes === 0) baseline.bytes = bytes;
   rows.push([
     format,
-    `${name}${isDefault ? ' (default)' : ''}`,
+    `${describeOptions(options)}${isDefault ? ' (default)' : ''}${index === 0 ? ' baseline' : ''}`,
     Number((bytes / 1000).toFixed(1)),
     `${Math.round((bytes / baseline.bytes) * 100)}%`,
     Number((quality / resized.length).toFixed(4)),

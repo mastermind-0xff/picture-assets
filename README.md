@@ -23,8 +23,8 @@ for transparent images): `public/img/house@1280w.avif`, ….
 - **Two settings**: an input and an output. Presets for the rest
   (`responsive`; `web`, `modern`, `lossless`), every detail
   configurable.
-- **Web-tuned encoders**: AVIF at 53% and WebP at 73% of JPEG's bytes for
-  the same SSIM, progressive JPEG (see [Defaults](#defaults)).
+- **Web-tuned encoders**: AVIF at 58% and WebP at 73% of JPEG's bytes
+  for the same SSIM, progressive JPEG (see [Defaults](#defaults)).
 - **Correct on real photos**: EXIF orientation applied, transparent images
   get PNG instead of JPEG (or a white background when JPEG is asked for),
   color profiles converted to sRGB, metadata stripped.
@@ -635,13 +635,27 @@ JPEG at quality 80 is the usual web baseline. Measured on three photos at
 | ------ | ----------------------- | ---------------------- | ---------------------- |
 | JPEG   | quality 80, progressive | 97%                    | 0.9735                 |
 | WebP   | quality 80              | 73%                    | 0.9753                 |
-| AVIF   | quality 60              | 53%                    | 0.9716                 |
+| AVIF   | quality 63, effort 3    | 58%                    | 0.9727                 |
 | PNG    | lossless, zlib level 9  | 1098%                  | 1                      |
 
 mozjpeg was not smaller at the same SSIM and encodes about 5 times slower:
-opt in with `{ jpg: { mozjpeg: true } }`. Every option is in
-`DEFAULT_FORMAT_OPTIONS` and can be changed per call or with
-`formatOptions`.
+opt in with `{ jpg: { mozjpeg: true } }`.
+
+AVIF's `effort` (0 to 9) trades build time for bytes. Effort 3 encodes
+about 4 times faster than sharp's default, 4, which reaches the same SSIM
+at quality 60 with 4 to 15% fewer bytes: a default run of the 17 example
+images takes 30 s instead of 110 s, for 11% more AVIF bytes. Colors stay
+at full resolution (`chromaSubsampling: '4:4:4'`): 4:2:0 saves about 5%
+and blurs colored text and edges. Checked on 7 images from 320 to 2560 pixels wide, a collage and
+a chart among them ([docs/audit-proposal.md](docs/audit-proposal.md) 5.1).
+For the smallest files whatever the build time:
+`formatOptions: { avif: { effort: 4, quality: 60 } }`, in code or in the
+config file, or
+`PICTURE_ASSETS_FORMAT_OPTIONS='{"avif":{"effort":4,"quality":60}}'`.
+
+Every option is in `DEFAULT_FORMAT_OPTIONS` and can be changed per call or
+with `formatOptions`. Options merge over the defaults one by one:
+`--quality avif=55` keeps effort 3.
 
 ## Examples
 

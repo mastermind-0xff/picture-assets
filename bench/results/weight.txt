@@ -1,13 +1,13 @@
-14:41:05 [i]   info    3 photos at 1280w, 11 settings: averages
-format | setting                   | kB     | vs baseline | SSIM   | encode ms
-jpeg   | q80 baseline              |  300.1 | 100%        | 0.9735 |        17
-jpeg   | q80 progressive (default) |  289.7 | 97%         | 0.9735 |        40
-jpeg   | q80 mozjpeg               |  244.1 | 81%         |  0.966 |       180
-jpeg   | q86 mozjpeg               |  302.8 | 101%        | 0.9742 |       218
-webp   | q80 (default)             |  219.1 | 73%         | 0.9753 |       173
-webp   | q75                       |  179.4 | 60%         | 0.9686 |       165
-avif   | q65                       |  181.3 | 60%         | 0.9754 |      1264
-avif   | q60 (default)             |  159.8 | 53%         | 0.9716 |      1101
-avif   | q50                       |  109.9 | 37%         | 0.9575 |       935
-png    | zlib 6                    | 3436.7 | 1145%       |      1 |        96
-png    | zlib 9 (default)          | 3294.8 | 1098%       |      1 |       163
+07:19:50 [i]   info    3 photos at 1280w, 11 settings: averages
+format | setting                      | kB     | vs baseline | SSIM   | encode ms
+jpeg   | q80 baseline                 |  300.1 | 100%        | 0.9735 |        18
+jpeg   | q80 progressive (default)    |  289.7 | 97%         | 0.9735 |        43
+jpeg   | q80 mozjpeg                  |  244.1 | 81%         |  0.966 |       185
+jpeg   | q86 mozjpeg                  |  302.8 | 101%        | 0.9742 |       214
+webp   | q80 (default)                |  219.1 | 73%         | 0.9753 |       197
+webp   | q75                          |  179.4 | 60%         | 0.9686 |       167
+avif   | q60 effort 4 4:4:4           |  159.8 | 53%         | 0.9716 |      1137
+avif   | q63 effort 3 4:4:4 (default) |  173.9 | 58%         | 0.9727 |       262
+avif   | q50 effort 3 4:4:4           |  110.1 | 37%         | 0.9559 |       248
+png    | zlib 6                       | 3436.7 | 1145%       |      1 |       100
+png    | zlib 9 (default)             | 3294.8 | 1098%       |      1 |       168

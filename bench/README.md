@@ -16,7 +16,7 @@ npm run bench              # build, then pipeline.js
 Each case is measured on 4 samples, fresh workers, with at least 20 runs
 in all: exactly 20 for the image work, which takes from hundreds of
 milliseconds to seconds per run, and as many as 4 seconds allow for the
-encoders (21 to 378). Every summary table has a `runs` column. `--quick`
+encoders (23 to 367). Every summary table has a `runs` column. `--quick`
 runs 2 runs on 2 samples per case: it checks that a benchmark works, it
 doesn't measure. Outputs go to `bench/output` (git-ignored). Keep the
 machine quiet: mm-bench warns when other processes use 10% of the CPU or
@@ -124,12 +124,13 @@ your build scripts; the command line does it for you (see
 
 | Encoder                        | Mean   | Runs |
 | ------------------------------ | ------ | ---- |
-| JPEG q80 baseline              | 10.6ms | 378  |
-| JPEG q80 progressive (default) | 26.6ms | 153  |
-| JPEG q86 mozjpeg               | 142ms  | 31   |
-| WebP q80 (default)             | 116ms  | 36   |
-| AVIF q60 (default)             | 758ms  | 21   |
-| PNG zlib 6                     | 67.0ms | 60   |
+| JPEG q80 baseline              | 10.9ms | 367  |
+| JPEG q80 progressive (default) | 26.6ms | 152  |
+| JPEG q86 mozjpeg               | 144ms  | 30   |
+| WebP q80 (default)             | 119ms  | 36   |
+| AVIF q63 effort 3 (default)    | 180ms  | 24   |
+| AVIF q60 effort 4              | 774ms  | 23   |
+| PNG zlib 6                     | 69.3ms | 60   |
 | PNG zlib 9 (default)           | 103ms  | 40   |
 
 **weight.js**: three photos at 1280 pixels wide, averages; SSIM against the
@@ -143,17 +144,21 @@ uncompressed pixels.
 | JPEG   | q86 mozjpeg        | 302.8  | 101%        | 0.9742 |
 | WebP   | q80 \*             | 219.1  | 73%         | 0.9753 |
 | WebP   | q75                | 179.4  | 60%         | 0.9686 |
-| AVIF   | q65                | 181.3  | 60%         | 0.9754 |
-| AVIF   | q60 \*             | 159.8  | 53%         | 0.9716 |
-| AVIF   | q50                | 109.9  | 37%         | 0.9575 |
+| AVIF   | q60 effort 4       | 159.8  | 53%         | 0.9716 |
+| AVIF   | q63 effort 3 \*    | 173.9  | 58%         | 0.9727 |
+| AVIF   | q50 effort 3       | 110.1  | 37%         | 0.9559 |
 | PNG    | zlib 6             | 3436.7 | 1145%       | 1      |
 | PNG    | zlib 9 \*          | 3294.8 | 1098%       | 1      |
 
 \* the library's defaults. mozjpeg's smaller files at q80 come with a
 lower SSIM; at the same SSIM (q86) it is not smaller than progressive
-libjpeg, and about 5 times slower to encode. AVIF q60 is within 0.002 of
-JPEG's SSIM at about half its bytes; q50, sharp's default, is visibly
-softer.
+libjpeg, and about 5 times slower to encode. AVIF at q63 and effort 3 is
+within 0.001 of JPEG's SSIM at 58% of its bytes; sharp's effort 4 gets
+the same SSIM at q60 with 8% fewer bytes here, and encodes 4 times slower
+(formats.js). The effort and the chroma subsampling were checked on 7
+images, a collage and a chart among them, with color metrics too:
+[docs/audit-proposal.md](../docs/audit-proposal.md) 5.1. q50, sharp's
+default quality, is visibly softer.
 
 SSIM here is single scale, on luma: good to rank settings of the same
 image, not a perceptual metric for every kind of artifact (AVIF smooths
