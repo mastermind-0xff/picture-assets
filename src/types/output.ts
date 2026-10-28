@@ -156,8 +156,8 @@ export type OutputSetting = (
   resizeOptions?: Omit<ResizeOptions, 'width' | 'height'>;
 
   /**
-   * Sharp extract region. Extraction is based on current iteration dimensions
-   * and is performed after the resize.
+   * A region `{ left, top, width, height }` cut from the resized image, in
+   * its pixels.
    */
   extractRegion?: Region;
 
@@ -180,10 +180,17 @@ export type OutputSetting = (
    */
   suffix?: string;
 
-  /** Force usage of source image for current size buffer and all formats for
-   * it. */
+  /**
+   * Resize this size from the source, not from the previous size. Default:
+   * `true` for a size larger than the source, so nothing is enlarged from a
+   * smaller copy.
+   */
   generateFromSource?: boolean;
 
-  /** Force current buffer as source for the next size in the chain. */
+  /**
+   * Resize the next sizes from this one. Default: `true` for a size with
+   * the source's aspect ratio, no `extractRegion` and not larger than the
+   * source. A size is never resized from one smaller than it.
+   */
   useAsNextResizeIteration?: boolean;
 };

@@ -310,12 +310,11 @@ const hookedToFile = async (
  * copies them.
  *
  * @param pixels The image, already resized.
- * @param encoders Formats to write and their options, `'fallback'` resolved
- * once the source tells if it is transparent.
+ * @param encoders Formats to write and their options, `'fallback'` resolved.
  * @param outputIdentifier Full path to the output file without the extension.
  * @param alpha What the encodes do with the image's alpha, see
  * `EncodeAlpha`.
- * @param logger Receives a debug log per file and an error per failure.
+ * @param logger Receives a verbose log per file and an error per failure.
  * @param source The source's path, when no file may overwrite it (see
  * `overwriteSource`): such a file fails.
  * @param fileHooks The `beforeFormat` and `beforeFileWrite` hooks, if any:
@@ -396,17 +395,14 @@ const toHookSetting = ({
 });
 
 /**
- * Takes source image file path and manipulates it based on the settings list.
- * Each setting is baked to a buffer and then send to be saved to one or
- * multiple formats.
+ * Makes every size of a source: each setting is resized to pixels, then
+ * written in every format.
  *
- * Settings are ordered by size automatically. By default, if the size is lower
- * than the original source's size and if not overruled in the setting, each
- * iteration's buffer will be used as source for the next iteration. If the
- * flag for generating from source is set, it overrides the current iteration's
- * buffer and source is used instead. If the setting size is bigger than the
- * source's size, or than the current iteration's buffer, then the original
- * source is used, so no size is ever upscaled from a smaller copy.
+ * Settings are processed from the largest. Each size is resized from the
+ * last size kept for the chain (`useAsNextResizeIteration`, by default a
+ * size with the source's aspect ratio and no crop), or from the source when
+ * the setting says so (`generateFromSource`) or when that size is smaller
+ * than this one: no size is ever enlarged from a smaller copy.
  *
  * A failed setting is added to the result with a failed status. With
  * `abortScope` `'source'` or `'batch'` it stops the source: the settings after
@@ -421,11 +417,12 @@ const toHookSetting = ({
  * hooks cost nothing. What hooks record is the source's at
  * `afterSourceLoad`, each file's at the other points.
  *
- * @param srcPath Source's image full path.
+ * @param srcPath Path of the source image.
  * @param settings Settings list to generate files.
- * @param encoders Formats to write and their options.
- * @param outputPath Full output path without extension. Setting suffix and file
- * format will be added automatically later on.
+ * @param targetEncoders Formats to write and their options, `'fallback'`
+ * resolved here once the source tells if it is transparent.
+ * @param outputPath Output path without suffix and extension: each size
+ * adds its suffix, each file its format.
  * @param context Options of the run and its abort signal.
  * @returns Promise that resolves to a list of objects containing metadata about
  * each setting and its resulting files, whether the source stopped before

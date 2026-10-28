@@ -34,8 +34,9 @@ export interface ManifestEntry {
   readonly mtimeMs: number;
   /**
    * Hash of everything that decides the files: settings, formats and their
-   * options, output path, suffix, resize strategy, upscaling, and the
-   * hooks' names and keys (their code without a key).
+   * options, output path, suffix, resize strategy, upscaling,
+   * `removeOpaqueAlpha`, and the hooks' names and keys (their code without
+   * a key).
    */
   readonly hash: string;
   /** Size of the source, as shown. */
@@ -130,8 +131,10 @@ export const targetHash = (
 /**
  * Reads a manifest.
  *
- * @returns The manifest, or undefined when there is none; `problem` tells
- * why a file that exists can't be used (then the run processes everything).
+ * @returns `{ manifest }`; `{}` when there is no file; `{ problem }` when
+ * the file can't be used (not JSON, or another version): a run then
+ * processes every source.
+ * @throws When the file exists but can't be read.
  */
 export const readManifest = async (
   manifestFile: string

@@ -30,15 +30,14 @@ export interface SourceDimensions {
 const isNumber = (value: unknown): value is number => typeof value === 'number';
 
 /**
- * Get the boundaries from width and height properties of the output settings
- * object. If width or height is absolute value, the other is calculated based
- * on source's aspect ratio, if it's a multiplier the other dimension is equal.
- * Resolutions that are not same aspect ratio as the source are ignored.
- * @param outputSettings Object containing all widths and heights.
- * @param sourceDimensions Object containing width and height of the source as
- * absolute pixel value.
- * @returns Object containing minimum absolute width and height or undefined
- * and maximum multiplier (from both width and height) or undefined.
+ * The smallest size in pixels and the largest multiplier of the settings,
+ * for `'downsample'`. A size in pixels given by its width or its height
+ * alone gets the other from the source's aspect ratio; sizes in pixels of
+ * another aspect ratio are left out.
+ * @param outputSettings The settings, as given.
+ * @param sourceDimensions Size of the source, in pixels.
+ * @returns The smallest width and height in pixels, and the largest
+ * multiplier of a width or a height: each undefined when no size has one.
  */
 export const findSettingsResolutionBoundaries = (
   outputSettings: readonly OutputSetting[],
@@ -100,21 +99,20 @@ export const findSettingsResolutionBoundaries = (
 };
 
 /**
- * Returns mapped source multiplier based on the output settings object,
- * source's dimensions and the resize hint.
- * @param settings Output settings object.
- * @param sourceDimensions Object containing width and height of the source as
- * absolute pixel value.
- * @param resizeStrategyHint Strategy to retrieve source's multiplier.\
- * **'downsample'** - Source is the highest resolution - the lowest resolution
- * that is lower than source's is `'x1'` or the highest multiplier is source's
- * multiplier.\
- * **'upsample'** - Source is lowest resolution - shorthand for source's
- * multiplier equals x1.\
- * **\`x${number}\`** - Source multiplier is known - 'x1', 'x2', 'x3.5' etc.\
- * **{ width: number; height: number }** - tells what x1 resolution is.
+ * The source's multiplier, from the settings, the source's size and the
+ * hint (see `ResizeStrategyHint`):
+ *
+ * - `'downsample'`: the source's width over the smallest width in pixels
+ *   with its aspect ratio, when that width is not larger than the source;
+ *   else the largest multiplier; else 1, with a warning.
+ * - `'upsample'`: 1.
+ * - a multiplier, `'x2'`: that multiplier.
+ * - `{ width, height }`: what makes `'x1'` cover that size.
+ * @param settings The settings, as given.
+ * @param sourceDimensions Size of the source, in pixels.
+ * @param resizeStrategyHint What `'x1'` is.
  * @param logger Receives a warning when downsampling isn't possible.
- * @returns Source's multiplier as a number, could be float.
+ * @returns The source's multiplier, not rounded.
  */
 export const getSourceMultiplier = (
   settings: readonly OutputSetting[],
@@ -154,8 +152,9 @@ export const getSourceMultiplier = (
 };
 
 /**
- * Calculate width, height, multipliers and resolve all necessary data required
- * for the output files.
+ * Resolves each setting's size in pixels, its multipliers and where it is
+ * resized from: `generateFromSource` and `useAsNextResizeIteration` get
+ * their defaults (see `OutputSetting`).
  * @param settings Valid output settings.
  * @param sourceDimensions Size of the source, as displayed (auto-oriented).
  * @param resizeStrategyHint What the source's multiplier is, see

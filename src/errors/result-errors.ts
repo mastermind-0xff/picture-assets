@@ -19,9 +19,10 @@ export class ResultSourceError extends Error {
 }
 
 /**
- * Thrown by `generateBatchAssets` with `abortScope: 'batch'` when a source
- * fails. Carries the result of every source: the failed one, those stopped
- * (`'aborted'`) and those finished before.
+ * Thrown by `generateBatchAssets` and `generateAssets` with
+ * `abortScope: 'batch'` when a source fails. Carries the result of every
+ * source: the failed one, those stopped (`'aborted'`) and those finished
+ * before.
  */
 export class ResultBatchError extends Error {
   override name = 'ResultBatchError';

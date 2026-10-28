@@ -19,13 +19,14 @@ export type Concurrency = number | 'auto' | 'max';
 
 /**
  * Options of `generateSingleSourceAssets`, and of `generateBatchAssets` and
- * `generateAssets` with theirs. Every option falls back to its environment
- * variable (see `ENV_VARIABLES`), then to its default.
+ * `generateAssets` with theirs. An option not given falls back to its
+ * environment variable, if it has one (see `ENV_VARIABLES`), then to its
+ * default.
  */
 export interface AssetsOptions {
   /**
-   * Tells what source image's multiplier is, or what `'x1'` resolution is,
-   * so multipliers in the settings can be turned into pixels.
+   * What `'x1'` is, so multipliers in the settings can be turned into
+   * pixels, see `ResizeStrategyHint`.
    *
    * Default: `'downsample'` (`PICTURE_ASSETS_RESIZE_STRATEGY_HINT`).
    */

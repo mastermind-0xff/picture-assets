@@ -5,12 +5,16 @@ export type SizeMultiplier = `x${number}`;
 export type ResizeResolution = number | SizeMultiplier;
 
 /**
- * Hints what source image's multiplier is, or what `'x1'` is.
+ * What `'x1'` is, so multipliers can be turned into pixels:
  *
- * - `'downsample'` - Source has the highest resolution.
- * - `'upsample'` - Source has the lowest resolution.
- * - `'x${number}'` - Source multiplier is hardcoded.
- * - `{ width: number; height: number }` - Tells what `'x1'` resolution is.
+ * - `'downsample'`: inferred from the sizes. The smallest size in pixels
+ *   (with the source's aspect ratio, not larger than the source) is `'x1'`;
+ *   without one, the source is the largest multiplier (`'x1'` without
+ *   multipliers).
+ * - `'upsample'`: the source is `'x1'`; larger multipliers are enlarged.
+ * - a multiplier, `'x2'`: the source is that multiplier.
+ * - `{ width, height }`: `'x1'` is that size, whatever the source's; for
+ *   another aspect ratio, the smallest size with the source's that covers it.
  */
 export type ResizeStrategyHint =
   | 'downsample'

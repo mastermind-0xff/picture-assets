@@ -399,16 +399,16 @@ export const runBatch = async (
 };
 
 /**
- * Convert multiple files to multiple output resolutions and formats: a
- * directory tree, a glob or a single file. The tree below the source root is
+ * Turns many source images into every size and format asked: a directory
+ * tree, a glob or a single file. The tree below the source root is
  * mirrored in the destination, so files with the same name in different
  * directories never overwrite each other.
  *
  * Sources are processed `concurrency` at a time, each with
- * `generateSingleSourceAssets`'s pipeline; the results are in path order. Outputs inside the source tree
- * (a destination inside the root) are never picked up as sources.
+ * `generateSingleSourceAssets`'s pipeline; the results are in path order.
+ * Outputs inside the source tree (a destination inside the root) are never
+ * picked up as sources.
  *
- * **example**:
  * ```js
  * // photos/a.jpg, photos/trips/b.jpg → public/img/a@1024w.webp, …,
  * // public/img/trips/b@1024w.webp, …
@@ -427,9 +427,10 @@ export const runBatch = async (
  * @param formats Output formats, see `generateSingleSourceAssets`. Without
  * formats, each source is written in its own format.
  * @param options Options of `generateSingleSourceAssets`, plus `concurrency`
- * and `signal`. With `abortScope: 'batch'`, the first failure stops the batch: sources in
- * progress finish their current size, the others are `'aborted'`. An
- * aborted `signal` stops it the same way, and the batch is `'aborted'`.
+ * and `signal`. With `abortScope: 'batch'`, the first failure stops the
+ * batch: sources in progress finish their current size, the others are
+ * `'aborted'`. An aborted `signal` stops it the same way, and the batch is
+ * `'aborted'`.
  * @returns The result of every source found, in path order. `'failed'` when
  * no source was found or any source failed, `'aborted'` when the `signal`
  * stopped it.

@@ -124,153 +124,55 @@ export const processSource = async (
 };
 
 /**
- * ---
- * Convert a single image source file to a multiple output formats and
- * resolutions. By default, source is considered the highest resolution image.
- * Formats for a given setting are computed all together, while each setting is
- * awaited to completion and then the final result is returned. Depending on the
- * abort scope, a failure stops the source or makes the call reject, see
- * `options.abortScope`.
+ * Turns one source image into every size and format asked. Sizes are
+ * processed from the largest, each resized from the previous one when it
+ * has the source's aspect ratio and no crop, else from the source; the
+ * formats of a size are encoded in parallel.
  *
- * **examples:**
- * ```typescript
- * // minimum config
- * const result = await generateSingleSourceAssets(
- *  '/path/to/file.jpg',
- *  '/path/to/assets/new-name-prefix',
- *  [
- *   { width: 'x2', suffix: '@2x({w}w)' },
- *   { width: 1024, suffix: '@1x({w}w)' },
- *  ],
- *  ['webp', 'jpg']
+ * ```ts
+ * // out/house@2048w.avif, out/house@2048w.webp, out/house@1024w.avif, …
+ * await generateSingleSourceAssets(
+ *   'photos/house.jpg',
+ *   'out/',
+ *   [{ width: 2048 }, { width: 1024 }],
+ *   ['avif', 'webp']
  * );
  * ```
  *
- * @param srcPath Path to a single source file.
+ * Multipliers are resolved by `resizeStrategyHint`. For a 300x300 source
+ * and the settings `[{ width: 'x3' }, { width: 'x2' }, { width: 'x1' }]`,
+ * the widths of `x3`, `x2` and `x1` are:
  *
- * @param destPath Path to an output file or directory. If the extension is an
- * output format, it is added to the output formats list. If trailing slash is
- * used (destination is a directory) source's file name will be used as a
- * destination file name otherwise the string after the last slash will be
- * used as a prefix for all settings and formats.
+ * - `'downsample'` (default): 300, 200, 100: the source is `x3`;
+ * - `'upsample'`: 900, 600, 300: the source is `x1`;
+ * - `'x2'`: 450, 300, 150;
+ * - `{ width: 50, height: 50 }`: 150, 100, 50.
  *
- * *examples*:
- * ```
- * // /!\ source is 'path/to/src/image.png'
- *
- * // dest dir:'path/to/dest/dir/'; prefix:'file'; .webp added to formats
- * 'path/to/dest/dir/file.webp';
- *
- * // dest dir:'path/to/dest/dir/'; prefix:'image'; .png used without formats
- * 'path/to/dest/dir/';
- *
- * // dest dir:'path/to/dest/dir/'; prefix:'file'; .png used without formats
- * 'path/to/dest/dir/file';
- * ```
- *
- * @param settings List of objects containing width and/or height, sharp
- * advanced resize options, crop region, output suffix, ability to force
- * generation from source or whether to use or not the result buffer as next
- * iteration. Omit width or height to calculate the other dimension
- * automatically.
- *
- * **important:**
- * Settings are resolved to width and height pixels and ordered by size from
- * highest resolution to the lowest. Then, after each resize of the same aspect
- * ratio the resize buffer is updated unless overruled in the settings. If some
- * setting resolution is bigger than the source's resolution, or than the
- * buffer, it won't use the previously saved buffer, but original source
- * instead, again if not overruled by the settings.
- *
- * **examples:**
- * ```
- * [{width:1024}, {width:'x2'}];
- * // ---
- * [
- * {width:1024, height:768},
- * {width:1000, extractRegion:{left:250, top:0, width:500, height:375}}
- * ];
- * ```
- *
- * @param formats List of strings containing output file formats or object
- * containing format as key and format options (quality, etc.) as values.
- * Options are merged over the format's defaults (`DEFAULT_FORMAT_OPTIONS`).
- *
- * **examples:**
- * ```
- * ['avif', 'webp', 'jpg'];
- * // -or-
- * {jpg: { quality: 80 }, webp: { quality: 70 } }
- * ```
- *
- * @param options Options of the call, each falling back to its environment
- * variable, then to its default:
- *
- * - `resizeStrategyHint` - Helps to determine what multipliers mean in the
- * context of the settings. Tells what source image's multiplier is, or what
- * `'x1'` resolution is. Based on that, all other multipliers in the `settings`
- * can be calculated. Possible values:\
- * `'downsample'` (default) - Source has the highest resolution. If pixel
- * resolution is available the lowest resolution that is lower than the
- * source's is `'x1'` or if multipliers are available the highest multiplier is
- * source's multiplier. Pixel resolutions take precedence over multipliers.\
- * `'upsample'` - Source is the lowest resolution - alias of `'x1'`.\
- * `'x${number}'` - Source multiplier is known and hardcoded - `'x1'`, `'x2'`,
- * `'x3.5'` and so on.\
- * `{ width: number; height: number }` - Tells what `'x1'` resolution is, then
- * source multiplier is based on that.\
- * **example:**
- * ```typescript
- * // source @ 300x300px
- * await generateSingleSourceAssets(
- *  'image.jpg',
- *  './dest/',
- *  [
- *    { width: 'x3', suffix: '@3x({w}w)' },
- *    { width: 'x2', suffix: '@2x({w}w)' },
- *    { width: 'x1', suffix: '@1x({w}w)' },
- *  ],
- *  ['webp'])
- *
- * // 'downsample' will output
- * // ./dest/image@3x(300w).webp, ./dest/image@2x(200w).webp,
- * // ./dest/image@1x(100w).webp
- *
- * // 'upsample' will output
- * // ./dest/image@3x(900w).webp, ./dest/image@2x(600w).webp,
- * // ./dest/image@1x(300w).webp
- *
- * // 'x2' will output
- * // ./dest/image@3x(450w).webp, ./dest/image@2x(300w).webp,
- * // ./dest/image@1x(150w).webp
- *
- * // {width:50, height:50} will output
- * // ./dest/image@3x(150w).webp, ./dest/image@2x(100w).webp,
- * // ./dest/image@1x(50w).webp
- * ```
- *
- * - `suffix` - Suffix of settings without their own. Default `'@{w}w'`.
- *
- * - `formatOptions` - Options per format, for every call that writes it.
- *
- * - `upscale` - Whether sizes larger than the source are made (default
- * `true`). With `false` they are `'skipped'`, and the largest of them is made
- * at the source's size instead, unless a size already is.
- *
- * - `abortScope` - What a failure stops: `'none'` (default) attempts every
- * output and reports failures in the result; `'source'` stops at the first
- * failed setting and resolves with a failed result; `'batch'` stops as well
- * and rejects with a `ResultSourceError` carrying the result.
- *
- * - `logger` - A log level for the default logger (`'info'`), or a logger.
- *
- * @returns Resolves to an object containing source file path and list of
- * objects containing each setting that contains a list of each format. Each
- * branch of the formed three contains a field with its completion status.
+ * @param srcPath Path of the source image.
+ * @param destPath Where the files go, and their name:
+ * - a directory (`'out/'`, with a trailing separator): named after the
+ *   source, `out/house@1280w.webp`;
+ * - a name (`'out/hero'`): `out/hero@1280w.webp`; an extension that isn't
+ *   a format is part of it (`'out/hero.v2'`);
+ * - a file with a format's extension (`'out/hero.webp'`):
+ *   `out/hero@1280w.webp`, and the format is added to `formats`.
+ * @param settings One per size: a `width` or a `height` (or both, for
+ * another aspect ratio), in pixels or as a multiplier like `'x2'`, and its
+ * own options, see `OutputSetting`.
+ * @param formats A list, `['avif', 'webp', 'jpg']` (`'fallback'`
+ * included), or formats with options for this call,
+ * `{ webp: { quality: 70 }, jpg: {} }`, merged over `formatOptions` and
+ * `DEFAULT_FORMAT_OPTIONS`. Without formats: the destination's extension,
+ * or the source's format.
+ * @param options See `AssetsOptions`: each falls back to its environment
+ * variable, if it has one, then to its default.
+ * @returns The source's result: its status, size and data, and each
+ * setting's files with their status (see `ResultSource`). With
+ * `abortScope: 'source'`, a failure stops the sizes after it.
  * @throws `TypeError | RangeError` for invalid arguments or options, before
  * any processing.
  * @throws `ResultSourceError` with `abortScope: 'batch'` when the source
- * fails. The error contains the source result.
+ * fails, carrying its result.
  */
 export const generateSingleSourceAssets = async (
   srcPath: string,
