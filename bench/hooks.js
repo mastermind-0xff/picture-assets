@@ -3,9 +3,8 @@
  * pipeline.js, with a hook at one point per case.
  *
  * - `no hooks`: the baseline. A point without hooks does no work.
- * - `every point, no change`: a hook at every point but `beforeFileWrite`
- *   (added after these results were recorded) returning undefined, so
- *   nothing is baked: the cost of calling hooks (and their debug logs,
+ * - `every point, no change`: a hook at all 6 points returning undefined,
+ *   so nothing is baked: the cost of calling hooks (and their debug logs,
  *   filtered here).
  * - `afterSourceLoad: modulate`: a color grade, baked once at the source's
  *   full size.
@@ -17,6 +16,9 @@
  *   baked once per size, for all its formats.
  * - `beforeFormat: sharpen WebP`: not baked, the sharpen runs in the WebP
  *   encode.
+ * - `beforeFileWrite: WebP options`: the WebP files' own options set again
+ *   on their sharp object, as a hook changing the quality would: the same
+ *   bytes, so the time is the point's own. Nothing is baked.
  *
  * Run: npm run build && node bench/hooks.js [--quick]
  */
@@ -47,6 +49,7 @@ const CASES = {
       afterResize: none,
       beforeEncode: none,
       beforeFormat: none,
+      beforeFileWrite: none,
     },
   ],
   'afterSourceLoad: modulate': [
@@ -95,6 +98,13 @@ const CASES = {
       name: 'sharpenWebp',
       beforeFormat: (image, { format }) =>
         format === 'webp' ? image.sharpen({ sigma: 0.6 }) : undefined,
+    },
+  ],
+  'beforeFileWrite: WebP options': [
+    {
+      name: 'webpOptions',
+      beforeFileWrite: (image, { format, options }) =>
+        format === 'webp' ? image.webp(options) : undefined,
     },
   ],
 };

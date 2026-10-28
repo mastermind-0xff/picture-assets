@@ -35,10 +35,11 @@ more during a case.
 
 From `results/*.txt`, on an Intel i7-9750H laptop (6 cores, 12 threads),
 Windows 11, Node 22.22, sharp 0.35.5 (libvips 8.18). Your numbers will
-differ; the ratios are what to look at. `pipeline.txt`, `chain.txt` and
-`hooks.txt` were recorded after sources were decoded first (see below),
-with 12 to 20% of the CPU used by other processes (mm-bench warns): take
-their small differences as noise.
+differ; the ratios are what to look at. `pipeline.txt` and `chain.txt`
+were recorded after sources were decoded first (see below), with 12 to 20%
+of the CPU used by other processes (mm-bench warns), `hooks.txt` later
+(2026-10-28) with 10 to 13% in three of its cases: take their small
+differences as noise.
 
 **pipeline.js**: one 3901x2926 photo to 2048, 1024 and 512 pixels wide,
 WebP and JPEG, the same encoder options everywhere.
@@ -166,24 +167,26 @@ image, not a perceptual metric for every kind of artifact (AVIF smooths
 fine texture, JPEG blocks).
 
 **hooks.js**: pipeline.js's photo, sizes and formats (2048, 1024, 512;
-WebP and JPEG), with one hook per case. `beforeFileWrite` came after
-these results: "every point" is the other five.
+WebP and JPEG), with one hook per case.
 
-| Case                                   | Mean  | vs no hooks |
-| -------------------------------------- | ----- | ----------- |
-| no hooks                               | 675ms |             |
-| a hook at every point, no change       | 716ms | 6% slower   |
-| `afterSourceLoad`: `modulate`          | 882ms | 31% slower  |
-| `afterSourceLoad`: `pixels()`, JS gain | 751ms | 11% slower  |
-| `afterResize`: `sharpen`               | 799ms | 18% slower  |
-| `beforeEncode`: a translucent overlay  | 738ms | 9% slower   |
-| `beforeFormat`: `sharpen`, WebP only   | 776ms | 15% slower  |
+| Case                                      | Mean  | vs no hooks |
+| ----------------------------------------- | ----- | ----------- |
+| no hooks                                  | 589ms |             |
+| a hook at every point, no change          | 576ms | 2% faster   |
+| `afterSourceLoad`: `modulate`             | 765ms | 30% slower  |
+| `afterSourceLoad`: `pixels()`, JS gain    | 674ms | 14% slower  |
+| `afterResize`: `sharpen`                  | 707ms | 20% slower  |
+| `beforeEncode`: a translucent overlay     | 621ms | 5% slower   |
+| `beforeFormat`: `sharpen`, WebP only      | 698ms | 19% slower  |
+| `beforeFileWrite`: WebP options set again | 603ms | 2% slower   |
 
-Recorded with other processes busy: no hooks ran in 582ms in pipeline.js
-the same minutes, and before sources were decoded first, hooks that change
-nothing measured 746ms against 748ms without hooks. An `afterSourceLoad`
-hook costs its work at the photo's full size (11.4 megapixels): a
-`modulate` and its bake about 200ms, a copy of the pixels and a loop over
-34 million bytes about 80ms. A sharpen costs about as much baked per size
-(`afterResize`, for both formats) as run in the WebP encodes
-(`beforeFormat`): three sharpens either way, the bakes on top.
+Hooks that change nothing cost nothing measurable: the 2% between the
+first two rows is noise. Neither does a `beforeFileWrite` hook that sets
+encoder options (the same ones here, so the files are the same bytes):
+nothing is baked, and the options apply to the encode the file makes
+anyway. An `afterSourceLoad` hook costs its work at the photo's full size
+(11.4 megapixels): a `modulate` and its bake about 180ms, a copy of the
+pixels and a loop over 34 million bytes about 85ms. A sharpen costs about
+as much baked per size (`afterResize`, for both formats) as run in the
+WebP encodes (`beforeFormat`): three sharpens either way, the bakes on
+top.
