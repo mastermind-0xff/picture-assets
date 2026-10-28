@@ -84,8 +84,11 @@ describe('sampleCPUUsage', () => {
   test('a sample, then a percentage of all cores', () => {
     const sample = sampleCPUUsage();
     expect(typeof sample.time).toBe('bigint');
+    // busy for 250 ms: process.cpuUsage() steps 15-16 ms on Windows, more
+    // than a short loop takes, which then reads as over 100%
+    const start = performance.now();
     let sink = 0;
-    for (let index = 0; index < 1e6; index++) sink += Math.sqrt(index);
+    while (performance.now() - start < 250) sink += Math.sqrt(sink + 1);
     expect(sink).toBeGreaterThan(0);
     const usage = sampleCPUUsage(sample);
     expect(usage).toBeGreaterThanOrEqual(0);
